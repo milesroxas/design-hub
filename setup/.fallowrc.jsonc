@@ -1,0 +1,6 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  // The setup app has no package.json: `Design Hub.command` runs server.mjs,
+  // and prototypes' `pnpm test` runs the tests.
+  "entry": ["server.mjs", "*.test.mjs"]
+}

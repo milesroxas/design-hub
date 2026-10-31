@@ -51,9 +51,9 @@ pnpm new <slug> --app --title "Title"     # a prototype inside the shell
 pnpm new <slug> --app --sprint --feature <feature>   # the feature's one primary prototype; refused if it has one
 pnpm new <slug> --app --alternate --feature <feature>   # another take on the primary; refused until it exists
 pnpm new:guide <feature>                  # the feature's walkthrough, docs/sprints/<feature>/guide.md
-pnpm check                                # tsc + Biome; must pass before you report done
-pnpm test                                 # the infrastructure's node:test suites
-pnpm quality                              # fallow over real test coverage: dead code, duplication, layers, complexity
+pnpm check                                # tsc + Biome, here and over ../setup; must pass before you report done
+pnpm test                                 # the infrastructure's node:test suites, ../setup's included
+pnpm quality                              # fallow over real test coverage: dead code, duplication, layers, complexity; ../setup too
 pnpm fix                                  # Biome format and safe fixes
 pnpm guard <file>                         # the fidelity guard by hand, over a whole file
 pnpm preflight                            # every check a share link needs (miles-deploy)
@@ -100,6 +100,8 @@ The layers, from the inside out, are enforced by `pnpm quality` (`.fallowrc.json
 | a prototype | `@kit/*` and its own folder (the fidelity guard holds this on every write) |
 
 A rule that two layers need goes in `_core`, once. Never copy it.
+
+The setup app (`../setup/`) sits outside these layers: it runs before anything is installed, so it is plain Node with no dependencies and its own `.fallowrc.jsonc`. `lib.mjs` holds its rules with no I/O, `slug.mjs` the naming rule the page and the server share, `server.mjs` the processes and HTTP.
 
 ## A prototype
 

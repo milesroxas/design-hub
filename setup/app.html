@@ -1,0 +1,868 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Design Hub</title>
+<style>
+  /* The hub's neutral system look (prototypes/_shell/system.css), restated here
+     because this page runs before anything is installed: pure greys, hue only
+     for status, the system font until Geist is on disk.
+     One scale for each thing: type 12/13/14/24, space 4/8/12/16/24/32,
+     controls 40px tall, radius 8 on controls and 12 on cards. */
+  :root {
+    --font: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    --text: oklch(0.205 0 0);
+    --text-2: oklch(0.44 0 0);
+    --text-3: oklch(0.56 0 0);
+    --bg: oklch(0.97 0 0);
+    --surface: oklch(1 0 0);
+    --sunken: oklch(0.965 0 0);
+    --hover: oklch(0.955 0 0);
+    --border: oklch(0 0 0 / 0.08);
+    --border-strong: oklch(0 0 0 / 0.15);
+    --accent: oklch(0.205 0 0);
+    --on-accent: oklch(0.985 0 0);
+    --disabled-bg: oklch(0.93 0 0);
+    --disabled-text: oklch(0.62 0 0);
+    --ok: oklch(0.627 0.194 149.214);
+    --warn: oklch(0.58 0.15 58);
+    --error: oklch(0.577 0.245 27.325);
+    --error-tint: oklch(0.97 0.015 27);
+    --ring: oklch(0.556 0 0 / 0.45);
+    --panel-shadow: 0 0 0 1px oklch(0 0 0 / 0.06), 0 1px 2px oklch(0 0 0 / 0.04), 0 8px 24px -8px oklch(0 0 0 / 0.08);
+
+    --text-xs: 12px;
+    --text-sm: 13px;
+    --text-md: 14px;
+    --text-xl: 24px;
+
+    --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px;
+    --control: 40px;
+    --r-control: 8px;
+    --r-card: 12px;
+    --r-panel: 16px;
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --swap-from: 0.9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --text: oklch(0.97 0 0);
+      --text-2: oklch(0.76 0 0);
+      --text-3: oklch(0.62 0 0);
+      --bg: oklch(0.155 0 0);
+      --surface: oklch(0.2 0 0);
+      --sunken: oklch(0.175 0 0);
+      --hover: oklch(0.235 0 0);
+      /* Solid in the dark: alpha borders glow. */
+      --border: oklch(0.27 0 0);
+      --border-strong: oklch(0.34 0 0);
+      --accent: oklch(0.97 0 0);
+      --on-accent: oklch(0.2 0 0);
+      --disabled-bg: oklch(0.26 0 0);
+      --disabled-text: oklch(0.52 0 0);
+      --warn: oklch(0.75 0.14 70);
+      --error: oklch(0.7 0.19 25);
+      --error-tint: oklch(0.24 0.04 25);
+      --panel-shadow: 0 0 0 1px oklch(0.27 0 0), 0 8px 24px -8px oklch(0 0 0 / 0.5);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+  body {
+    margin: 0; min-height: 100dvh; display: grid; place-items: center; padding: var(--s6) var(--s4);
+    background: var(--bg); color: var(--text); font: var(--text-md)/1.5 var(--font);
+  }
+  ::selection { background: oklch(0.556 0 0 / 0.25); }
+  /* biome-ignore lint/complexity/noImportantStyles: `hidden` must beat every component's display. */
+  [hidden] { display: none !important; }
+  code { font-family: var(--mono); font-size: 0.93em; }
+
+  /* ---------- frame ---------- */
+
+  main { width: 100%; max-width: 480px; display: grid; gap: var(--s4); }
+  .top { display: flex; align-items: center; justify-content: space-between; padding: 0 var(--s1); height: 24px; }
+  .brand { display: flex; align-items: center; gap: var(--s2); font-size: var(--text-sm); font-weight: 500; }
+  .brand svg { width: 16px; height: 16px; }
+  .stepper { font-size: var(--text-xs); color: var(--text-3); font-variant-numeric: tabular-nums; }
+  .panel { background: var(--surface); border-radius: var(--r-panel); box-shadow: var(--panel-shadow); padding: var(--s6); }
+  .foot { margin: 0; padding: 0 var(--s1); font-size: var(--text-xs); color: var(--text-3); text-align: center; text-wrap: balance; }
+
+  /* Every screen is a column with one gap; no element carries its own margin. */
+  section { display: flex; flex-direction: column; gap: var(--s5); }
+  /* A new screen settles in from just below. Seen a handful of times, once
+     per setup, so it can carry a little motion; never on a step's own updates. */
+  section {
+    transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
+    @starting-style { opacity: 0; transform: translateY(6px); }
+  }
+
+  .head { display: grid; gap: var(--s2); }
+  h1:focus { outline: none; }
+  h1 { font-size: var(--text-xl); line-height: 1.2; font-weight: 600; letter-spacing: -0.02em; margin: 0; text-wrap: balance; }
+  .lede { color: var(--text-2); margin: 0; max-width: 60ch; text-wrap: pretty; }
+  h2 { font-size: var(--text-sm); font-weight: 500; color: var(--text-2); margin: 0; }
+
+  /* ---------- fields ---------- */
+
+  form, .fields { display: flex; flex-direction: column; gap: var(--s5); }
+  .field { display: grid; gap: var(--s2); }
+  .field > label, .label { font-size: var(--text-sm); font-weight: 500; }
+  .optional { font-weight: 400; color: var(--text-3); }
+  input[type=text], input[type=password] {
+    width: 100%; height: var(--control); padding: 0 var(--s3); border-radius: var(--r-control);
+    border: 1px solid var(--border-strong); background: var(--surface); color: var(--text);
+    font: inherit; outline: none;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+  }
+  input::placeholder { color: var(--text-3); }
+  @media (hover: hover) and (pointer: fine) { input[type=text]:hover, input[type=password]:hover { border-color: var(--text-3); } }
+  input:focus-visible { border-color: var(--text-2); box-shadow: 0 0 0 3px var(--ring); }
+  input[aria-invalid=true] { border-color: var(--error); }
+  input[aria-invalid=true]:focus-visible { box-shadow: 0 0 0 3px color-mix(in oklch, var(--error) 30%, transparent); }
+  .hint { font-size: var(--text-xs); color: var(--text-3); margin: 0; }
+  .error-text { display: flex; gap: 6px; align-items: center; font-size: var(--text-xs); color: var(--error); margin: 0; }
+  .error-text:empty { display: none; }
+  .error-text::before { content: '!'; flex: none; width: 14px; height: 14px; border-radius: 50%; background: var(--error); color: var(--surface); font: 700 10px/14px var(--font); text-align: center; }
+
+  /* The save path reads as a field: same height, border and radius as an input. */
+  .where {
+    display: flex; align-items: center; gap: var(--s2); height: var(--control); padding: 0 var(--s1) 0 var(--s3);
+    border-radius: var(--r-control); background: var(--sunken); box-shadow: inset 0 0 0 1px var(--border);
+  }
+  .where code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-sm); color: var(--text-2); }
+
+  .check { display: flex; gap: var(--s2); align-items: center; font-weight: 400; cursor: pointer; width: fit-content; }
+  .check input { appearance: none; margin: 0; flex: none; width: 16px; height: 16px; border-radius: 4px; border: 1px solid var(--border-strong); background: var(--surface); display: grid; place-items: center; cursor: pointer; transition: background-color 150ms ease, border-color 150ms ease; }
+  .check input:checked { background: var(--accent); border-color: var(--accent); }
+  .check input:checked::after { content: ''; width: 8px; height: 4px; border-left: 1.5px solid var(--on-accent); border-bottom: 1.5px solid var(--on-accent); transform: translateY(-1px) rotate(-45deg); }
+  .check input:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+
+  /* ---------- buttons ---------- */
+
+  button {
+    font: inherit; font-weight: 500; cursor: pointer; border: 0; border-radius: var(--r-control);
+    height: var(--control); padding: 0 var(--s4); display: inline-flex; align-items: center; justify-content: center; gap: var(--s2);
+    color: var(--text); background: none;
+    transition: transform 140ms var(--ease-out), background-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
+    -webkit-tap-highlight-color: transparent; user-select: none;
+  }
+  button:active:not(:disabled) { transform: scale(0.97); }
+  button:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+  button:disabled { cursor: default; }
+  .primary { background: var(--accent); color: var(--on-accent); }
+  .primary:disabled { background: var(--disabled-bg); color: var(--disabled-text); }
+  .secondary { background: var(--surface); box-shadow: inset 0 0 0 1px var(--border-strong); }
+  .secondary:focus-visible { box-shadow: inset 0 0 0 1px var(--border-strong), 0 0 0 3px var(--ring); }
+  .secondary:disabled { color: var(--disabled-text); }
+  /* Small: sits inside a 40px field with 4px inset, so 32px tall and radius 8 - 4 + 2. */
+  .small { height: 32px; padding: 0 var(--s3); border-radius: 6px; font-size: var(--text-sm); }
+  .quiet { color: var(--text-2); }
+  @media (hover: hover) and (pointer: fine) {
+    .primary:hover:not(:disabled) { background: color-mix(in oklch, var(--accent), var(--surface) 14%); }
+    .secondary:hover:not(:disabled), .quiet:hover:not(:disabled) { background: var(--hover); color: var(--text); }
+  }
+  .actions { display: flex; gap: var(--s2); }
+  .actions .primary { flex: 1; }
+
+  /* ---------- status icons ---------- */
+
+  /* One spinner everywhere: a faint track and a head in the text color. */
+  .spin { flex: none; width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--border-strong); border-top-color: currentColor; animation: spin 650ms linear infinite; }
+  @keyframes spin { to { rotate: 1turn; } }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border-strong); }
+  .tick, .cross { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; color: white; }
+  .tick { background: var(--ok); }
+  .cross { background: var(--error); }
+  .tick svg, .cross svg { width: 10px; height: 10px; }
+  .card-ok { color: var(--ok); }
+  /* Icons that swap in place: every child sits in one cell and only the one
+     matching the row's state shows, so nothing around it moves. */
+  .swap { display: grid; place-items: center; }
+  .swap > * { grid-area: 1 / 1; opacity: 0; transform: scale(var(--swap-from)); transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-out); }
+  [data-status=waiting] .dot, [data-status=running] .spin, [data-status=done] .tick, [data-status=error] .cross,
+  .card:not([data-state]) .card-go, .card[data-state=busy] .spin, .card[data-state=done] .card-ok { opacity: 1; transform: none; }
+
+  /* ---------- choice cards ---------- */
+
+  .choices { display: grid; gap: var(--s2); }
+  .choice {
+    display: grid; grid-template-columns: 16px 1fr; gap: var(--s3); align-items: start;
+    padding: var(--s4); border-radius: var(--r-card); background: var(--surface);
+    box-shadow: inset 0 0 0 1px var(--border-strong); cursor: pointer;
+    transition: box-shadow 150ms ease, background-color 150ms ease;
+  }
+  @media (hover: hover) and (pointer: fine) { .choice:not(:has(input:disabled)):hover { background: var(--hover); } }
+  .choice:has(input:checked) { box-shadow: inset 0 0 0 1.5px var(--text); }
+  .choice:has(input:disabled) { cursor: default; }
+  .choice:has(input:focus-visible) { box-shadow: inset 0 0 0 1.5px var(--text), 0 0 0 3px var(--ring); }
+  .choice input { appearance: none; margin: 2px 0 0; width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--border-strong); background: var(--surface); display: grid; place-items: center; cursor: inherit; transition: border-color 150ms ease; }
+  .choice input:checked { border: 1.5px solid var(--text); }
+  .choice input:checked::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--text); }
+  .choice input:focus-visible { outline: none; }
+  .choice-body { display: grid; gap: 2px; }
+  .choice-title { font-weight: 500; }
+  .choice:has(input:disabled) .choice-title { color: var(--disabled-text); }
+  .choice-desc { color: var(--text-2); font-size: var(--text-sm); }
+  .choice-extra { margin-top: var(--s3); font-size: var(--text-sm); color: var(--text-2); }
+  .choice-extra:empty { display: none; }
+
+  /* Sits inside a choice card, so no box of its own: a divider and type carry it. */
+  .device { display: grid; gap: var(--s1); padding-top: var(--s3); border-top: 1px solid var(--border); }
+  .device-code { font: 600 20px/1.2 var(--mono); letter-spacing: 0.08em; color: var(--text); }
+  .device p { margin: 0; font-size: var(--text-xs); color: var(--text-3); }
+
+  /* ---------- disclosure ---------- */
+
+  details > summary { cursor: pointer; width: fit-content; color: var(--text-2); font-size: var(--text-sm); font-weight: 500; list-style: none; display: inline-flex; align-items: center; gap: var(--s2); border-radius: 4px; transition: color 150ms ease; }
+  details > summary::-webkit-details-marker { display: none; }
+  details > summary::before { content: ''; width: 5px; height: 5px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: translateX(-1px) rotate(-45deg); transition: transform 160ms var(--ease-out); }
+  details[open] > summary::before { transform: translateY(-1px) rotate(45deg); }
+  details > summary:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+  @media (hover: hover) and (pointer: fine) { details > summary:hover { color: var(--text); } }
+  .more { border-top: 1px solid var(--border); padding-top: var(--s5); }
+  .more .fields { padding-top: var(--s5); gap: var(--s4); }
+
+  /* ---------- progress ---------- */
+
+  /* One card, a row per step. Each row swaps its icon in place; nothing moves. */
+  .steps { list-style: none; margin: 0; padding: 0; border-radius: var(--r-card); box-shadow: inset 0 0 0 1px var(--border); }
+  .steps li { display: grid; grid-template-columns: 20px 1fr; gap: var(--s3); align-items: center; min-height: 52px; padding: var(--s3) var(--s4); color: var(--text-3); transition: color 200ms ease; }
+  .steps li + li { border-top: 1px solid var(--border); }
+  .steps li[data-status=running], .steps li[data-status=done], .steps li[data-status=error] { color: var(--text); }
+  .steps li[data-status=skipped] { display: none; }
+  .steps li[data-status=skipped] + li { border-top: 0; }
+  .step-text { display: grid; }
+  .step-sub { font-size: var(--text-xs); color: var(--text-3); }
+  .icon { width: 20px; height: 20px; }
+
+  /* ---------- problems ---------- */
+
+  .problem { display: grid; grid-template-columns: 16px 1fr; gap: var(--s3); padding: var(--s4); border-radius: var(--r-card); background: var(--error-tint); box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--error) 22%, transparent); }
+  .problem::before { content: '!'; width: 16px; height: 16px; margin-top: 2px; border-radius: 50%; background: var(--error); color: var(--surface); font: 700 11px/16px var(--font); text-align: center; }
+  .problem-body { display: grid; gap: var(--s1); min-width: 0; }
+  .problem strong { font-weight: 500; }
+  .problem p { margin: 0; color: var(--text-2); font-size: var(--text-sm); }
+  .problem details { margin-top: var(--s2); }
+  .problem summary { font-size: var(--text-xs); }
+  pre { margin: var(--s2) 0 0; padding: var(--s3); border-radius: var(--r-control); background: var(--surface); box-shadow: inset 0 0 0 1px var(--border); font: var(--text-xs)/1.5 var(--mono); color: var(--text-2); white-space: pre-wrap; word-break: break-word; max-height: 180px; overflow: auto; }
+
+  .warnings { margin: 0; padding: var(--s3) var(--s4) var(--s3) calc(var(--s4) + 16px); border-radius: var(--r-card); background: color-mix(in oklch, var(--warn) 8%, var(--surface)); color: var(--text-2); font-size: var(--text-sm); display: grid; gap: var(--s1); }
+  .warnings li::marker { color: var(--warn); }
+  .warnings:empty { display: none; }
+
+  /* ---------- ready and launcher ---------- */
+
+  .status { display: inline-flex; align-items: center; gap: var(--s2); font-size: var(--text-sm); color: var(--text-2); }
+  .status::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--border-strong); transition: background-color 200ms ease, box-shadow 200ms ease; }
+  .status[data-running=true]::before { background: var(--ok); box-shadow: 0 0 0 3px color-mix(in oklch, var(--ok) 22%, transparent); }
+  .status code { color: var(--text); }
+
+  .done-mark { width: 32px; height: 32px; border-radius: 50%; background: var(--ok); color: white; display: grid; place-items: center; margin-bottom: var(--s2);
+    transition: transform 320ms var(--ease-out), opacity 220ms var(--ease-out);
+    @starting-style { transform: scale(0.85); opacity: 0; }
+  }
+  .done-mark svg { width: 14px; height: 14px; }
+  .meta { display: grid; grid-template-columns: auto 1fr; gap: var(--s1) var(--s4); margin: 0; font-size: var(--text-sm); }
+  .meta dt { color: var(--text-3); }
+  .meta dd { margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); font-family: var(--mono); font-size: var(--text-sm); }
+
+  /* Next steps: a stack of full-width pressable cards. At this width a row of
+     three would squeeze each description to a few words; a stack keeps every
+     line readable and every card the same shape. */
+  .next { display: grid; gap: var(--s3); border-top: 1px solid var(--border); padding-top: var(--s5); }
+  .cards { display: grid; gap: var(--s2); }
+  .card {
+    display: grid; grid-template-columns: 36px 1fr 16px; gap: var(--s3); align-items: center; justify-content: stretch;
+    width: 100%; height: auto; min-height: 64px; padding: var(--s3) var(--s4) var(--s3) var(--s3); text-align: left;
+    border-radius: var(--r-card); background: var(--surface); box-shadow: inset 0 0 0 1px var(--border-strong); font-weight: 400;
+  }
+  .card:active:not(:disabled) { transform: scale(0.985); }
+  .card:focus-visible { box-shadow: inset 0 0 0 1px var(--border-strong), 0 0 0 3px var(--ring); }
+  /* 36px tile with 12px card padding: radius 12 - 12 + 8 keeps the corners concentric-looking. */
+  .card-icon { width: 36px; height: 36px; border-radius: var(--r-control); background: var(--sunken); box-shadow: inset 0 0 0 1px var(--border); display: grid; place-items: center; color: var(--text-2); transition: color 150ms ease; }
+  .card-icon svg { width: 18px; height: 18px; }
+  .card-text { display: grid; gap: 2px; min-width: 0; }
+  .card-title { font-weight: 500; color: var(--text); }
+  .card-desc { font-size: var(--text-sm); color: var(--text-2); text-wrap: pretty; }
+  .card-end { width: 16px; height: 16px; color: var(--text-3); }
+  .card-end svg { width: 16px; height: 16px; }
+  @media (hover: hover) and (pointer: fine) {
+    .card:hover:not(:disabled) { background: var(--hover); }
+    .card:hover:not(:disabled) .card-icon { color: var(--text); }
+    .card:hover:not(:disabled) .card-go { transform: translateX(2px); color: var(--text); }
+  }
+
+  .loading { display: flex; align-items: center; gap: var(--s3); color: var(--text-2); }
+
+  @media (max-width: 520px) {
+    .panel { padding: var(--s5); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    section, .done-mark { transition: opacity 160ms ease; @starting-style { opacity: 0; transform: none; } }
+    :root { --swap-from: 1; }
+    .spin { animation-duration: 1.6s; }
+    button:active:not(:disabled) { transform: none; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header class="top">
+    <div class="brand">
+      <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="1" y="1" width="6" height="6" rx="1.5" fill="currentColor"/><rect x="9.75" y="1.75" width="4.5" height="4.5" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="1.75" y="9.75" width="4.5" height="4.5" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="9.75" y="9.75" width="4.5" height="4.5" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>
+      Design Hub
+    </div>
+    <span class="stepper" id="stepper" aria-live="polite"></span>
+  </header>
+
+  <div class="panel">
+    <section id="loading">
+      <div class="loading"><span class="spin" aria-hidden="true"></span><span id="loading-text">Checking this computer…</span></div>
+    </section>
+
+    <!-- A project that is already set up: this page is its launcher. -->
+    <section id="launch" hidden>
+      <div class="head">
+        <h1 tabindex="-1" data-bind="here.name">Your project</h1>
+        <div class="status" id="launch-status"></div>
+      </div>
+      <div class="actions">
+        <button type="button" class="primary" id="launch-open">Open Design Hub</button>
+        <button type="button" class="secondary" id="launch-stop" hidden>Stop</button>
+      </div>
+      <div class="problem" id="launch-problem" hidden></div>
+      <div class="next">
+        <h2>Keep going</h2>
+        <div class="cards" data-cards></div>
+      </div>
+    </section>
+
+    <!-- Apple's developer tools are missing: nothing works without git. -->
+    <section id="devtools" hidden>
+      <div class="head">
+        <h1 tabindex="-1">One thing first</h1>
+        <p class="lede">Design Hub needs Apple’s free developer tools. Your Mac installs them in a few minutes.</p>
+      </div>
+      <p class="hint" id="devtools-hint" hidden>Follow the window your Mac opened. When it finishes, choose Check again.</p>
+      <div class="actions">
+        <button type="button" class="secondary" id="devtools-check">Check again</button>
+        <button type="button" class="primary" id="devtools-install">Install developer tools</button>
+      </div>
+    </section>
+
+    <!-- Step 1: name and place. -->
+    <section id="name" hidden>
+      <div class="head">
+        <h1 tabindex="-1">Start a design project</h1>
+        <p class="lede">Name it and Design Hub does the rest: copies the template, installs what it needs and picks a port nothing else uses.</p>
+      </div>
+      <form id="name-form" novalidate>
+        <div class="field">
+          <label for="project-name">Project name</label>
+          <input type="text" id="project-name" placeholder="Acme checkout" autocomplete="off" spellcheck="false" data-autofocus aria-describedby="name-error">
+          <p class="error-text" id="name-error" role="alert"></p>
+        </div>
+        <div class="field">
+          <span class="label">Saved to</span>
+          <div class="where">
+            <code id="where-path"></code>
+            <button type="button" class="small quiet" id="pick-folder" aria-label="Change where the project is saved">Change…</button>
+          </div>
+        </div>
+        <div class="actions"><button class="primary" type="submit">Continue</button></div>
+      </form>
+    </section>
+
+    <!-- Step 2: where it lives, and the options an agent would ask about. -->
+    <section id="save" hidden>
+      <div class="head">
+        <h1 tabindex="-1" id="save-title">Where should it live?</h1>
+        <p class="lede" id="save-lede">Start on this computer. You can add GitHub later.</p>
+      </div>
+      <div class="choices" role="radiogroup" aria-label="Where to save">
+        <label class="choice">
+          <input type="radio" name="visibility" value="local" checked>
+          <div class="choice-body">
+            <div class="choice-title">This computer</div>
+            <div class="choice-desc">Only on your Mac. The simplest start.</div>
+          </div>
+        </label>
+        <label class="choice" id="github-choice">
+          <input type="radio" name="visibility" value="private">
+          <div class="choice-body">
+            <div class="choice-title">This computer and GitHub</div>
+            <div class="choice-desc">A private repo on your GitHub account, so the team can work on it.</div>
+            <div class="choice-extra" id="github-extra"></div>
+          </div>
+        </label>
+      </div>
+
+      <details class="more">
+        <summary>More options</summary>
+        <div class="fields">
+          <div class="field">
+            <label for="typesafe-key">TypeSafe API key <span class="optional">Optional</span></label>
+            <input type="password" id="typesafe-key" autocomplete="off">
+            <p class="hint">Turns on the automatic checks. Saved only in this project, never in git.</p>
+            <p class="error-text" data-error="typesafeKey"></p>
+          </div>
+          <div class="field">
+            <label for="conductor-branch">Conductor branch <span class="optional">Optional</span></label>
+            <input type="text" id="conductor-branch" autocomplete="off" spellcheck="false">
+            <p class="hint">Leave empty if you don’t use Conductor.</p>
+            <p class="error-text" data-error="conductorBranch"></p>
+          </div>
+          <div class="field" data-github-only>
+            <label for="owner">GitHub owner <span class="optional">Optional</span></label>
+            <input type="text" id="owner" placeholder="Your account" autocomplete="off" spellcheck="false">
+            <p class="hint">An organization name, to create the repo there instead.</p>
+            <p class="error-text" data-error="owner"></p>
+          </div>
+          <label class="check" data-github-only><input type="checkbox" id="public"> Make the GitHub repo public</label>
+          <div class="field" data-copy-only>
+            <label for="template">Template</label>
+            <input type="text" id="template" autocomplete="off" spellcheck="false">
+            <p class="error-text" data-error="template"></p>
+          </div>
+        </div>
+      </details>
+
+      <div class="actions">
+        <button type="button" class="secondary" id="save-back">Back</button>
+        <button type="button" class="primary" id="create">Create project</button>
+      </div>
+    </section>
+
+    <!-- Step 3: progress. -->
+    <section id="progress" hidden>
+      <div class="head">
+        <h1 tabindex="-1" id="progress-title">Setting up</h1>
+        <p class="lede">Keep this page open. It takes a minute or two.</p>
+      </div>
+      <ol class="steps">
+        <li data-step="copy" data-status="waiting"><span class="icon swap" data-icon></span><span class="step-text">Copy the template</span></li>
+        <li data-step="port" data-status="waiting"><span class="icon swap" data-icon></span><span class="step-text">Pick a free port</span></li>
+        <li data-step="install" data-status="waiting"><span class="icon swap" data-icon></span><span class="step-text">Install<span class="step-sub">The longest step, about a minute</span></span></li>
+      </ol>
+      <div class="problem" id="progress-problem" hidden></div>
+      <div class="actions" id="progress-actions" hidden>
+        <button type="button" class="secondary" id="progress-back">Back</button>
+        <button type="button" class="primary" id="progress-retry">Try again</button>
+      </div>
+    </section>
+
+    <!-- Step 4: ready. -->
+    <section id="done" hidden>
+      <div class="head">
+        <div class="done-mark" aria-hidden="true"><svg aria-hidden="true" viewBox="0 0 10 10" fill="none"><path d="M2 5.2 4.1 7.2 8 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <h1 tabindex="-1" id="done-title">Your project is ready</h1>
+        <dl class="meta">
+          <dt>Folder</dt><dd id="done-folder"></dd>
+          <dt>Address</dt><dd id="done-address"></dd>
+        </dl>
+      </div>
+      <ul class="warnings" id="done-warnings"></ul>
+      <button type="button" class="primary" id="done-open">Open Design Hub</button>
+      <div class="problem" id="done-problem" hidden></div>
+      <div class="next">
+        <h2>Next steps</h2>
+        <div class="cards" data-cards></div>
+      </div>
+    </section>
+  </div>
+
+  <p class="foot">Keep the Terminal window open while you work. Closing it stops Design Hub.</p>
+</main>
+
+<template id="step-icon">
+  <span class="dot"></span><span class="spin"></span>
+  <span class="tick"><svg aria-hidden="true" viewBox="0 0 10 10" fill="none"><path d="M2 5.2 4.1 7.2 8 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+  <span class="cross"><svg aria-hidden="true" viewBox="0 0 10 10" fill="none"><path d="m3 3 4 4m0-4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+</template>
+
+<!-- One stroke style for every card icon: 18px box, 1.5 stroke, round joins. -->
+<template id="next-card">
+  <button type="button" class="card">
+    <span class="card-icon" aria-hidden="true"></span>
+    <span class="card-text"><span class="card-title"></span><span class="card-desc"></span></span>
+    <span class="card-end swap" aria-hidden="true">
+      <svg aria-hidden="true" class="card-go" viewBox="0 0 16 16" fill="none"><path d="m6 3.5 4.5 4.5L6 12.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="spin"></span>
+      <svg aria-hidden="true" class="card-ok" viewBox="0 0 16 16" fill="none"><path d="m3.5 8.3 3 2.9L12.5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </span>
+  </button>
+</template>
+
+<script type="module">
+  import { slugify } from '/slug.mjs';
+
+  const TOKEN = '__TOKEN__';
+  const $ = (s, root = document) => root.querySelector(s);
+  const $$ = (s, root = document) => [...root.querySelectorAll(s)];
+
+  // Every action is a POST carrying the page's token; the server refuses any other.
+  const post = (path, body) => fetch(path, {
+    method: 'POST', headers: { 'content-type': 'application/json', 'x-setup-token': TOKEN }, body: JSON.stringify(body),
+  });
+  const api = async (path, body = {}) => (await post(path, body)).json();
+
+  let state;
+  const form = { name: '', parent: '', parentDisplay: '' };
+  let project = null; // the project the done or launch screen acts on
+
+  // The wizard's own screens get a counter; the others stand alone.
+  const STEPS = { create: ['name', 'save', 'progress'], clone: ['save', 'progress'] };
+  function show(id) {
+    for (const s of $$('.panel > section')) s.hidden = s.id !== id;
+    const order = STEPS[state?.mode] ?? [];
+    const i = order.indexOf(id);
+    $('#stepper').textContent = i < 0 ? '' : `Step ${i + 1} of ${order.length}`;
+    // Move focus to the new screen's field, or else its heading, so screen
+    // readers announce the change without a ring flashing on a button.
+    const focus = $(`#${id} [data-autofocus]`) ?? $(`#${id} h1`);
+    focus?.focus({ preventScroll: true });
+  }
+
+  for (const icon of $$('[data-icon]')) icon.append($('#step-icon').content.cloneNode(true));
+
+  const el = (tag, className, text) => {
+    const n = document.createElement(tag);
+    if (className) n.className = className;
+    if (text) n.textContent = text;
+    return n;
+  };
+
+  function problem(box, { message, fix, detail }) {
+    const body = el('div', 'problem-body');
+    body.append(el('strong', '', message));
+    if (fix) body.append(el('p', '', fix));
+    if (detail) {
+      const d = el('details');
+      d.append(el('summary', '', 'Details for a developer'), el('pre', '', detail));
+      body.append(d);
+    }
+    box.replaceChildren(body);
+    box.setAttribute('role', 'alert');
+    box.hidden = false;
+  }
+
+  // Starting the hub can take a while, and a tab opened after a long wait gets
+  // blocked as a popup, so open the tab on the click and fill it in later.
+  async function openHub(p, path, problemEl, busy) {
+    problemEl.hidden = true;
+    const tab = window.open('about:blank', '_blank');
+    busy(true);
+    const res = await api('/api/start', { path: p.path });
+    busy(false);
+    if (!res.ok) { tab?.close(); problem(problemEl, res); return null; }
+    const url = res.project.url + path;
+    if (tab) tab.location = url; else window.open(url, '_blank');
+    return res.project;
+  }
+
+  function buttonBusy(button, label) {
+    const idle = button.textContent;
+    return (on) => {
+      button.disabled = on;
+      button.replaceChildren(...(on ? [el('span', 'spin'), label] : [idle]));
+    };
+  }
+
+  // ---------- next-step cards ----------
+
+  const ICONS = {
+    sample: '<svg aria-hidden="true" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="2.25" y="3" width="13.5" height="12" rx="2"/><path d="M2.25 6.75h13.5M5.25 9.75h4.5M5.25 12h7.5" stroke-linecap="round"/></svg>',
+    claude: '<svg aria-hidden="true" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2.25v3M9 12.75v3M2.25 9h3M12.75 9h3M4.2 4.2l2.1 2.1M11.7 11.7l2.1 2.1M4.2 13.8l2.1-2.1M11.7 6.3l2.1-2.1"/></svg>',
+    folder: '<svg aria-hidden="true" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M2.25 5.25a1.5 1.5 0 0 1 1.5-1.5h3l1.5 1.875h6a1.5 1.5 0 0 1 1.5 1.5v6.375a1.5 1.5 0 0 1-1.5 1.5H3.75a1.5 1.5 0 0 1-1.5-1.5Z"/></svg>',
+  };
+
+  function card({ icon, title, desc, run }) {
+    const node = $('#next-card').content.firstElementChild.cloneNode(true);
+    $('.card-icon', node).innerHTML = ICONS[icon];
+    $('.card-title', node).textContent = title;
+    const descEl = $('.card-desc', node);
+    descEl.textContent = desc;
+    let reset;
+    node.onclick = async () => {
+      if (node.dataset.state === 'busy') return;
+      clearTimeout(reset);
+      node.dataset.state = 'busy';
+      node.setAttribute('aria-busy', 'true');
+      const after = await run().catch(() => null);
+      node.removeAttribute('aria-busy');
+      if (!after) { delete node.dataset.state; return; }
+      // Confirm what happened in the card itself, then settle back.
+      node.dataset.state = 'done';
+      descEl.textContent = after;
+      reset = setTimeout(() => { delete node.dataset.state; descEl.textContent = desc; }, 4000);
+    };
+    return node;
+  }
+
+  function renderCards(section, problemEl) {
+    $('[data-cards]', section).replaceChildren(
+      card({
+        icon: 'sample', title: 'Explore the sample',
+        desc: 'Click through a finished prototype and its walkthrough.',
+        run: async () => {
+          const p = await openHub(project, 'sample-list/', problemEl, () => {});
+          if (!p) return null;
+          project = p;
+          if (section.id === 'launch') renderLaunch(p, false);
+          return 'Opened in a new tab.';
+        },
+      }),
+      card({
+        icon: 'claude', title: 'Work with Claude',
+        desc: 'Opens Claude and copies this folder’s path for you to paste.',
+        run: async () => {
+          const res = await api('/api/claude', { path: project.path });
+          if (!res.ok) return null;
+          return res.app ? 'Path copied. Paste it in Claude Code to choose this folder.' : 'Claude isn’t installed yet. Its download page is open.';
+        },
+      }),
+      card({
+        icon: 'folder', title: 'Come back later',
+        desc: 'Design Hub.command in the project folder reopens this page.',
+        run: async () => {
+          const res = await api('/api/reveal', { path: project.path });
+          return res.ok ? 'Shown in Finder.' : null;
+        },
+      }),
+    );
+  }
+
+  // ---------- boot ----------
+
+  async function boot() {
+    state = await api('/api/state');
+    for (const n of $$('[data-bind]')) n.textContent = n.dataset.bind.split('.').reduce((o, k) => o?.[k], state);
+    if (state.mode === 'project') return renderLaunch(state.here);
+    if (!state.tools.git) return show('devtools');
+    if (state.mode === 'clone') {
+      $('#save-title').textContent = `Set up ${state.here.name}`;
+      $('#save-lede').textContent = 'This folder is already a copy of the template. Setup picks a free port and installs what it needs.';
+      $('#save-back').hidden = true;
+      $('#github-choice').hidden = true;
+      for (const n of $$('[data-github-only], [data-copy-only]')) n.hidden = true;
+      $('#create').textContent = 'Set up';
+      $('#progress [data-step=copy]').dataset.status = 'skipped';
+      $('#progress-title').textContent = `Setting up ${state.here.name}`;
+      return show('save');
+    }
+    $('#template').value = state.defaults.template;
+    form.parent = state.defaults.parent;
+    form.parentDisplay = state.defaults.parentDisplay;
+    renderWhere();
+    renderGithub();
+    show('name');
+  }
+
+  // ---------- launcher ----------
+
+  function renderLaunch(p, reshow = true) {
+    project = p;
+    const status = $('#launch-status');
+    status.dataset.running = p.running;
+    status.replaceChildren(p.running ? 'Running at ' : 'Not running');
+    if (p.running) status.append(el('code', '', p.url.replace('http://', '').replace(/\/$/, '')));
+    $('#launch-stop').hidden = !p.running;
+    if (!reshow) return;
+    renderCards($('#launch'), $('#launch-problem'));
+    show('launch');
+  }
+
+  $('#launch-open').onclick = async () => {
+    const button = $('#launch-open');
+    const p = await openHub(project, '', $('#launch-problem'), buttonBusy(button, project.running ? 'Opening…' : 'Starting…'));
+    if (p) renderLaunch(p, false);
+  };
+  $('#launch-stop').onclick = async () => {
+    const res = await api('/api/stop', { path: project.path });
+    if (res.ok) renderLaunch(res.project, false);
+    $('#launch-open').focus();
+  };
+
+  // ---------- devtools ----------
+
+  $('#devtools-install').onclick = () => { api('/api/devtools', {}); $('#devtools-hint').hidden = false; };
+  $('#devtools-check').onclick = boot;
+
+  // ---------- step 1 ----------
+
+  function renderWhere() {
+    const slug = slugify($('#project-name').value) || 'your-project';
+    $('#where-path').textContent = `${form.parentDisplay}/${slug}`;
+  }
+  $('#project-name').addEventListener('input', () => {
+    $('#project-name').removeAttribute('aria-invalid');
+    $('#name-error').textContent = '';
+    renderWhere();
+  });
+  $('#pick-folder').onclick = async () => {
+    const res = await api('/api/pick-folder', {});
+    if (res.path) { form.parent = res.path; form.parentDisplay = res.display; renderWhere(); }
+  };
+
+  $('#name-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = $('#project-name').value;
+    const res = await api('/api/path', { name, parent: form.parent });
+    if (!res.ok) {
+      $('#project-name').setAttribute('aria-invalid', 'true');
+      $('#name-error').textContent = res.error;
+      return $('#project-name').focus();
+    }
+    form.name = name;
+    $('#progress-title').textContent = `Setting up ${slugify(name)}`;
+    show('save');
+  });
+
+  // ---------- step 2 ----------
+
+  let polling = null;
+  function renderGithub() {
+    const gh = state.tools.gh;
+    const radio = $('#github-choice input');
+    const extra = $('#github-extra');
+    extra.replaceChildren();
+    radio.disabled = !gh.installed;
+    if (!gh.installed) {
+      extra.textContent = 'Needs the GitHub CLI on this computer. Ask a developer to install it, or start on this computer.';
+    } else if (!gh.login) {
+      const b = el('button', 'secondary small', 'Sign in to GitHub');
+      b.type = 'button';
+      b.onclick = signIn;
+      extra.append(b);
+    } else {
+      extra.textContent = `Signed in as ${gh.login}.`;
+    }
+    syncCreate();
+  }
+
+  async function signIn(e) {
+    e.preventDefault();
+    const b = e.currentTarget;
+    buttonBusy(b, 'Opening GitHub…')(true);
+    const res = await api('/api/github', {});
+    const extra = $('#github-extra');
+    extra.replaceChildren();
+    if (res.error) { extra.textContent = res.error; return; }
+    if (res.code) {
+      const box = el('div', 'device');
+      box.append(
+        el('strong', 'label', 'Enter this code on the GitHub page'),
+        el('div', 'device-code', res.code),
+        el('p', '', 'It’s already copied. This updates on its own when you finish.'),
+      );
+      extra.append(box);
+    }
+    clearInterval(polling);
+    polling = setInterval(async () => {
+      const next = await api('/api/state');
+      if (next.tools.gh.login) { clearInterval(polling); state = next; renderGithub(); }
+    }, 2000);
+  }
+
+  function visibility() {
+    const v = $('input[name=visibility]:checked').value;
+    return v === 'local' ? 'local' : $('#public').checked ? 'public' : 'private';
+  }
+  function syncCreate() {
+    const github = $('input[name=visibility]:checked').value !== 'local';
+    for (const n of $$('[data-github-only]')) if (state.mode !== 'clone') n.hidden = !github;
+    $('#create').disabled = github && !state.tools.gh.login;
+  }
+  for (const r of $$('input[name=visibility]')) r.addEventListener('change', syncCreate);
+  $('#save-back').onclick = () => show('name');
+  $('#create').onclick = run;
+
+  // ---------- step 3 ----------
+
+  function request() {
+    return {
+      name: form.name,
+      parent: form.parent,
+      visibility: state.mode === 'clone' ? 'local' : visibility(),
+      owner: $('#owner').value,
+      template: $('#template').value,
+      typesafeKey: $('#typesafe-key').value,
+      conductorBranch: $('#conductor-branch').value,
+    };
+  }
+
+  async function run() {
+    for (const n of $$('[data-error]')) n.textContent = '';
+    for (const li of $$('.steps li')) if (li.dataset.status !== 'skipped') li.dataset.status = 'waiting';
+    $('#progress-problem').hidden = true;
+    $('#progress-actions').hidden = true;
+    show('progress');
+
+    const res = await post('/api/create', request());
+    const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+    let buffer = '';
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += value;
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      for (const line of lines) if (line.trim()) handle(JSON.parse(line));
+    }
+  }
+
+  function handle(event) {
+    if (event.step === 'invalid') {
+      for (const [field, msg] of Object.entries(event.errors)) {
+        const n = $(`[data-error=${field}]`);
+        if (n) n.textContent = msg;
+      }
+      if (event.errors.name || event.errors.parent) {
+        $('#name-error').textContent = event.errors.name ?? event.errors.parent;
+        return show('name');
+      }
+      $('details.more').open = true;
+      return show('save');
+    }
+    if (event.step === 'ready') return renderDone(event);
+    const li = $(`.steps [data-step=${event.step}]`);
+    if (li) li.dataset.status = event.status;
+    if (event.status === 'error') {
+      problem($('#progress-problem'), event);
+      $('#progress-actions').hidden = false;
+      $('#progress-back').hidden = state.mode === 'clone';
+      $('#progress-problem').scrollIntoView({ block: 'nearest' });
+    }
+  }
+  $('#progress-retry').onclick = run;
+  $('#progress-back').onclick = () => show('save');
+
+  // ---------- step 4 ----------
+
+  function renderDone({ project: p, warnings }) {
+    project = p;
+    $('#done-title').textContent = `${p.name} is ready`;
+    $('#done-folder').textContent = p.display;
+    $('#done-folder').title = p.display;
+    $('#done-address').textContent = `localhost:${p.port}`;
+    $('#done-warnings').replaceChildren(...warnings.map((w) => el('li', '', w)));
+    renderCards($('#done'), $('#done-problem'));
+    show('done');
+  }
+  $('#done-open').onclick = async () => {
+    const p = await openHub(project, '', $('#done-problem'), buttonBusy($('#done-open'), project.running ? 'Opening…' : 'Starting…'));
+    if (p) project = p;
+  };
+
+  boot().catch(() => {
+    $('#loading .spin').hidden = true;
+    $('#loading-text').textContent = 'Design Hub stopped. Double-click Design Hub.command to start it again.';
+  });
+</script>
+</body>
+</html>

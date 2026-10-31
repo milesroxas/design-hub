@@ -7,6 +7,8 @@ description: "Start a new design project from the Design Hub template (milesroxa
 
 The entry point. The user never starts in a terminal: they ask for a new project, this skill asks every question before it touches disk, then runs two scripts and hands off. A question asked up front is one Claude never guesses later.
 
+Someone who does not use Claude Code gets the same result from the setup app: `Design Hub.command` at the template's root opens a page that asks the name, the place and GitHub, then runs the same two scripts. Point a non-technical user there instead of this skill when they ask how to start without Claude.
+
 ## 1. Ask, all at once, before anything runs
 
 Ask these in one message and wait for every answer. Defaults in brackets.

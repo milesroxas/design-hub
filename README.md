@@ -25,6 +25,16 @@ A prototype here holds every state on a dial, behind a password, outside the liv
 
 ## Quick start
 
+### Without a terminal
+
+1. Install [Node.js](https://nodejs.org) (the LTS version).
+2. On this repo's GitHub page, choose **Code**, then **Download ZIP**, and open the ZIP.
+3. Double-click `Design Hub.command`. The first time, macOS asks whether to open a file from the internet: Control-click the file and choose **Open**, or allow it under System Settings, Privacy & Security.
+
+A page opens in the browser. It asks for a project name, saves the project to `~/Design/<name>` (or a folder you pick), and can create a private GitHub repo when the GitHub CLI is installed. When it is done, **Open Design Hub** starts the hub. The project gets its own `Design Hub.command`: double-click it to open the hub again later. Keep the Terminal window it opens; closing it stops the hub.
+
+### With Claude Code
+
 With Claude Code, install the one global skill, then ask Claude to start a project. It asks every question up front (where on disk, which GitHub owner, Paper comp or the sample, shell or not, TypeSafe or not, Conductor or not), creates the repo from this template and runs the setup.
 
 ```sh
@@ -51,7 +61,7 @@ Run every command from `prototypes/`. Each script prints one JSON object and `--
 | `pnpm new:guide <feature>` | The feature's walkthrough. |
 | `pnpm check` | TypeScript and Biome. Must pass before a change is done. |
 | `pnpm test` | The infrastructure's `node:test` suites. |
-| `pnpm quality` | fallow over real test coverage: dead code, duplication, layers, complexity. |
+| `pnpm quality` | fallow over real test coverage: dead code, duplication, layers, complexity, for `prototypes/` and `setup/`. |
 | `pnpm preflight` | Every check a share link needs. |
 | `pnpm comments pull` | Review comments into `docs/sprints/<feature>/comments.md`. |
 
@@ -61,6 +71,7 @@ The full contract for people and agents is [`prototypes/AGENTS.md`](prototypes/A
 
 | Path | What goes there |
 | --- | --- |
+| `Design Hub.command`, `setup/` | The setup app: a page in the browser that creates a project from the template, sets it up and starts the hub, for people who never open a terminal. No dependencies; it runs `create.mjs` and `pnpm bootstrap` underneath. |
 | `prototypes/` | The app and the infrastructure around it: the review API, the password gate, the scripts. `sample-list/` is the reference prototype. |
 | `DESIGN.md`, `PRODUCT.md`, `.impeccable/` | Impeccable context: the recorded design system with its named rules and the `Shell` section, who the product is for, detector config. Run `/impeccable doctor` to check them. |
 | `docs/` | Written documentation, an Obsidian vault. `sprints/<feature>/` holds a feature's design doc, walkthrough, pulled comments and port report. |
