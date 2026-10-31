@@ -1,0 +1,296 @@
+/* The review layer. Harness material in both themes (--harness-*), so it
+   never reads as part of the design under review. The panel and launcher sit
+   above everything but the variant picker. Pins and the picking surface sit
+   below the dials panel (DialKit's 9999), because they belong to the page. */
+
+.rv {
+  --rv-z: 2147483600;
+  --rv-z-page: 9000;
+  --rv-gap: 16px;
+  --rv-fg-strong: oklch(1 0 0);
+  --rv-fill: oklch(1 0 0 / 0.06);
+  --rv-fill-hover: oklch(1 0 0 / 0.1);
+  --rv-accent: oklch(0.92 0 0);       /* light neutral on the dark panel */
+  --rv-on-accent: oklch(0.205 0 0);
+  --rv-mark: oklch(0.55 0 0);         /* on the page: mid grey holds on light and dark */
+  --rv-pin: oklch(0.205 0 0);
+  --rv-danger: oklch(0.779 0.131 23.4);
+  font: 13px/18px var(--sys-font);
+  -webkit-font-smoothing: antialiased;
+  color: var(--harness-fg);
+}
+
+.rv button,
+.rv input,
+.rv select,
+.rv textarea { font: inherit; color: inherit; }
+
+.rv :focus-visible { outline: 2px solid var(--rv-accent); outline-offset: 2px; }
+
+.rv-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.rv-muted { color: var(--harness-fg-muted); }
+
+/* ---------- launcher ---------- */
+.rv-launch {
+  position: fixed;
+  right: max(var(--rv-gap), env(safe-area-inset-right));
+  bottom: max(var(--rv-gap), env(safe-area-inset-bottom));
+  z-index: var(--rv-z);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--harness-border);
+  border-radius: 999px;
+  background: var(--harness-bg);
+  box-shadow: var(--harness-shadow);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform var(--dur-press) var(--ease-press), background-color var(--dur-hover) var(--ease-hover);
+}
+.rv-launch:active { transform: scale(0.97); }
+.rv-count {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--rv-accent);
+  color: var(--rv-on-accent);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+  text-align: center;
+}
+@media (hover: hover) and (pointer: fine) {
+  .rv-launch:hover { background: color-mix(in srgb, var(--harness-bg), white 8%); }
+}
+
+/* ---------- panel ---------- */
+.rv-panel {
+  position: fixed;
+  top: var(--rv-gap);
+  right: var(--rv-gap);
+  bottom: calc(var(--rv-gap) + 48px);
+  z-index: var(--rv-z);
+  display: flex;
+  flex-direction: column;
+  width: min(380px, calc(100vw - 2 * var(--rv-gap)));
+  border: 1px solid var(--harness-border);
+  border-radius: 12px;
+  background: var(--harness-bg);
+  box-shadow: var(--harness-shadow);
+  overflow: hidden;
+  transition: opacity var(--dur-dialog) var(--ease-out), transform var(--dur-dialog) var(--ease-out);
+}
+@starting-style { .rv-panel { opacity: 0; transform: translateX(12px); } }
+@media (prefers-reduced-motion: reduce) {
+  @starting-style { .rv-panel { transform: none; } }
+  .rv-launch:active { transform: none; }
+}
+[data-motion="reduce"] .rv-panel { transform: none; }
+
+.rv-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 10px 10px 16px;
+  border-bottom: 1px solid var(--harness-border);
+}
+.rv-title { margin: 0; font-size: 14px; font-weight: 600; color: var(--rv-fg-strong); }
+.rv-tabs { display: flex; gap: 2px; padding: 2px; border-radius: 8px; background: var(--rv-fill); }
+.rv-tabs button {
+  height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+}
+.rv-tabs [aria-selected="true"] { background: var(--rv-fill-hover); color: var(--rv-fg-strong); font-weight: 600; }
+
+.rv-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+}
+@media (hover: hover) and (pointer: fine) {
+  .rv-icon:hover, .rv-tabs button:hover { background: var(--rv-fill-hover); }
+}
+
+.rv-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 12px; }
+.rv-empty { margin: 16px; color: var(--harness-fg-muted); text-wrap: pretty; }
+.rv-error { display: flex; gap: 8px; align-items: baseline; justify-content: space-between; margin: 12px 16px 0; padding: 8px 10px; border-radius: 8px; background: oklch(0.779 0.131 23.4 / 0.12); color: var(--rv-danger); }
+
+/* ---------- controls ---------- */
+.rv-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--harness-border);
+  border-radius: 8px;
+  background: var(--rv-fill);
+  color: var(--rv-fg-strong);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--dur-hover) var(--ease-hover), transform var(--dur-press) var(--ease-press);
+}
+.rv-button:active { transform: scale(0.97); }
+.rv-button:disabled { opacity: 0.5; cursor: default; transform: none; }
+.rv-new { align-self: stretch; height: 36px; }
+.rv-link {
+  min-height: 24px;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  color: var(--rv-accent);
+  cursor: pointer;
+}
+.rv-danger { color: var(--rv-danger); }
+@media (hover: hover) and (pointer: fine) {
+  .rv-button:not(:disabled):hover { background: var(--rv-fill-hover); }
+  .rv-link:hover { text-decoration: underline; }
+}
+
+.rv-label { display: flex; flex-direction: column; gap: 6px; color: var(--harness-fg-muted); }
+.rv input,
+.rv textarea,
+.rv select {
+  width: 100%;
+  border: 1px solid var(--harness-border);
+  border-radius: 8px;
+  background: oklch(0 0 0 / 0.25);
+  color: var(--rv-fg-strong);
+}
+.rv input, .rv select { height: 32px; padding: 0 10px; }
+.rv textarea { padding: 8px 10px; resize: vertical; min-height: 72px; line-height: 18px; }
+.rv input::placeholder { color: var(--harness-fg-muted); }
+
+.rv-filter { display: flex; gap: 4px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.rv-filter button {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: none;
+  cursor: pointer;
+}
+.rv-filter [aria-pressed="true"] { border-color: var(--harness-border); background: var(--rv-fill); color: var(--rv-fg-strong); }
+
+/* ---------- threads ---------- */
+.rv-list, .rv-replies, .rv-people { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; }
+.rv-list { gap: 8px; }
+.rv-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--harness-border);
+  border-radius: 10px;
+  background: var(--rv-fill);
+  scroll-margin: 12px;
+  transition: border-color var(--dur-hover) var(--ease-hover);
+}
+.rv-thread[data-focused] { border-color: var(--rv-accent); }
+.rv-thread[data-resolved] .rv-text { color: var(--harness-fg-muted); }
+.rv-entry header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
+.rv-entry strong { color: var(--rv-fg-strong); font-weight: 600; }
+.rv-edit { margin-left: auto; }
+.rv-no {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--rv-accent);
+  color: var(--rv-on-accent);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.rv-text { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--harness-fg); }
+.rv-replies { gap: 10px; padding-left: 12px; border-left: 2px solid var(--harness-border); }
+.rv-tags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.rv-tag { padding: 0 8px; height: 22px; line-height: 22px; border-radius: 999px; background: var(--rv-fill-hover); color: var(--rv-fg-strong); font-size: 12px; }
+.rv-select select { height: 26px; padding: 0 6px; font-size: 12px; width: auto; }
+.rv-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.rv-hint { margin-left: auto; font-size: 12px; }
+.rv-composer { display: flex; flex-direction: column; gap: 8px; }
+
+/* ---------- people ---------- */
+.rv-invite { display: flex; flex-direction: column; gap: 10px; padding-bottom: 12px; border-bottom: 1px solid var(--harness-border); }
+.rv-share { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 8px; background: var(--rv-fill); }
+.rv-share p { margin: 0; text-wrap: pretty; }
+.rv-share-row { display: flex; gap: 6px; }
+.rv-people { gap: 2px; }
+.rv-people li { display: flex; flex-direction: column; gap: 4px; padding: 8px 0; border-bottom: 1px solid var(--harness-border); }
+.rv-people li > div:first-child { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; }
+.rv-people strong { color: var(--rv-fg-strong); }
+.rv-people [data-revoked] { opacity: 0.55; }
+
+/* ---------- pins and picking ---------- */
+.rv-pins { position: fixed; inset: 0; z-index: var(--rv-z-page); pointer-events: none; }
+.rv-pin {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin: -24px 0 0 0;
+  border: 2px solid oklch(1 0 0);
+  border-radius: 12px 12px 12px 2px;
+  background: var(--rv-pin);
+  color: oklch(1 0 0);
+  font: 700 11px/1 var(--sys-font);
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 2px 8px oklch(0 0 0 / 0.35);
+  pointer-events: auto;
+  cursor: pointer;
+}
+.rv-pin[hidden] { display: none; }
+.rv-pin[data-new] { background: oklch(1 0 0); color: var(--rv-pin); pointer-events: none; }
+
+.rv-pick { position: fixed; inset: 0; z-index: calc(var(--rv-z-page) + 1); cursor: crosshair; }
+.rv-pick-box {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: calc(var(--rv-z-page) + 2);
+  pointer-events: none;
+  border: 2px solid var(--rv-mark);
+  border-radius: 4px;
+  background: oklch(0.55 0 0 / 0.12);
+}
+.rv-pick-bar {
+  position: fixed;
+  left: 50%;
+  bottom: max(var(--rv-gap), env(safe-area-inset-bottom));
+  z-index: var(--rv-z);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 6px 6px 16px;
+  transform: translateX(-50%);
+  border: 1px solid var(--harness-border);
+  border-radius: 999px;
+  background: var(--harness-bg);
+  box-shadow: var(--harness-shadow);
+  white-space: nowrap;
+}
+
+@media (max-width: 520px) {
+  .rv-panel { top: auto; left: var(--rv-gap); height: min(70vh, 560px); }
+  .rv-pick-bar { white-space: normal; left: var(--rv-gap); right: var(--rv-gap); transform: none; border-radius: 12px; }
+}

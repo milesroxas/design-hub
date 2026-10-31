@@ -1,0 +1,9 @@
+{
+  "jev": { "model": "jev-1.14.0", "timeoutMs": 2000 },
+  "fidelity": { "warnAt": 0.7, "blockAt": 0.9 },
+  "states": { "blockAt": 0.8 },
+  "contacts": { "privateAt": 0.5, "allow": [] },
+  "skillHint": { "gateAt": 0.3, "fitsAt": 0.3 },
+  "triage": { "at": 0.5 },
+  "visual": { "warnAt": 0.7 }
+}

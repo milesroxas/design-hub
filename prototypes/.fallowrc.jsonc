@@ -1,0 +1,65 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  // The kit is the library prototypes import, including prototypes that do not
+  // exist yet, so every kit export is public API rather than dead code.
+  "entry": ["_kit/**/*.{ts,tsx}"],
+  // Copied by `pnpm new`, never imported.
+  "ignorePatterns": ["_templates/**"],
+  // Loaded through an opaque specifier in _shell/main.tsx, so the deploy build never resolves it.
+  "ignoreDependencies": ["@aiforui/lapse"],
+  // The layers, from the inside out. core is pure and depends on nothing; the
+  // kit draws prototypes; the shell is the browser around them; server is the
+  // Node and HTTP side; scripts are the agent-facing CLI. A prototype reaches
+  // only the kit, the rule the fidelity guard also holds on every write.
+  "boundaries": {
+    "zones": [
+      { "name": "core", "patterns": ["_core/**"] },
+      { "name": "kit", "patterns": ["_kit/**"] },
+      { "name": "shell", "patterns": ["_shell/**"] },
+      { "name": "server", "patterns": ["_server/**", "api/**", "proxy.ts", "proxy.test.ts"] },
+      { "name": "scripts", "patterns": ["_scripts/**"] },
+      { "name": "prototypes", "patterns": ["[a-z0-9]*/**"] }
+    ],
+    "rules": [
+      { "from": "core", "allow": [] },
+      { "from": "kit", "allow": ["core"] },
+      // The shell hosts prototypes: its registry lazy-loads each one.
+      { "from": "shell", "allow": ["core", "kit", "prototypes"] },
+      { "from": "server", "allow": ["core"] },
+      { "from": "scripts", "allow": ["core", "server"] },
+      // Through @kit only (the guard holds that); fallow follows the kit's
+      // re-export of core's fixture rules, and core is the shared kernel.
+      { "from": "prototypes", "allow": ["kit", "core"] }
+    ]
+  },
+  "health": {
+    "thresholdOverrides": [
+      {
+        // The UI is not unit-tested by policy (AGENTS.md, Stack): the browser, axe and
+        // the definition of done check it. An untested function scores cyclomatic
+        // squared plus cyclomatic, and 110 is cyclomatic 10, so every UI function stays under 10.
+        "files": ["_kit/**", "_shell/**", "[a-z0-9]*/**"],
+        "maxCrap": 110
+      },
+      {
+        // Process and network glue: commands that run vercel, git, lsof, elyx or
+        // fetch, and the dev server adapter, verified by running them. What they
+        // decide lives in tested modules. The same ceiling: under cyclomatic 10.
+        "files": [
+          "_scripts/*.ts",
+          "_scripts/lib/{judge,vercel,ports,review}.ts",
+          "_server/{dev,local,file-kv}.ts"
+        ],
+        "maxCrap": 110
+      }
+    ]
+  },
+  "rules": {
+    // No rule packs: the boundaries above are this project's policy.
+    "policy-violation": "off",
+    // The rule guards a production-only install. Vercel builds with every
+    // dependency installed and bundles the server functions from them, and the
+    // browser code is inlined by Vite, so nothing here installs at runtime.
+    "dev-dependency-in-production": "off"
+  }
+}

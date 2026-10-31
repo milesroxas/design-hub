@@ -1,0 +1,27 @@
+/* The website shell: header, content, optional pre-footer, footer. One
+   measure (1120px) for everything, 24px gutters, 16px on a phone. */
+.site { min-height: 100dvh; display: flex; flex-direction: column; }
+.site-head { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 24px; height: 64px; padding: 0 max(24px, calc((100% - 1120px) / 2)); background: var(--bg-primary); border-bottom: 1px solid var(--border-secondary); }
+.site-brand { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; color: var(--text-primary); text-decoration: none; border-radius: var(--radius-xs); }
+.site-nav { display: flex; gap: 4px; }
+.site-nav a { display: inline-flex; align-items: center; height: 40px; padding: 0 12px; border-radius: var(--radius-sm); color: var(--text-secondary); font-weight: 500; text-decoration: none; transition: background-color var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover); }
+.site-nav a[aria-current="page"] { color: var(--text-primary); background: var(--bg-active); }
+@media (hover: hover) and (pointer: fine) { .site-nav a:hover { background: var(--bg-primary_hover); color: var(--text-primary); } }
+.site-nav a:active { transform: scale(0.97); }
+.site-main { flex: 1; width: min(1120px, 100% - 48px); margin: 0 auto; padding: 48px 0 96px; }
+.site-prefoot { padding: 48px max(24px, calc((100% - 1120px) / 2)); background: var(--bg-secondary); border-top: 1px solid var(--border-secondary); }
+.site-foot { padding: 48px max(24px, calc((100% - 1120px) / 2)) 32px; border-top: 1px solid var(--border-secondary); color: var(--text-tertiary); }
+.site-foot-grid { display: grid; grid-template-columns: 2fr repeat(auto-fit, minmax(140px, 1fr)); gap: 32px; }
+.site-foot-brand { display: inline-flex; align-items: center; gap: 8px; align-self: start; font-weight: 600; color: var(--text-primary); }
+.site-foot-col { display: flex; flex-direction: column; gap: 8px; }
+.site-foot-title { font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+.site-foot-col a { color: var(--text-tertiary); text-decoration: none; transition: color var(--dur-hover) var(--ease-hover); }
+@media (hover: hover) and (pointer: fine) { .site-foot-col a:hover { color: var(--text-primary); } }
+.site-foot-note { margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border-secondary); font-size: 12px; line-height: 18px; }
+:root[data-motion="reduce"] .site-nav a:active { transform: none; }
+@media (max-width: 767px) {
+  .site-head { height: 56px; }
+  .site-nav a { padding: 0 8px; }
+  .site-main { width: min(1120px, 100% - 32px); padding: 32px 0 64px; }
+  .site-foot-grid { grid-template-columns: 1fr 1fr; }
+}

@@ -1,0 +1,11 @@
+{
+  "buildPath": "prototypes",
+  "detector": {
+    "extensions": [],
+    "designSystem": { "enabled": true },
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": []
+  },
+  "hook": { "enabled": true, "quiet": true }
+}

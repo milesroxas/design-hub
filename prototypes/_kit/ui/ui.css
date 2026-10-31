@@ -1,0 +1,238 @@
+/* Product materials: the kit's controls on the tokens in tokens.css, with
+   the motion layer from the same file, transform and opacity only.
+   Reduced motion keys off :root[data-motion="reduce"] (prefs.ts). */
+
+body.has-overlay { overflow: hidden; }
+/* iOS ignores overflow: hidden on body for touch scrolling: the overlay owns the
+   touch instead, and a sheet's body scrolls on its own without chaining to the page. */
+.overlay { touch-action: none; overscroll-behavior: contain; }
+.sheet-body { touch-action: pan-y; overscroll-behavior: contain; }
+
+/* ---------- buttons ---------- */
+/* One height per row: 42px (md) in heads and dialogs, 38px (sm) in tighter
+   rows. Fill steps rest, hover, then engaged while its menu is open or held. */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; border-radius: var(--radius-sm); font-weight: 600; cursor: pointer; border: 1px solid transparent; white-space: nowrap; text-decoration: none; transition: transform var(--dur-press) var(--ease-press), background-color var(--dur-hover) var(--ease-hover), border-color var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover); }
+.btn .icon { transition: color var(--dur-hover) var(--ease-hover), transform var(--dur-menu) var(--ease-out); }
+.btn-md { height: 42px; padding: 10px 14px; }
+.btn-sm { height: 38px; padding: 8px 12px; }
+.btn.btn-icon { padding: 8px; width: 38px; height: 38px; }
+.btn.btn-icon.btn-md { width: 42px; height: 42px; padding: 10px; }
+/* Toolbar rows are 40px, the height of inputs and selects. */
+.toolbar .btn-md, .bulk-bar .btn-md { height: 40px; padding: 9px 14px; }
+.toolbar .btn.btn-icon.btn-md, .bulk-bar .btn.btn-icon { width: 40px; height: 40px; padding: 9px; }
+.btn-tertiary.btn-icon { width: 36px; height: 36px; padding: 10px; }
+/* In over 90ms so the press lands under the finger; back over 160ms. A reversed CSS transition is shortened by how far it got, so a 90ms press-in keeps a quick tap's release near the full 160ms. */
+.btn:active:not(:disabled) { transform: scale(0.97); transition-duration: var(--dur-press-in), var(--dur-hover), var(--dur-hover), var(--dur-hover); }
+.btn:disabled { cursor: not-allowed; opacity: 0.55; }
+.btn-primary { background: var(--button-primary-bg); border-color: var(--button-primary-bg); color: var(--button-primary-fg); box-shadow: var(--shadow-xs); }
+.btn-secondary { background: var(--button-secondary-bg); border-color: var(--button-secondary-border); color: var(--button-secondary-fg); box-shadow: var(--shadow-xs); }
+.btn-secondary[aria-expanded="true"], .btn-secondary:active:not(:disabled) { background: var(--button-secondary-bg_open); color: var(--button-secondary-fg_hover); }
+.btn[aria-expanded="true"] .btn-chevron { transform: rotate(180deg); }
+/* The chevron's 20px box has 5px of air past its ink; the padding gives it back. */
+.btn:has(> .btn-chevron:last-child) { padding-right: 10px; }
+/* A leading glyph stands 2px closer to its edge than the label does to its own (the Hit Area Rule). */
+.btn-md:has(> .icon:first-child, > .btn-content > .icon:first-child):not(.btn-icon) { padding-left: 12px; }
+.btn-sm:has(> .icon:first-child, > .btn-content > .icon:first-child):not(.btn-icon) { padding-left: 10px; }
+.btn-tertiary { background: transparent; color: var(--button-tertiary-fg); }
+.btn-tertiary[aria-expanded="true"], .btn-tertiary:active:not(:disabled) { background: var(--button-secondary-bg_open); color: var(--button-tertiary-fg_hover); }
+.btn-primary-error { background: var(--button-primary-error-bg); border-color: var(--button-primary-error-bg); color: #fff; }
+.btn-secondary-error { background: var(--button-secondary-bg); border-color: var(--button-secondary-error-border); color: var(--button-secondary-error-fg); }
+.btn-label { line-height: 20px; }
+/* Hover is a pointer state: a tap never leaves a button in it. */
+@media (hover: hover) and (pointer: fine) {
+  .btn-primary:hover:not(:disabled) { background: var(--button-primary-bg_hover); border-color: var(--button-primary-bg_hover); }
+  .btn-secondary:hover:not(:disabled):not([aria-expanded="true"]) { background: var(--button-secondary-bg_hover); color: var(--button-secondary-fg_hover); }
+  .btn-tertiary:hover:not(:disabled):not([aria-expanded="true"]) { background: var(--button-tertiary-bg_hover); color: var(--button-tertiary-fg_hover); }
+  .btn-primary-error:hover:not(:disabled) { background: var(--button-primary-error-bg_hover); }
+  .btn-secondary-error:hover:not(:disabled) { background: var(--button-secondary-error-bg_hover); }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.btn-content { display: inline-flex; align-items: center; gap: 4px; transition: filter 200ms var(--ease-hover), opacity 200ms var(--ease-hover); }
+.btn.is-busy .btn-content { filter: blur(2px); opacity: 0.6; }
+.btn.is-busy { pointer-events: none; position: relative; }
+.btn.is-busy::after { content: ''; position: absolute; left: 50%; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; }
+
+/* ---------- inputs ---------- */
+.input, .select, .textarea { width: 100%; height: 40px; padding: 0 12px; border: 1px solid var(--border-primary); border-radius: var(--radius-sm); background: var(--bg-primary); color: var(--text-primary); box-shadow: var(--shadow-xs); font: inherit; }
+.input::placeholder { color: var(--text-placeholder); }
+.input:focus-visible, .select:focus-visible, .textarea:focus-visible { box-shadow: var(--focus-ring), var(--shadow-xs); border-color: var(--border-primary); outline: 2px solid transparent; }
+.textarea { height: auto; min-height: 120px; padding: 10px 12px; resize: vertical; line-height: 20px; }
+.search { position: relative; }
+.search .icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--fg-quaternary); }
+.search .input { padding-left: 32px; }
+.select { display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; text-align: left; }
+.select-value { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.select-value.is-placeholder { color: var(--text-placeholder); }
+.select { transition: border-color var(--dur-hover) var(--ease-hover), background-color var(--dur-hover) var(--ease-hover); }
+.select-chevron { color: var(--fg-quaternary); transition: transform var(--dur-menu) var(--ease-out); }
+@media (hover: hover) and (pointer: fine) { .select:hover:not([aria-expanded="true"]) { background: var(--button-secondary-bg_hover); } }
+.select[aria-expanded="true"] { border-color: var(--border-primary); background: var(--button-secondary-bg_open); }
+.select[aria-expanded="true"] .select-chevron { transform: rotate(180deg); color: var(--fg-secondary); }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field-label { font-weight: 500; color: var(--text-secondary); }
+.field-hint { color: var(--text-tertiary); }
+.field-hint.is-warn { color: var(--utility-warning-700); }
+.checkbox { width: 16px; height: 16px; border-radius: var(--radius-xs); border: 1px solid var(--border-primary); background: var(--bg-primary); display: inline-grid; place-items: center; vertical-align: middle; cursor: pointer; flex: none; color: var(--fg-white); appearance: none; margin: 0; }
+.checkbox:disabled { cursor: default; }
+.checkbox:checked, .checkbox:indeterminate { background: var(--bg-brand-solid); border-color: var(--bg-brand-solid); }
+/* The 12px check.svg glyph from the comp, and a dash drawn at the same stroke. */
+.checkbox:checked::after, .checkbox:indeterminate::after { content: ''; width: 12px; height: 12px; background: currentColor; mask: var(--checkbox-mark) center / 12px no-repeat; }
+.checkbox:checked::after { --checkbox-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6L9 17L4 12'/%3E%3C/svg%3E"); }
+.checkbox:indeterminate::after { --checkbox-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M5 12H19'/%3E%3C/svg%3E"); }
+.segmented { display: inline-flex; border: 1px solid var(--border-primary); border-radius: var(--radius-sm); overflow: hidden; box-shadow: var(--shadow-xs); position: relative; background: var(--bg-primary); }
+.segmented button { flex: 1; height: 38px; padding: 0 16px; white-space: nowrap; background: transparent; border: 0; font-weight: 600; color: var(--text-secondary); cursor: pointer; position: relative; z-index: 1; }
+.segmented button + button { border-left: 1px solid var(--border-primary); }
+.segmented button { transition: background-color var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover); }
+@media (hover: hover) and (pointer: fine) { .segmented button:hover:not([aria-pressed="true"]) { background: var(--button-secondary-bg_hover); color: var(--text-primary); } }
+.segmented button:active:not([aria-pressed="true"]) { background: var(--button-secondary-bg_hover); color: var(--text-primary); }
+.segmented button[aria-pressed="true"] { background: var(--bg-active); color: var(--text-primary); }
+.segmented.w-full { width: 100%; }
+.check-list { display: flex; flex-direction: column; gap: 4px; }
+.check-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--radius-sm); cursor: pointer; }
+@media (hover: hover) and (pointer: fine) { .check-row:hover { background: var(--bg-primary_hover); } }
+.check-row:active { background: var(--bg-primary_hover); }
+
+/* ---------- badges ---------- */
+.badge { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 2px 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-primary); font-size: 12px; line-height: 18px; color: var(--utility-gray-700); background: var(--bg-primary); white-space: nowrap; }
+.badge .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.badge-success { background: var(--utility-success-50); border-color: var(--utility-success-200); color: var(--utility-success-700); }
+.badge-error { background: var(--utility-error-50); border-color: var(--utility-error-200); color: var(--utility-error-700); }
+.badge-warning { background: var(--utility-warning-50); border-color: var(--utility-warning-200); color: var(--utility-warning-700); }
+.badge-brand { background: var(--utility-brand-50); border-color: var(--utility-brand-200); color: var(--utility-brand-700); }
+
+/* ---------- cards, tables, empty states ---------- */
+.card { background: var(--bg-primary); border: 1px solid var(--border-secondary); border-radius: var(--radius-lg); box-shadow: var(--shadow-xs); }
+.card-pad { padding: 24px; }
+.card-title { font-size: 18px; line-height: 28px; font-weight: 600; }
+.card-sub { color: var(--text-tertiary); margin-top: 2px; }
+.card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 16px; }
+.stack { display: flex; flex-direction: column; gap: 24px; }
+.table-card { overflow: hidden; }
+.table-scroll { overflow-x: auto; scrollbar-color: var(--utility-gray-200) var(--bg-primary); }
+.table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.table th { height: 60px; padding: 20px 16px; text-align: left; font-weight: 600; color: var(--text-secondary); background: var(--bg-secondary); border-bottom: 1px solid var(--border-secondary); white-space: nowrap; position: relative; }
+/* A column handle: 2px by 28px at the column's right edge. */
+.table th:not(:last-child)::after { content: ''; position: absolute; right: 0; top: 16px; bottom: 16px; width: 2px; background: var(--border-secondary); }
+.table th.num, .table td.num { text-align: right; }
+.table td { height: 56px; padding: 16px; border-bottom: 1px solid var(--border-secondary); white-space: nowrap; vertical-align: middle; }
+.table tbody tr:last-child td { border-bottom: 0; }
+.table tbody tr.is-link { cursor: pointer; }
+.table tbody tr.is-selected td { background: var(--bg-primary_hover); }
+@media (hover: hover) and (pointer: fine) { .table tbody tr.is-link:hover td { background: var(--bg-primary_hover); } }
+.table tbody tr.is-link:active td { background: var(--bg-primary_hover); }
+.table td.actions { text-align: right; padding-top: 8px; padding-bottom: 8px; }
+.table td.actions .row-actions { display: inline-flex; align-items: center; gap: 4px; }
+/* Checkbox column per the comp: 16px inset, 18px to the name, no divider. The label fills the cell as the hit area.
+   The cell is the hit area's containing block wherever the label sits; without it the ::before covers the page. */
+.table td.check, .table th.check { width: 50px; padding: 0; position: relative; }
+.table td:has(> .check-hit) { position: relative; }
+.table .check + th, .table .check + td { padding-left: 0; }
+.table th.check::after { content: none; }
+.table .check-hit { display: flex; align-items: center; width: 50px; padding-left: 16px; cursor: pointer; }
+.table .check-hit::before { content: ''; position: absolute; inset: 0; }
+.table td > .checkbox { display: grid; }
+.table .cell-strong { font-weight: 500; }
+.table .cell-muted { color: var(--text-tertiary); }
+/* The Ledger Foot: a 56px row like the body's, text on the first column's edge, controls 40px (the Ledger Foot Rule). */
+.table-foot { display: flex; align-items: center; justify-content: space-between; height: 56px; padding: 0 16px; border-top: 1px solid var(--border-secondary); color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+.table-foot .foot-sum, .table-foot .pager { display: flex; align-items: center; gap: 4px; }
+.table-foot .foot-sum { gap: 8px; }
+.table-foot .btn-md { height: 40px; padding: 9px 14px; }
+.table-foot .btn:has(> .btn-chevron:last-child) { padding-right: 10px; }
+.empty { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 96px 24px; gap: 8px; color: var(--text-tertiary); min-height: 320px; }
+.empty h3 { color: var(--text-primary); font-size: 16px; line-height: 24px; font-weight: 600; }
+.empty p { max-width: 560px; }
+.empty .featured { width: 48px; height: 48px; border-radius: var(--radius-lg); border: 1px solid var(--border-secondary); display: grid; place-items: center; color: var(--fg-secondary); margin-bottom: 8px; box-shadow: var(--shadow-xs); }
+
+/* ---------- menus ---------- */
+/* Grows from its trigger: 4px toward it and 97% at rest, 180ms in and
+   120ms out on the strong ease-out, on its own layer so text scales as one. */
+.menu { position: absolute; z-index: 50; min-width: 200px; max-width: 420px; background: var(--bg-primary); border: 1px solid var(--border-secondary); border-radius: var(--radius-md); box-shadow: var(--shadow-md); padding: 4px; display: flex; flex-direction: column; gap: 0; opacity: 0; transform: translateY(-4px) scale(0.97); will-change: transform, opacity; transition: opacity var(--dur-menu-out) var(--ease-out), transform var(--dur-menu-out) var(--ease-out); }
+.menu[data-side="above"] { transform: translateY(4px) scale(0.97); }
+.menu[data-side="side"] { transform: translateX(-4px) scale(0.97); }
+.menu.is-open { opacity: 1; transform: none; transition: opacity var(--dur-menu) var(--ease-out), transform var(--dur-menu) var(--ease-out); }
+.menu:focus-visible { box-shadow: var(--shadow-md); }
+.menu-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--radius-sm); border: 0; background: transparent; text-align: left; cursor: pointer; width: 100%; color: var(--text-primary); position: relative; --press-dur: var(--dur-press-out); transition: transform var(--press-dur) var(--ease-out), background-color var(--dur-hover) var(--ease-hover); }
+.menu-item:focus-visible, .menu-item.has-open, .menu-item.is-pressed { background: var(--bg-primary_hover); box-shadow: none; }
+@media (hover: hover) and (pointer: fine) { .menu-item:hover { background: var(--bg-primary_hover); box-shadow: none; } .menu-item:hover .menu-glyph { color: var(--fg-secondary); } }
+.menu-item.is-pressed { --press-dur: var(--dur-press-in); transform: scale(0.995); }
+.menu-item[disabled] { color: var(--text-disabled); cursor: not-allowed; }
+/* A menu row is a finger's target where the pointer is one. */
+@media (pointer: coarse) { .menu-item { min-height: 44px; } }
+.menu-glyph { color: var(--fg-quaternary); display: grid; place-items: center; }
+/* A danger item keeps its colour through hover and focus: the glyph never falls back to Ink. */
+.menu-item.is-danger { color: var(--text-error-primary); }
+.menu-item.is-danger .menu-glyph { color: var(--fg-error-primary); }
+.menu-text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.menu-label { font-weight: 500; }
+.menu-item.is-selected .menu-label { font-weight: 600; }
+.menu-desc { color: var(--text-tertiary); font-size: 12px; line-height: 18px; }
+.menu-keys { display: flex; gap: 4px; margin-left: auto; flex: none; }
+.kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; border: 1px solid var(--border-secondary); border-radius: var(--radius-xs); font: 500 12px/18px var(--font); color: var(--text-tertiary); }
+.kbd:has(.icon) { padding: 0; color: var(--fg-quaternary); }
+.menu-chevron, .menu-check { color: var(--fg-quaternary); margin-left: auto; display: grid; place-items: center; }
+.menu-check { color: var(--fg-brand-primary); }
+.menu-sep { height: 1px; background: var(--border-secondary); margin: 4px 0; flex: none; }
+.menu-header { padding: 8px 10px 4px; color: var(--text-tertiary); font-size: 12px; line-height: 18px; font-weight: 500; }
+
+/* ---------- overlays ---------- */
+/* Dialogs are centred, so they scale from their own centre. The exit is
+   shorter than the entrance and accelerates away (the Layer Exit Rule). */
+.overlay { position: fixed; inset: 0; z-index: 60; background: rgb(12 17 29 / 0.5); display: grid; place-items: center; opacity: 0; transition: opacity var(--dur-dialog-out) var(--ease-in); }
+.overlay.is-open { opacity: 1; transition: opacity var(--dur-dialog) var(--ease-hover); }
+.dialog { background: var(--bg-primary); border-radius: var(--radius-xl); box-shadow: var(--shadow-xl); border: 1px solid var(--border-secondary); max-width: calc(100vw - 32px); overflow: hidden; transform: scale(0.96); opacity: 0; transition: transform var(--dur-dialog-out) var(--ease-in), opacity var(--dur-dialog-out) var(--ease-in); }
+.overlay.is-open .dialog { transform: scale(1); opacity: 1; transition: transform var(--dur-dialog) var(--ease-out), opacity var(--dur-dialog) var(--ease-out); }
+/* The message and the verbs are two bands set apart by one 24px gap and nothing drawn (the Dialog Foot Rule). */
+.dialog-body { padding: 24px 24px 0; }
+.dialog-title { font-size: 18px; line-height: 28px; font-weight: 600; margin-bottom: 12px; text-wrap: balance; }
+.dialog-text { color: var(--text-tertiary); text-wrap: pretty; }
+.dialog-text p { margin: 0; }
+.dialog-text p + p { margin-top: 8px; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 12px; padding: 24px; }
+.overlay-sheet { place-items: stretch end; justify-items: end; }
+.overlay-sheet, .overlay-sheet.is-open { transition: opacity var(--dur-dialog) var(--ease-hover); }
+.sheet { background: var(--bg-primary); height: 100%; max-width: 100vw; display: flex; flex-direction: column; box-shadow: var(--shadow-xl); border-left: 1px solid var(--border-secondary); transform: translateX(100%); transition: transform 240ms var(--ease-drawer); }
+.overlay.is-open .sheet { transform: translateX(0); transition: transform var(--dur-sheet) var(--ease-drawer); }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 24px 24px 16px; }
+.sheet-title { font-size: 18px; line-height: 28px; font-weight: 600; }
+.sheet-body { flex: 1; overflow: auto; padding: 0 24px 24px; display: flex; flex-direction: column; gap: 20px; }
+.sheet-foot { display: flex; justify-content: flex-end; gap: 12px; padding: 16px 24px calc(24px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--border-secondary); }
+/* A 36px glyph button at a sheet's or the rail's edge reaches 44px; nothing sits within 4px of it. */
+.sheet-head .btn-icon, .user .btn-icon { position: relative; }
+.sheet-head .btn-icon::before, .user .btn-icon::before { content: ''; position: absolute; inset: -4px; }
+
+/* ---------- toasts ---------- */
+/* In and out through the bottom on transitions, so a second toast retargets. --toast-lift stacks the host above a floating bar. */
+.toasts { position: fixed; right: 24px; bottom: calc(24px + var(--toast-lift, 0px) + env(safe-area-inset-bottom, 0px)); transition: bottom 220ms var(--ease-out); display: flex; flex-direction: column; gap: 8px; z-index: 80; align-items: flex-end; }
+@media (max-width: 767px) { .toasts { left: 16px; right: 16px; bottom: calc(16px + var(--toast-lift, 0px) + env(safe-area-inset-bottom, 0px)); align-items: stretch; } .toast { max-width: none; } }
+.toast { display: flex; align-items: center; gap: 10px; background: var(--bg-primary); border: 1px solid var(--border-secondary); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); padding: 12px 12px 12px 16px; max-width: 480px; transform: translateY(calc(100% + 24px)); opacity: 0; transition: transform var(--dur-toast) var(--ease-out), opacity var(--dur-toast) var(--ease-out); }
+.toast.is-open { transform: translateY(0); opacity: 1; }
+.toast.is-leaving { transition-duration: var(--dur-toast-out); }
+.toast-glyph { color: var(--fg-success-primary); display: grid; place-items: center; }
+.toast-error .toast-glyph { color: var(--fg-error-primary); }
+.toast-text { text-wrap: pretty; }
+.toast-action { background: transparent; border: 0; font-weight: 600; color: var(--text-brand-secondary); cursor: pointer; padding: 4px 8px; border-radius: var(--radius-xs); white-space: nowrap; transition: transform var(--dur-press) var(--ease-press); }
+.dark-mode .toast-action { color: var(--brand-400); }
+/* A 16px glyph with a 40px target: the pseudo-element carries the extra reach. */
+.toast-close { position: relative; background: transparent; border: 0; color: var(--fg-quaternary); cursor: pointer; padding: 4px; border-radius: var(--radius-xs); display: grid; place-items: center; transition: color var(--dur-hover) var(--ease-hover), transform var(--dur-press) var(--ease-press); }
+.toast-close::before { content: ""; position: absolute; inset: -8px; }
+.toast-action:active, .toast-close:active { transform: scale(0.96); }
+@media (hover: hover) and (pointer: fine) { .toast-close:hover { color: var(--fg-primary); } }
+
+/* The scope toast is the prototype speaking, not the product: the harness
+   material in both themes, a dashed circle for a slot the sketch leaves empty. */
+.toast-scope { background: var(--harness-bg); border-color: var(--harness-border); box-shadow: var(--harness-shadow); color: var(--harness-fg); }
+.toast-scope .toast-glyph, .toast-scope .toast-close { color: var(--harness-fg-muted); }
+.toast-scope .toast-action { color: #fff; }
+@media (hover: hover) and (pointer: fine) { .toast-scope .toast-close:hover { color: #fff; } }
+.toast-scope :focus-visible { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.4); }
+
+/* ---------- motion gates ---------- */
+:root[data-motion="reduce"] :is(.btn, .btn .icon, .select, .select-chevron, .menu-item) { transition-duration: 0ms; }
+:root[data-motion="reduce"] .menu-item.is-pressed { transform: none; }
+:root[data-motion="reduce"] :is(.menu, .menu[data-side], .menu.is-open, .dialog, .overlay.is-open .dialog) { transform: none; transition: opacity 160ms var(--ease-hover); }
+:root[data-motion="reduce"] :is(.sheet, .overlay.is-open .sheet) { transform: none; transition: opacity 160ms var(--ease-hover); }
+:root[data-motion="reduce"] .overlay-sheet:not(.is-open) .sheet { opacity: 0; }
+:root[data-motion="reduce"] :is(.toast, .toast.is-open, .toast.is-leaving) { transform: none; transition: opacity 200ms var(--ease-hover); }
+:root[data-motion="reduce"] .toasts { transition: none; }
+:root[data-motion="reduce"] .btn.is-busy::after { animation-duration: 1.2s; }

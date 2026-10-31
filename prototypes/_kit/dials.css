@@ -1,0 +1,98 @@
+/* DialKit is harness chrome: the hub's Geist and Geist Mono, not the
+   library's system-ui and not the project's face. */
+.dialkit-root, .dialkit-shortcut-pill, .dialkit-version-overlay { font-family: var(--sys-font); }
+.dialkit-image-control, .dialkit-image-popover { font-family: var(--sys-font); }
+:is(.dialkit-slider-value, .dialkit-slider-input, .dialkit-pad-value, .dialkit-color-value, .dialkit-color-css-input, .dialkit-shortcuts-row-key, .dialkit-timeline-time, .dialkit-timeline-tick-label, .dialkit-timeline-loop-infinity, .dialkit-timeline-clip-duration, .dialkit-timeline-playhead-flag) { font-family: var(--sys-font-mono); }
+
+/* The dial hint: one tooltip for every DialKit row that has one, drawn in the
+   panel's own dark material. Fixed under the row, fades and settles 2px. */
+.dial-hint {
+  position: fixed;
+  z-index: 2147483647;
+  max-width: 260px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--harness-bg);
+  color: var(--harness-fg);
+  border: 1px solid var(--harness-border);
+  box-shadow: var(--harness-shadow);
+  font: 500 12px/16px var(--sys-font);
+  letter-spacing: 0;
+  text-wrap: pretty;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-2px) scale(0.98);
+  transition: opacity 125ms var(--ease-out), transform 125ms var(--ease-out);
+}
+.dial-hint.is-on { opacity: 1; transform: none; }
+.dial-hint:not(.is-on) { transition-duration: 90ms; }
+:root[data-motion="reduce"] .dial-hint { transform: none; transition: opacity 120ms var(--ease-hover); }
+
+/* The walkthrough link: the panel's last row, drawn as one of DialKit's own
+   buttons so it reads as part of the panel, with the arrow that says new tab. */
+.dial-guide {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 10px 16px;
+  border-radius: var(--dial-radius);
+  background: var(--dial-surface);
+  color: var(--dial-text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 500;
+  font-family: inherit;
+  text-decoration: none;
+  transition: background-color var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover), transform var(--dur-press-out) var(--ease-press);
+}
+.dial-guide:hover { background: var(--dial-surface-hover); color: var(--dial-text-primary); }
+.dial-guide:active { transform: scale(0.97); }
+.dial-guide:focus-visible { outline: 2px solid var(--dial-focus-ring); outline-offset: -2px; }
+:root[data-motion="reduce"] .dial-guide:active { transform: none; }
+/* The panel has no bottom padding, so the last row brings its own. */
+.dialkit-folder-root > .dialkit-folder-content:has(> .dial-guide) { padding-bottom: 12px; }
+
+/* DialKit draws Copy parameters and Save version at the top of every group,
+   inside its sticky header. Here they close the group instead: the header
+   gives up its box so its title and the toolbar can be ordered around the
+   controls, the title keeps the sticky job, and DialKit's own fold still
+   finds the toolbar where it left it. */
+.dialkit-panel .dialkit-folder.dialkit-folder-section { display: flex; flex-direction: column; }
+.dialkit-panel .dialkit-folder.dialkit-folder-section > .dialkit-folder-header { display: contents; }
+.dialkit-panel .dialkit-folder.dialkit-folder-section > .dialkit-folder-header > .dialkit-folder-header-top {
+  order: 0;
+  position: sticky;
+  top: var(--dial-panel-header-height, 0px);
+  z-index: 2;
+  background: var(--dial-glass-bg);
+  cursor: pointer;
+  user-select: none;
+}
+.dialkit-panel .dialkit-folder.dialkit-folder-section > .dialkit-folder-header > .dialkit-folder-header-top::before {
+  content: '';
+  position: absolute;
+  inset: 0 -12px;
+  z-index: -1;
+  background: var(--dial-glass-bg);
+  pointer-events: none;
+}
+.dialkit-panel .dialkit-folder.dialkit-folder-section > .dialkit-folder-content { order: 1; }
+.dialkit-panel .dialkit-folder.dialkit-folder-section > .dialkit-folder-header > .dialkit-panel-section-toolbar-clip { order: 2; }
+.dialkit-panel .dialkit-folder-section > .dialkit-folder-header > .dialkit-panel-section-toolbar-clip > .dialkit-panel-section-toolbar {
+  padding-top: 0;
+  padding-bottom: 4px;
+}
+.dialkit-panel .dialkit-folder-section { --dial-section-header-height: 44px; }
+/* Save version (the version gallery) is the group's first control; it goes
+   last, with its divider turned over to sit above it. */
+.dialkit-panel .dialkit-folder-section .dialkit-folder-inner > .dialkit-versions-host { order: 1; }
+.dialkit-panel .dialkit-folder-section .dialkit-versions {
+  padding-bottom: 0;
+  margin-bottom: 0;
+  border-bottom: 0;
+  padding-top: 12px;
+  margin-top: 4px;
+  border-top: 1px solid var(--dial-border);
+}

@@ -1,0 +1,133 @@
+/* The walkthrough: a long read in the shell's own voice, not the product's.
+   Prose keeps a 680px measure (about 75 characters at 16px); screenshots
+   and tables take the full 960px column, because a 1440px app at 680px is
+   unreadable. The contents sit in a rail at the left on a wide screen and
+   above the text on a narrow one. */
+
+.doc { width: min(1208px, 100% - 32px); margin: 0 auto; padding: 64px 0 128px; }
+.doc-layout { display: grid; grid-template-columns: 200px minmax(0, 960px); column-gap: 48px; align-items: start; }
+.doc-head, .doc-body, .doc-foot { grid-column: 2; }
+.doc-toc { grid-column: 1; grid-row: 2; }
+
+/* Head */
+.doc-head { display: flex; flex-direction: column; gap: 24px; margin-bottom: 48px; }
+.doc-back { display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; font-size: 14px; line-height: 20px; font-weight: 600; color: var(--text-tertiary); text-decoration: none; border-radius: var(--radius-xs); transition: color var(--dur-hover) var(--ease-hover); }
+.doc-back:hover { color: var(--text-secondary); }
+.doc-head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px 24px; flex-wrap: wrap; }
+.doc-head-text { display: flex; flex-direction: column; gap: 4px; max-width: 680px; }
+.doc-kicker { font-size: 12px; line-height: 18px; color: var(--text-quaternary); }
+.doc-title { font-size: 24px; line-height: 32px; font-weight: 600; text-wrap: balance; }
+.doc-head .btn { gap: 6px; }
+
+/* Contents */
+.doc-toc { position: sticky; top: 32px; max-height: calc(100dvh - 64px); overflow-y: auto; overscroll-behavior: contain; font-size: 13px; line-height: 20px; }
+.doc-toc-label { font-weight: 600; color: var(--text-tertiary); margin-bottom: 8px; }
+.doc-toc ol { list-style: none; padding: 0; margin: 0; }
+.doc-toc a { display: block; padding: 4px 0 4px 12px; border-inline-start: 2px solid transparent; color: var(--text-tertiary); text-decoration: none; text-wrap: pretty; transition: color var(--dur-hover) var(--ease-hover), border-color var(--dur-hover) var(--ease-hover); }
+.doc-toc .is-sub a { padding-inline-start: 24px; }
+.doc-toc a:hover { color: var(--text-primary); }
+.doc-toc a[aria-current] { color: var(--text-primary); border-color: var(--fg-primary); }
+
+/* Body */
+.doc-body { font-size: 16px; line-height: 1.6; color: var(--text-primary); }
+.doc-body > * { max-width: 680px; }
+.doc-body > :is(.doc-figure, .doc-table) { max-width: none; }
+.doc-body > * + * { margin-top: 24px; }
+.doc-body > h2 { margin-top: 56px; font-size: 20px; line-height: 28px; font-weight: 600; text-wrap: balance; }
+.doc-body > h3 { margin-top: 40px; font-size: 16px; line-height: 24px; font-weight: 600; text-wrap: balance; }
+.doc-body > :is(h2, h3) + * { margin-top: 12px; }
+.doc-body > h3 + * { margin-top: 8px; }
+.doc-body :is(h2, h3) { scroll-margin-top: 24px; }
+.doc-body p { text-wrap: pretty; }
+.doc-body strong { font-weight: 600; }
+.doc-body a { color: var(--text-brand-secondary); overflow-wrap: anywhere; text-decoration-thickness: 1px; text-underline-offset: 3px; text-decoration-color: color-mix(in oklch, currentColor 40%, transparent); transition: text-decoration-color var(--dur-hover) var(--ease-hover); }
+.doc-body a:hover { text-decoration-color: currentColor; }
+.doc-body code { font: 14px/1 var(--sys-font-mono); padding: 2px 5px; border-radius: var(--radius-xs); background: var(--bg-tertiary); color: var(--text-secondary); box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.doc-body :is(ul, ol) { padding-inline-start: 24px; }
+.doc-body li + li { margin-top: 8px; }
+.doc-body li::marker { color: var(--text-tertiary); }
+.doc-body li > :is(ul, ol) { margin-top: 8px; }
+
+/* A click path is the order of presses in Controls, drawn in the panel's own
+   dark material so it reads as the prototype and not as a product control.
+   The first step is the round button itself. The chevron is the order; the
+   last chip is the one you set or press. */
+.doc-body .doc-path { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 0; margin: 0; padding: 0; list-style: none; }
+.doc-body > * + .doc-path, .doc-callout > * + .doc-path { margin-top: 12px; }
+.doc-body > h3 + .doc-path, .doc-body li > .doc-path, .doc-body > .doc-path + .doc-path { margin-top: 8px; }
+.doc-body .doc-path li { display: inline-flex; align-items: center; }
+.doc-body .doc-path li + li { margin-top: 0; }
+.doc-body .doc-path li + li::before { content: ""; width: 6px; height: 6px; margin-inline: 8px 6px; border-right: 1.5px solid var(--text-quaternary); border-bottom: 1.5px solid var(--text-quaternary); transform: rotate(-45deg) translateY(-1px); flex: none; }
+.doc-body .doc-path > li > span { display: inline-flex; align-items: center; min-height: 28px; padding: 4px 10px; border-radius: var(--radius-sm); background: var(--harness-bg); color: var(--harness-fg-muted); box-shadow: inset 0 0 0 1px var(--harness-border); font-size: 13px; line-height: 18px; font-weight: 500; white-space: nowrap; }
+.doc-body .doc-path > li:first-child > span { width: 32px; height: 32px; min-height: 32px; padding: 0; border-radius: 50%; justify-content: center; color: oklch(1 0 0); }
+.doc-body .doc-path > li:last-child > span { color: var(--harness-fg); font-weight: 600; }
+.doc-path-open svg { display: block; }
+.doc-path-name { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.doc-body .doc-path-follow { margin: 8px 0 0; }
+
+/* Figures: a screenshot wears a 1px inset outline at 10%, black on light
+   and white on dark, never a tinted line. The caption is the alt text the
+   Markdown carries, so it is read once, under the picture. */
+.doc-figure { margin-top: 24px; }
+.doc-figure img { display: block; width: 100%; height: auto; border-radius: var(--radius-md); outline: 1px solid oklch(0 0 0 / 0.1); outline-offset: -1px; background: var(--bg-secondary); }
+.dark-mode .doc-figure img { outline-color: oklch(1 0 0 / 0.1); }
+.doc-figure figcaption { max-width: 680px; margin-top: 8px; font-size: 13px; line-height: 20px; color: var(--text-tertiary); text-wrap: pretty; }
+.doc-figure figcaption a { color: inherit; margin-inline-start: 4px; white-space: nowrap; }
+
+/* Callouts: a quiet well with a labelled dot, so the kind is a word and a
+   colour, never a colour alone. Note stays neutral; Iris is kept for the
+   one action on the page. */
+.doc-callout { padding: 16px 20px; border-radius: var(--radius-md); background: var(--bg-secondary); box-shadow: inset 0 0 0 1px oklch(0 0 0 / 0.06); }
+.dark-mode .doc-callout { box-shadow: inset 0 0 0 1px oklch(1 0 0 / 0.08); }
+.doc-callout-kind { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 12px; line-height: 18px; font-weight: 600; color: var(--text-tertiary); }
+.doc-callout-kind::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--fg-quinary); }
+.doc-callout[data-kind="tip"] .doc-callout-kind::before { background: var(--fg-success-primary); }
+.doc-callout[data-kind="important"] .doc-callout-kind::before { background: var(--fg-warning-primary); }
+.doc-callout[data-kind="warning"] .doc-callout-kind::before, .doc-callout[data-kind="caution"] .doc-callout-kind::before { background: var(--fg-error-primary); }
+.doc-callout > * + * { margin-top: 12px; }
+
+/* Tables: hairlines do the separating, the first column names the row. */
+.doc-table { overflow-x: auto; }
+.doc-table table { width: 100%; border-collapse: collapse; font-size: 14px; line-height: 20px; }
+.doc-table th { padding: 0 12px 8px; text-align: start; font-size: 13px; font-weight: 600; color: var(--text-tertiary); border-bottom: 1px solid var(--border-primary); white-space: nowrap; }
+.doc-table td { padding: 10px 12px; vertical-align: top; border-bottom: 1px solid var(--border-secondary); }
+.doc-table :is(th, td):first-child { padding-inline-start: 0; }
+.doc-table :is(th, td):last-child { padding-inline-end: 0; }
+.doc-table td:first-child { font-weight: 500; }
+
+/* Foot */
+.doc-foot { margin-top: 64px; padding-top: 16px; border-top: 1px solid var(--border-secondary); font-size: 14px; line-height: 20px; }
+.doc-foot a { font-weight: 600; color: var(--text-tertiary); text-decoration: none; transition: color var(--dur-hover) var(--ease-hover); }
+.doc-foot a:hover { color: var(--text-secondary); }
+
+/* Arrival: one fade, as the index does. */
+.doc-layout { animation: doc-fade 200ms var(--ease-out) backwards; }
+@keyframes doc-fade { from { opacity: 0; } }
+:root:has(.doc) { scroll-behavior: smooth; }
+:root[data-motion="reduce"]:has(.doc) { scroll-behavior: auto; }
+
+@media (max-width: 1119px) {
+  .doc-layout { grid-template-columns: minmax(0, 1fr); }
+  .doc-head, .doc-body, .doc-foot, .doc-toc { grid-column: 1; grid-row: auto; }
+  .doc-toc { position: static; max-height: none; overflow: visible; margin-bottom: 48px; max-width: 680px; }
+  .doc-toc ol { columns: 2; column-gap: 24px; }
+  .doc-toc li { break-inside: avoid; }
+  .doc-toc .is-sub { display: none; }
+}
+
+@media (max-width: 640px) {
+  .doc { width: min(1208px, 100% - 32px); padding-top: 32px; }
+  .doc-toc ol { columns: 1; }
+  .doc-head .btn { width: 100%; }
+  .doc-body .doc-path > li > span { white-space: normal; }
+}
+
+@media print {
+  .doc { width: auto; padding: 0; }
+  .doc-toc, .doc-back, .doc-head .btn, .doc-foot, .doc-figure figcaption a { display: none; }
+  /* Print drops the chip fill, so the ink is set or the light type and icon would disappear. */
+  .doc-body .doc-path > li > span,
+  .doc-body .doc-path > li:first-child > span { background: none; color: oklch(0.205 0 0); box-shadow: inset 0 0 0 1px oklch(0.87 0 0); }
+  .doc-body > * { max-width: none; }
+  .doc-figure { break-inside: avoid; }
+}

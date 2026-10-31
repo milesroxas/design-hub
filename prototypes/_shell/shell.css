@@ -1,0 +1,160 @@
+/* The index: one group per feature (its primary prototype, its alternates on
+   a rail, its internal explorations folded into cards), then prototypes with
+   no feature, then the archive. Rows draw no dividers; their hover surface
+   bleeds 12px into the gutter. The list ends in a foot (the Ledger Foot Rule).
+   The rules are in README.md, The index. */
+
+/* One grid for the whole page, handed down by subgrid, so the context,
+   status and date columns line up across every group without fixed widths.
+   The page is 720px of text plus the 12px bleed each side; everything that
+   is not a row carries that 12px itself. */
+.index { width: min(744px, 100% - 8px); margin: 0 auto; padding: 96px 0 128px; display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; column-gap: 20px; align-content: start; }
+.index > * { grid-column: 1 / -1; }
+.index-head, .index-filter, .index-section, .index-subsection, .index-empty, .index-none, .index-foot { padding-inline: 12px; }
+
+.index-head { display: flex; flex-direction: column; gap: 8px; margin-bottom: 40px; }
+.index-head h1 { font-size: 18px; line-height: 28px; font-weight: 600; text-wrap: balance; }
+.index-voice { font: 400 18px/28px var(--font-voice); letter-spacing: -0.01em; color: var(--text-secondary); max-width: 44ch; text-wrap: pretty; }
+.index code { font: 13px/20px var(--sys-font-mono); color: var(--text-secondary); }
+
+.index-filter { margin-bottom: 24px; }
+.index-filter input { width: 100%; height: 40px; padding: 0 12px; border: 1px solid var(--border-primary); border-radius: var(--radius-md); background: var(--bg-primary); box-shadow: var(--shadow-xs); font-size: 16px; transition: border-color var(--dur-hover) var(--ease-hover); }
+.index-filter input::placeholder { color: var(--text-placeholder); }
+.index-filter input:focus-visible { border-color: var(--border-brand); }
+
+.index-group { display: grid; grid-template-columns: subgrid; row-gap: 4px; }
+.index-group + .index-group { margin-top: 40px; }
+.index-section { grid-column: 1 / -1; display: flex; align-items: baseline; justify-content: space-between; gap: 16px; font-size: 14px; line-height: 20px; font-weight: 600; color: var(--text-tertiary); }
+/* A feature's walkthrough sits at the end of its heading line, in the same tier. */
+.index-guide { display: inline-flex; align-items: center; gap: 2px; color: var(--text-secondary); text-decoration: none; border-radius: var(--radius-xs); transition: color var(--dur-hover) var(--ease-hover); }
+.index-guide:hover { color: var(--text-primary); }
+/* Alternates are other takes on the primary: indented 20px under it and
+   joined by a 1px rail on the primary's text edge, so they read as children
+   of that one row. Subgrid carries the padding to the first column only, so
+   the meta columns still line up with every other row. */
+.index-alternates { position: relative; grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; padding-left: 20px; }
+.index-alternates::before { content: ""; position: absolute; left: 12px; top: 2px; bottom: 12px; width: 1px; background: var(--border-secondary); }
+.index-alternates > .index-list { row-gap: 0; }
+.index-alternates-label { grid-column: 1 / -1; padding: 4px 12px 0; font-size: 12px; line-height: 18px; font-weight: 500; color: var(--text-quaternary); }
+
+/* A feature's explorations sit under the sprint, folded away by default
+   behind a caption one tier below the heading; the page remembers the fold. */
+/* Rhythm inside a group: each block's text sits 20px under the text above it
+   (the primary under the heading, each caption under the last row's summary),
+   and a caption sits 8px over what it labels, so it belongs to what follows.
+   Groups stay 40px apart. */
+.index-subsection { grid-column: 1 / -1; margin-top: 4px; margin-bottom: 4px; font-size: 12px; line-height: 18px; font-weight: 500; }
+.index-fold-toggle { display: inline-flex; align-items: center; gap: 4px; min-height: 24px; padding: 0; border: 0; background: none; font: inherit; color: var(--text-quaternary); cursor: pointer; border-radius: var(--radius-xs); transition: color var(--dur-hover) var(--ease-hover); }
+.index-fold-count { color: var(--text-quaternary); font-weight: 400; }
+.index-fold-toggle svg { transition: transform var(--dur-dialog) var(--ease-out); }
+.index-fold-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+
+/* The fold opens by growing its one grid row from 0fr to 1fr while the cards
+   fade in, and closes faster than it opens. The cards clip only a few pixels
+   past their edge, so the hover shadow survives and a closed fold shows nothing. */
+.index-fold { grid-column: 1 / -1; display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows var(--dur-dialog-out) var(--ease-out), opacity var(--dur-dialog-out) var(--ease-out); }
+.index-fold[data-open] { grid-template-rows: 1fr; opacity: 1; transition-duration: var(--dur-dialog); }
+.index-fold[data-instant] { transition: none; }
+
+/* Cards, not rows: the explorations are side questions, met as a set. The
+   grid's outer edges sit on the rows' hover bleed, so card text keeps the
+   page's text edge. The edge is an inset ring (a border would sit pasted on
+   the page, an outer ring would be clipped by the fold), one shadow layer for
+   lift in light; dark has no shadows, so the ring carries it alone. */
+/* Light rests on a ring and two soft layers and lifts on hover by deepening
+   them, the surface staying white so the card rises rather than sinks. Dark
+   has no shadows, so the ring brightens and the surface steps up instead. */
+.index {
+  --index-card-edge: inset 0 0 0 1px oklch(0 0 0 / 0.08), 0 1px 2px oklch(0 0 0 / 0.04), 0 2px 4px -2px oklch(0 0 0 / 0.04);
+  --index-card-edge-hover: inset 0 0 0 1px oklch(0 0 0 / 0.12), 0 1px 3px oklch(0 0 0 / 0.06), 0 6px 12px -6px oklch(0 0 0 / 0.12);
+  --index-card-bg-hover: var(--bg-primary);
+}
+.dark-mode .index { --index-card-edge: inset 0 0 0 1px oklch(1 0 0 / 0.09); --index-card-edge-hover: inset 0 0 0 1px oklch(1 0 0 / 0.16); --index-card-bg-hover: var(--bg-primary_hover); }
+.index-cards { min-height: 0; overflow: clip; overflow-clip-margin: 12px; list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(208px, 1fr)); gap: 8px; }
+.index-cards > li { display: flex; }
+.index-card { flex: 1; display: flex; flex-direction: column; gap: 4px; padding: 12px; border-radius: var(--radius-lg); background: var(--bg-primary); box-shadow: var(--index-card-edge); text-decoration: none; transition: background-color var(--dur-hover) var(--ease-hover), box-shadow var(--dur-hover) var(--ease-hover), transform var(--dur-press-out) var(--ease-press), opacity var(--dur-dialog-out) var(--ease-in); }
+/* The base focus ring is a box-shadow, so the card's edge would erase it; stack both. */
+.index-card:focus-visible { box-shadow: var(--focus-ring), var(--index-card-edge); }
+.index-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.index-card-head svg { flex-shrink: 0; margin-top: 2px; color: var(--fg-quaternary); transition: color var(--dur-hover) var(--ease-hover), transform var(--dur-hover) var(--ease-out); }
+/* The summary steps down to caption size so the title leads and three cards
+   scan as three titles; Ink Tertiary keeps it a rung above the meta. */
+.index-card .index-summary { font-size: 12px; line-height: 18px; }
+.index-card-meta { margin-top: auto; padding-top: 12px; display: flex; align-items: center; gap: 12px; color: var(--text-quaternary); font-size: 12px; line-height: 18px; white-space: nowrap; }
+.index-card-meta > :last-child { margin-left: auto; }
+
+.index-list { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: subgrid; grid-column: 1 / -1; }
+.index-list > li { display: grid; grid-template-columns: subgrid; grid-column: 1 / -1; }
+.index-row { display: grid; grid-template-columns: subgrid; grid-column: 1 / -1; row-gap: 2px; padding: 12px; min-height: 56px; border-radius: var(--radius-md); text-decoration: none; transition: background-color var(--dur-hover) var(--ease-hover), transform var(--dur-press-out) var(--ease-press), opacity var(--dur-dialog-out) var(--ease-in); }
+.index-title { grid-column: 1; font-weight: 600; color: var(--text-primary); }
+.index-summary { grid-column: 1; color: var(--text-tertiary); text-wrap: pretty; transition: color var(--dur-hover) var(--ease-hover); }
+.index-meta { display: grid; grid-template-columns: subgrid; grid-column: 2 / 5; grid-row: 1 / span 2; align-self: center; color: var(--text-quaternary); font-size: 12px; line-height: 18px; white-space: nowrap; }
+.index-meta > :last-child { justify-self: end; }
+
+/* The sprint is the one prototype opened every day: its title steps up one
+   size, nothing else changes, so the row is heavier without a new shape. */
+.index-row[data-kind="sprint"] .index-title { font-size: 16px; line-height: 24px; }
+
+/* Status wears a dot so the column scans by colour before it is read:
+   Ink for a question still open, Success for one answered, quiet for the
+   archive. The word stays, so colour is never the only signal. */
+.index-status { display: inline-flex; align-items: center; gap: 6px; text-transform: capitalize; }
+.index-status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--fg-quinary); }
+.index-status[data-status="exploring"]::before { background: var(--fg-brand-primary); }
+.index-status[data-status="decided"]::before { background: var(--fg-success-primary); }
+
+.index-none { min-height: 56px; display: flex; align-items: center; color: var(--text-tertiary); }
+.index-empty { display: flex; flex-direction: column; gap: 4px; min-height: 56px; }
+.index-empty h2 { font-size: 14px; font-weight: 600; }
+.index-empty p { color: var(--text-tertiary); max-width: 52ch; text-wrap: pretty; }
+
+.index-foot { margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border-secondary); color: var(--text-primary); }
+
+@media (hover: hover) and (pointer: fine) {
+  .index-row:hover { background: var(--bg-primary_hover); }
+  .index-row:hover .index-summary { color: var(--text-secondary); }
+  .index-card:hover { background: var(--index-card-bg-hover); box-shadow: var(--index-card-edge-hover); }
+  .index-card:hover:focus-visible { box-shadow: var(--focus-ring), var(--index-card-edge-hover); }
+  .index-card:hover .index-summary { color: var(--text-secondary); }
+  .index-card:hover .index-card-head svg { color: var(--fg-secondary); transform: translateX(2px); }
+  .index-fold-toggle:hover { color: var(--text-secondary); }
+}
+.index-row:active { transform: scale(0.97); transition-duration: var(--dur-hover), var(--dur-press-in); }
+.index-card:active { transform: scale(0.97); transition-duration: var(--dur-hover), var(--dur-hover), var(--dur-press-in); }
+
+/* Arrival, one shot: the head fades, then each heading and row rises 4px
+   in order, 30ms apart, then the foot. Seen many times a day, so it stays
+   under 300ms per element and ends inside half a second. Keyframes fill
+   backwards only, so once a row has arrived its opacity is free to transition. */
+.index-head { animation: index-fade 200ms var(--ease-out) backwards; }
+.index-rise { animation: index-rise 220ms var(--ease-out) calc(40ms + var(--i, 0) * 30ms) backwards; }
+@keyframes index-fade { from { opacity: 0; } }
+@keyframes index-rise { from { opacity: 0; translate: 0 4px; } }
+
+/* Departure, pointer only: the moment a row is clicked the rest of the page
+   accelerates away (the Layer Exit curve) while the browser fetches the
+   prototype, and the chosen row holds, so the eye keeps what it picked.
+   The browser paints this page until the next one is ready, so the fade
+   fills a wait that was blank. */
+.index-head, .index-filter, .index-section, .index-subsection, .index-alternates-label, .index-foot { transition: opacity var(--dur-dialog-out) var(--ease-in); }
+.index.is-leaving .index-alternates::before { opacity: 0; transition: opacity var(--dur-dialog-out) var(--ease-in); }
+.index.is-leaving :is(.index-head, .index-filter, .index-section, .index-subsection, .index-alternates-label, .index-foot, .index-row:not([data-chosen]), .index-card:not([data-chosen])) { opacity: 0; }
+.index.is-leaving :is(.index-row, .index-card) { pointer-events: none; }
+
+:root[data-motion="reduce"] .index-rise { animation-name: index-fade; animation-duration: 120ms; animation-timing-function: linear; }
+:root[data-motion="reduce"] :is(.index-row, .index-card):active { transform: none; }
+:root[data-motion="reduce"] .index-fold { transition-property: opacity; }
+:root[data-motion="reduce"] .index-fold-toggle svg { transition: none; }
+:root[data-motion="reduce"] .index-card:hover .index-card-head svg { transform: none; }
+
+@media (max-width: 560px) {
+  .index, .index-group, .index-alternates, .index-list, .index-list > li, .index-row { display: flex; flex-direction: column; }
+  .index-row { gap: 2px; }
+  .index-meta { display: flex; gap: 12px; margin-top: 4px; }
+}
+
+.shell-notice { width: min(720px, 100% - 32px); margin: 0 auto; padding: 96px 0; display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.shell-notice h1 { font-size: 18px; line-height: 28px; font-weight: 600; }
+.shell-notice p { color: var(--text-tertiary); }
+.shell-notice pre { max-width: 100%; overflow: auto; padding: 12px; border-radius: var(--radius-md); background: var(--bg-secondary); font: 12px/18px var(--sys-font-mono); color: var(--text-secondary); }
+.shell-notice a { color: var(--text-brand-secondary); font-weight: 600; }

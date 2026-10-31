@@ -1,0 +1,238 @@
+/* The hub's own look: the index, the walkthrough, notices, and every harness
+   layer drawn over a prototype (review, picker, dials). Unbranded on purpose:
+   Geist and pure neutrals (chroma 0), with hue kept only for status. It never
+   reads as the design under review, and a project's tokens.css never reaches it.
+
+   Two parts. The --sys-font* and --harness-* values sit on :root, because
+   harness layers float over prototypes. The `.sys` scope remaps the semantic
+   token names the hub stylesheets (and @kit/ui) read, so the index and guide
+   stay neutral whatever tokens.css holds. main.tsx puts `.sys` on <html> for
+   hub routes; a notice carries it itself. Every name in the light block is
+   restated in the dark block, so no light value leaks into dark. */
+
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
+
+:root {
+  --sys-font: 'Geist Variable', 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --sys-font-mono: 'Geist Mono Variable', 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Harness material: one dark neutral surface in both themes, for anything
+     the prototype says in its own voice (scope toasts, dial hints, review). */
+  --harness-bg: oklch(0.277 0 0);
+  --harness-fg: oklch(1 0 0 / 0.85);
+  --harness-fg-muted: oklch(1 0 0 / 0.55);
+  --harness-border: oklch(1 0 0 / 0.1);
+  --harness-shadow: 0 8px 24px oklch(0 0 0 / 0.4);
+}
+
+.sys {
+  --font: var(--sys-font);
+  --font-voice: var(--sys-font);
+  font-family: var(--sys-font);
+
+  /* Neutral ramp, one hue (none). Status keeps its hue so a dot still
+     reads as success, warning or error. */
+  --brand-400: oklch(0.87 0 0);
+
+  --text-primary: oklch(0.205 0 0);
+  --text-secondary: oklch(0.371 0 0);
+  --text-secondary_hover: oklch(0.269 0 0);
+  --text-tertiary: oklch(0.46 0 0);
+  --text-quaternary: oklch(0.54 0 0);
+  --text-disabled: oklch(0.62 0 0);
+  --text-placeholder: oklch(0.6 0 0);
+  --text-white: oklch(1 0 0);
+  --text-brand-primary: oklch(0.205 0 0);
+  --text-brand-secondary: oklch(0.205 0 0);
+  --text-brand-tertiary: oklch(0.371 0 0);
+  --text-error-primary: oklch(0.505 0.213 27.518);
+  --text-error-primary_hover: oklch(0.444 0.177 26.899);
+  --text-warning-primary: oklch(0.555 0.163 48.998);
+  --text-success-primary: oklch(0.527 0.154 150.069);
+
+  --border-primary: oklch(0.87 0 0);
+  --border-secondary: oklch(0.922 0 0);
+  --border-tertiary: oklch(0.97 0 0);
+  --border-disabled: oklch(0.87 0 0);
+  --border-brand: oklch(0.556 0 0);
+  --border-brand_alt: oklch(0.205 0 0);
+  --border-error: oklch(0.637 0.237 25.331);
+
+  --fg-primary: oklch(0.205 0 0);
+  --fg-secondary: oklch(0.371 0 0);
+  --fg-tertiary: oklch(0.46 0 0);
+  --fg-quaternary: oklch(0.54 0 0);
+  --fg-quinary: oklch(0.708 0 0);
+  --fg-white: oklch(1 0 0);
+  --fg-disabled: oklch(0.708 0 0);
+  --fg-brand-primary: oklch(0.205 0 0);
+  --fg-brand-secondary: oklch(0.371 0 0);
+  --fg-error-primary: oklch(0.577 0.245 27.325);
+  --fg-warning-primary: oklch(0.666 0.179 58.318);
+  --fg-success-primary: oklch(0.627 0.194 149.214);
+
+  --bg-primary: oklch(1 0 0);
+  --bg-primary_alt: oklch(1 0 0);
+  --bg-primary_hover: oklch(0.97 0 0);
+  --bg-secondary: oklch(0.985 0 0);
+  --bg-secondary_alt: oklch(0.985 0 0);
+  --bg-secondary_hover: oklch(0.97 0 0);
+  --bg-secondary_hover_deep: oklch(0.94 0 0);
+  --bg-secondary_subtle: oklch(0.99 0 0);
+  --bg-tertiary: oklch(0.97 0 0);
+  --bg-active: oklch(0.97 0 0);
+  --bg-disabled: oklch(0.97 0 0);
+  --bg-overlay: oklch(0.145 0 0);
+  --bg-brand-primary: oklch(0.97 0 0);
+  --bg-brand-secondary: oklch(0.94 0 0);
+  --bg-brand-solid: oklch(0.205 0 0);
+  --bg-brand-solid_hover: oklch(0.3 0 0);
+  --bg-error-primary: oklch(0.971 0.013 17.38);
+  --bg-error-secondary: oklch(0.936 0.032 17.717);
+  --bg-error-solid: oklch(0.577 0.245 27.325);
+  --bg-warning-primary: oklch(0.987 0.022 95.277);
+  --bg-success-primary: oklch(0.982 0.018 155.826);
+
+  --button-primary-bg: oklch(0.205 0 0);
+  --button-primary-bg_hover: oklch(0.3 0 0);
+  --button-primary-fg: oklch(0.985 0 0);
+  --button-secondary-bg: oklch(1 0 0);
+  --button-secondary-bg_hover: oklch(0.97 0 0);
+  --button-secondary-bg_open: oklch(0.94 0 0);
+  --button-secondary-bg_deep: oklch(0.922 0 0);
+  --button-secondary-fg: oklch(0.269 0 0);
+  --button-secondary-fg_hover: oklch(0.145 0 0);
+  --button-secondary-border: oklch(0.87 0 0);
+  --button-tertiary-fg: oklch(0.46 0 0);
+  --button-tertiary-fg_hover: oklch(0.269 0 0);
+  --button-tertiary-bg_hover: oklch(0.97 0 0);
+  --button-primary-error-bg: oklch(0.577 0.245 27.325);
+  --button-primary-error-bg_hover: oklch(0.505 0.213 27.518);
+  --button-secondary-error-fg: oklch(0.505 0.213 27.518);
+  --button-secondary-error-border: oklch(0.808 0.114 19.571);
+  --button-secondary-error-bg_hover: oklch(0.971 0.013 17.38);
+  --nav-item-icon-fg: oklch(0.54 0 0);
+  --nav-item-icon-fg_active: oklch(0.269 0 0);
+  --avatar-bg: oklch(0.97 0 0);
+  --avatar-contrast-border: oklch(0 0 0 / 0.08);
+
+  --utility-gray-50: oklch(0.985 0 0); --utility-gray-200: oklch(0.922 0 0); --utility-gray-700: oklch(0.371 0 0);
+  --utility-brand-50: oklch(0.985 0 0); --utility-brand-200: oklch(0.922 0 0); --utility-brand-700: oklch(0.371 0 0);
+  --utility-error-50: oklch(0.971 0.013 17.38); --utility-error-200: oklch(0.885 0.062 18.334); --utility-error-600: oklch(0.577 0.245 27.325); --utility-error-700: oklch(0.505 0.213 27.518);
+  --utility-warning-50: oklch(0.987 0.022 95.277); --utility-warning-200: oklch(0.924 0.12 95.746); --utility-warning-600: oklch(0.666 0.179 58.318); --utility-warning-700: oklch(0.555 0.163 48.998);
+  --utility-success-50: oklch(0.982 0.018 155.826); --utility-success-200: oklch(0.925 0.084 155.995); --utility-success-600: oklch(0.627 0.194 149.214); --utility-success-700: oklch(0.527 0.154 150.069);
+
+  --shadow-xs: 0 1px 2px 0 oklch(0 0 0 / 0.05);
+  --shadow-sm: 0 1px 3px 0 oklch(0 0 0 / 0.1), 0 1px 2px 0 oklch(0 0 0 / 0.06);
+  --shadow-md: 0 4px 8px -2px oklch(0 0 0 / 0.1), 0 2px 4px -2px oklch(0 0 0 / 0.06);
+  --shadow-lg: 0 12px 16px -4px oklch(0 0 0 / 0.08), 0 4px 6px -2px oklch(0 0 0 / 0.03);
+  --shadow-xl: 0 20px 24px -4px oklch(0 0 0 / 0.08), 0 8px 8px -4px oklch(0 0 0 / 0.03);
+  --focus-ring: 0 0 0 2px oklch(1 0 0), 0 0 0 4px oklch(0.556 0 0);
+  --focus-ring-error: 0 0 0 2px oklch(1 0 0), 0 0 0 4px oklch(0.637 0.237 25.331);
+
+  --radius-xxs: 2px; --radius-xs: 4px; --radius-sm: 6px; --radius-md: 8px;
+  --radius-lg: 10px; --radius-xl: 12px; --radius-2xl: 16px; --radius-full: 9999px;
+}
+
+/* Dark is the light ramp turned over: each role takes the step from the
+   other end, so the gaps between roles hold. */
+.sys.dark-mode,
+.dark-mode .sys {
+  --brand-400: oklch(0.87 0 0);
+
+  --text-primary: oklch(0.985 0 0);
+  --text-secondary: oklch(0.87 0 0);
+  --text-secondary_hover: oklch(0.922 0 0);
+  --text-tertiary: oklch(0.72 0 0);
+  --text-quaternary: oklch(0.66 0 0);
+  --text-disabled: oklch(0.5 0 0);
+  --text-placeholder: oklch(0.55 0 0);
+  --text-white: oklch(1 0 0);
+  --text-brand-primary: oklch(0.985 0 0);
+  --text-brand-secondary: oklch(0.985 0 0);
+  --text-brand-tertiary: oklch(0.87 0 0);
+  --text-error-primary: oklch(0.704 0.191 22.216);
+  --text-error-primary_hover: oklch(0.808 0.114 19.571);
+  --text-warning-primary: oklch(0.828 0.189 84.429);
+  --text-success-primary: oklch(0.792 0.209 151.711);
+
+  --border-primary: oklch(0.32 0 0);
+  --border-secondary: oklch(0.26 0 0);
+  --border-tertiary: oklch(0.215 0 0);
+  --border-disabled: oklch(0.32 0 0);
+  --border-brand: oklch(0.708 0 0);
+  --border-brand_alt: oklch(0.32 0 0);
+  --border-error: oklch(0.704 0.191 22.216);
+
+  --fg-primary: oklch(0.985 0 0);
+  --fg-secondary: oklch(0.87 0 0);
+  --fg-tertiary: oklch(0.72 0 0);
+  --fg-quaternary: oklch(0.66 0 0);
+  --fg-quinary: oklch(0.5 0 0);
+  --fg-white: oklch(1 0 0);
+  --fg-disabled: oklch(0.5 0 0);
+  --fg-brand-primary: oklch(0.985 0 0);
+  --fg-brand-secondary: oklch(0.87 0 0);
+  --fg-error-primary: oklch(0.637 0.237 25.331);
+  --fg-warning-primary: oklch(0.769 0.188 70.08);
+  --fg-success-primary: oklch(0.723 0.219 149.579);
+
+  --bg-primary: oklch(0.145 0 0);
+  --bg-primary_alt: oklch(0.175 0 0);
+  --bg-primary_hover: oklch(0.215 0 0);
+  --bg-secondary: oklch(0.175 0 0);
+  --bg-secondary_alt: oklch(0.145 0 0);
+  --bg-secondary_hover: oklch(0.215 0 0);
+  --bg-secondary_hover_deep: oklch(0.26 0 0);
+  --bg-secondary_subtle: oklch(0.175 0 0);
+  --bg-tertiary: oklch(0.215 0 0);
+  --bg-active: oklch(0.215 0 0);
+  --bg-disabled: oklch(0.215 0 0);
+  --bg-overlay: oklch(0.215 0 0);
+  --bg-brand-primary: oklch(0.26 0 0);
+  --bg-brand-secondary: oklch(0.32 0 0);
+  --bg-brand-solid: oklch(0.985 0 0);
+  --bg-brand-solid_hover: oklch(0.87 0 0);
+  --bg-error-primary: oklch(0.258 0.092 26.042);
+  --bg-error-secondary: oklch(0.396 0.141 25.723);
+  --bg-error-solid: oklch(0.577 0.245 27.325);
+  --bg-warning-primary: oklch(0.279 0.077 45.635);
+  --bg-success-primary: oklch(0.266 0.065 152.934);
+
+  --button-primary-bg: oklch(0.985 0 0);
+  --button-primary-bg_hover: oklch(0.87 0 0);
+  --button-primary-fg: oklch(0.205 0 0);
+  --button-secondary-bg: oklch(0.175 0 0);
+  --button-secondary-bg_hover: oklch(0.215 0 0);
+  --button-secondary-bg_open: oklch(0.26 0 0);
+  --button-secondary-bg_deep: oklch(0.32 0 0);
+  --button-secondary-fg: oklch(0.87 0 0);
+  --button-secondary-fg_hover: oklch(0.97 0 0);
+  --button-secondary-border: oklch(0.32 0 0);
+  --button-tertiary-fg: oklch(0.72 0 0);
+  --button-tertiary-fg_hover: oklch(0.922 0 0);
+  --button-tertiary-bg_hover: oklch(0.215 0 0);
+  --button-primary-error-bg: oklch(0.577 0.245 27.325);
+  --button-primary-error-bg_hover: oklch(0.505 0.213 27.518);
+  --button-secondary-error-fg: oklch(0.808 0.114 19.571);
+  --button-secondary-error-border: oklch(0.396 0.141 25.723);
+  --button-secondary-error-bg_hover: oklch(0.258 0.092 26.042);
+  --nav-item-icon-fg: oklch(0.66 0 0);
+  --nav-item-icon-fg_active: oklch(0.922 0 0);
+  --avatar-bg: oklch(0.215 0 0);
+  --avatar-contrast-border: oklch(1 0 0 / 0.12);
+
+  --utility-gray-50: oklch(0.175 0 0); --utility-gray-200: oklch(0.32 0 0); --utility-gray-700: oklch(0.87 0 0);
+  --utility-brand-50: oklch(0.175 0 0); --utility-brand-200: oklch(0.32 0 0); --utility-brand-700: oklch(0.87 0 0);
+  --utility-error-50: oklch(0.258 0.092 26.042); --utility-error-200: oklch(0.396 0.141 25.723); --utility-error-600: oklch(0.704 0.191 22.216); --utility-error-700: oklch(0.808 0.114 19.571);
+  --utility-warning-50: oklch(0.279 0.077 45.635); --utility-warning-200: oklch(0.414 0.112 45.904); --utility-warning-600: oklch(0.828 0.189 84.429); --utility-warning-700: oklch(0.879 0.169 91.605);
+  --utility-success-50: oklch(0.266 0.065 152.934); --utility-success-200: oklch(0.393 0.095 152.535); --utility-success-600: oklch(0.792 0.209 151.711); --utility-success-700: oklch(0.871 0.15 154.449);
+
+  --shadow-xs: none; --shadow-sm: none; --shadow-md: none; --shadow-lg: none; --shadow-xl: none;
+  --focus-ring: 0 0 0 2px oklch(0.145 0 0), 0 0 0 4px oklch(0.708 0 0);
+  --focus-ring-error: 0 0 0 2px oklch(0.145 0 0), 0 0 0 4px oklch(0.704 0.191 22.216);
+}
+
+/* Code in hub pages takes the mono face. */
+.sys :is(code, kbd, pre, samp) { font-family: var(--sys-font-mono); }

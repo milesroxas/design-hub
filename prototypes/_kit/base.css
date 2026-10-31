@@ -1,0 +1,27 @@
+/* The floor every prototype stands on. Reduced motion and theme are
+   attributes on <html> (see prefs.ts), so CSS and JS read one source. */
+
+*, *::before, *::after { box-sizing: border-box; }
+/* The platform layer on a phone: no tap flash (every control has its own
+   press state), no pull-to-refresh or rubber band on an app shell. */
+html { height: 100%; -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+body { margin: 0; min-height: 100%; font-family: var(--font); font-size: 14px; line-height: 20px; color: var(--text-primary); background: var(--bg-primary); -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; overscroll-behavior: none; }
+h1, h2, h3, h4, h5, h6, p, dl, dd, ul, ol, figure, blockquote { margin: 0; }
+button, input, select, textarea { font: inherit; color: inherit; }
+a { color: inherit; }
+/* No 300ms tap wait on a control; a long press never selects a control's label. */
+button, a, input, select, textarea, [role="button"], [role="tab"], [role="menuitem"] { touch-action: manipulation; }
+button, [role="button"], [role="tab"], [role="menuitem"], [role="menuitemradio"], [role="option"] { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+/* iOS zooms into any field under 16px and never zooms back: the type steps up where the pointer is a finger. */
+@media (pointer: coarse), (max-width: 767px) { input:not([type="checkbox"]):not([type="radio"]), select, textarea { font-size: 16px; } }
+.icon { display: inline-block; flex: none; vertical-align: middle; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.num, .tabular { font-variant-numeric: tabular-nums; }
+
+/* A transparent outline still paints in forced-colors mode, where box-shadow does not. */
+:focus-visible { outline: 2px solid transparent; outline-offset: 2px; box-shadow: var(--focus-ring); }
+
+/* Theme swaps land in one frame instead of every fill easing at once. */
+.no-tx, .no-tx *, .no-tx *::before, .no-tx *::after { transition: none !important; }
+
+:root[data-motion="reduce"] { scroll-behavior: auto; }

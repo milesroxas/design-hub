@@ -1,0 +1,50 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.Spotlight-V100
+.Trashes
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Dependencies and builds
+node_modules/
+.pnpm-store/
+dist/
+build/
+.vercel/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Local state: the Jev log and its labels, the dev review store
+.design-hub/
+
+# Obsidian per-machine state (docs/ is an Obsidian vault)
+docs/.obsidian/workspace*.json
+
+# Impeccable per-developer overrides and generated caches
+.impeccable/config.local.json
+.impeccable/live/
+.impeccable/hook.cache.json
+
+# Claude Code worktrees
+.claude/worktrees/
+
+# Conductor per-developer settings
+.conductor/settings.local.toml
+
+# Elyx add-on: fetched dependencies
+design-system/elyx_deps/
