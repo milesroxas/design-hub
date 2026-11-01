@@ -5,7 +5,7 @@ A prototype that stutters gets judged on the stutter. The floor below keeps the 
 ## Already handled by the shell
 
 - Each prototype is its own lazy chunk; the index loads none of them.
-- Dev-only tools (axe) never ship in a build and load only when used.
+- Dev-only tools (axe, and Lapse when a project installs it) never ship in a build and load only when used.
 - `motion` and DialKit load only in prototypes that import them.
 
 ## Rendering
@@ -41,5 +41,5 @@ A prototype that stutters gets judged on the stutter. The floor below keeps the 
 ## How to check
 
 1. Chrome Performance panel with 4x CPU throttling on the main interaction: no long tasks over 50ms during an animation.
-2. The same recording's Layers and Paint flashing views: nothing but the moving element repaints, and no property animates on layout.
+2. With `@aiforui/lapse` installed, `?lapse` and record a take of the interaction: its report lists dropped frames, layout shifts and which properties animated on layout or paint.
 3. React DevTools Profiler, "Highlight updates": a slider or a tick should light up only what it changes.

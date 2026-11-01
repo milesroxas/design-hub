@@ -1,6 +1,6 @@
 {
   "name": "@milesroxas/design-hub",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "The Design Hub product: the hub that lists and serves prototypes, the review panel and its API, the password gate, the kit, and the design-hub CLI. A project installs it and keeps only its prototypes, kit materials and docs.",
   "license": "MIT",
   "repository": {

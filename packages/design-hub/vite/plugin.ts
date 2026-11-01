@@ -15,6 +15,7 @@ import { devPort, readEnv } from '../server/env.ts';
 import { PACKAGE, PACKAGE_KIT, SHELL } from '../server/paths.ts';
 import { GATE_FONT, gatePreview } from '../vercel/proxy.ts';
 import { kitResolver } from './kit.ts';
+import { lapse } from './lapse.ts';
 import { markdownDocs } from './markdown.ts';
 import { registry } from './registry.ts';
 
@@ -62,6 +63,7 @@ export function designHub({ root }: HubOptions): PluginOption[] {
     react(),
     kitResolver(join(root, 'kit'), PACKAGE_KIT),
     registry(root),
+    lapse(root),
     markdownDocs(),
     devReview(),
     gateFont(),

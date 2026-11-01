@@ -8,3 +8,12 @@ declare module 'virtual:design-hub/registry' {
   /** Each feature's compiled walkthrough loader, by feature. */
   export const guideDocs: Record<string, () => Promise<Doc>>;
 }
+
+declare module 'virtual:design-hub/lapse' {
+  /** The Lapse panel's mount, or null when the project has not installed @aiforui/lapse (vite/lapse.ts). */
+  export const mountLapse:
+    | ((options: { position: 'bottom-left' | 'bottom-right' | 'top-left' | 'top-right' }) => {
+        engine: { setSpeed(x: number): void; getSpeed(): number };
+      })
+    | null;
+}

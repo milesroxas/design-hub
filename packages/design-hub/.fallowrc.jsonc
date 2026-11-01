@@ -6,9 +6,8 @@
   "entry": ["kit/**/*.{ts,tsx}", "shell/main.tsx"],
   // Copied by `design-hub new`, never imported; the sample project's kit stands in for a project's.
   "ignorePatterns": ["templates/**", "configs/**", ".coverage/**"],
-  // Lapse is loaded through an opaque specifier in shell/main.tsx, so the deploy
-  // build never resolves it; @kit/tokens.css is the project's file, found by vite/kit.ts.
-  "ignoreDependencies": ["@aiforui/lapse", "@kit/tokens.css"],
+  // @kit/tokens.css is the project's file, found by vite/kit.ts.
+  "ignoreDependencies": ["@kit/tokens.css"],
   // The layers, from the inside out. core is pure and depends on nothing; the
   // kit draws prototypes; the shell is the browser around them; server is the
   // Node and HTTP side; vite is the build; vercel the deployed entries; scripts
