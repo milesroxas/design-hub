@@ -34,11 +34,12 @@ Never send the link with a failed step, and never skip one with `--skip` without
 1. The user signs in once, in their own terminal: `vercel login`. It is interactive; never run it for them.
 2. From the project root:
    ```bash
-   pnpm bootstrap --vercel <project-name>
+   pnpm bootstrap --vercel <project-name> --team <team-slug>
    ```
-   It links the project, writes `GATE_PASSWORD` (12 readable characters, or `--gate-password <word>`) and a fresh `GATE_SECRET` to `.env` and to Production and Preview, and prints the password in `share.password`. A second run keeps what is set.
+   `--team` is the Vercel team the project is created in (`vercel teams ls` lists them); without it the CLI's current team wins, which is often not the one the user means. It links the project, writes `GATE_PASSWORD` (12 readable characters, or `--gate-password <word>`) and a fresh `GATE_SECRET` to `.env` and to Production and Preview, and prints the password in `share.password`. A second run keeps what is set.
 3. `pnpm preflight`, then push `main` (or `vercel --prod` from the project root).
-4. The handover message, in one message: the URL, the password, which prototype to open (the sprint's slug), the walkthrough at `/guide/<feature>/`, and that Controls is the round button at the top of the page. A reviewer who is not told about Controls reviews one state. Never send `GATE_SECRET`.
+4. On a Pro team Vercel turns Vercel Authentication on for every new project, which sends each visitor to a Vercel login before the gate. Turn it off for Production once: Project Settings, Deployment Protection, Vercel Authentication, set to Only Preview Deployments or Disabled. The hub's gate is the protection. Test by opening the production URL in a private window: the password page must appear, not vercel.com.
+5. The handover message, in one message: the URL, the password, which prototype to open (the sprint's slug), the walkthrough at `/guide/<feature>/`, and that Controls is the round button at the top of the page. A reviewer who is not told about Controls reviews one state. Never send `GATE_SECRET`.
 
 ## Comments
 

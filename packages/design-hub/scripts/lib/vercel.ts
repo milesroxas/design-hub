@@ -20,15 +20,22 @@ export function vercel(cwd: string, args: string[], input?: string): Run | null 
   return { status: out.status ?? 1, stdout: out.stdout ?? '', stderr: out.stderr ?? '' };
 }
 
-export function linkedProject(cwd: string): string | null {
+type Link = { projectName?: string; orgId?: string };
+
+function readLink(cwd: string): Link | null {
   const file = join(cwd, '.vercel', 'project.json');
   if (!existsSync(file)) return null;
   try {
-    return (JSON.parse(readFileSync(file, 'utf8')) as { projectName?: string }).projectName ?? null;
+    return JSON.parse(readFileSync(file, 'utf8')) as Link;
   } catch {
     return null;
   }
 }
+
+export const linkedProject = (cwd: string): string | null => readLink(cwd)?.projectName ?? null;
+
+/** The team the linked project belongs to. The commands that take a project name instead of the link need it as `--scope`. */
+export const linkedOrg = (cwd: string): string | null => readLink(cwd)?.orgId ?? null;
 
 /** The variable names set for a target, read from `vercel env ls`'s table. */
 export function envNames(cwd: string, target: Target): Set<string> | null {

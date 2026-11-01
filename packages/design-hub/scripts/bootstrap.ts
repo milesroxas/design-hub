@@ -15,6 +15,7 @@ import { holderOf, pickPort, readClaims, writeClaim } from './lib/ports.ts';
 import {
   ENVIRONMENTS,
   envNames,
+  linkedOrg,
   linkedProject,
   STORE_ENV,
   setEnv,
@@ -35,6 +36,11 @@ export const spec = {
     conductor: { type: 'boolean', description: 'Write .conductor/settings.toml for Conductor workspaces.' },
     branch: { type: 'string', default: 'main', description: 'The branch Conductor workspaces land on.' },
     vercel: { type: 'string', description: 'Link this Vercel project and set the password gate env on it.' },
+    team: {
+      type: 'string',
+      description:
+        'The Vercel team (its slug) the project lives in or is created in. Absent, the CLI’s current team.',
+    },
     'gate-password': {
       type: 'string',
       description: 'The share password (8+ characters). Given again, it rotates.',
@@ -136,11 +142,13 @@ function cli(args: string[], input?: string): string {
   return out.stdout;
 }
 
-function link(project: string, warnings: string[]): 'ran' | 'kept' {
+function link(project: string, team: string | undefined, warnings: string[]): 'ran' | 'kept' {
   const current = linkedProject(ROOT);
   if (current === project) return 'kept';
   if (current) warnings.push(`.vercel/project.json pointed at ${current}; relinked to ${project}.`);
-  cli(['link', '--yes', '--project', project]);
+  // A new project is created in the scope given; without one the CLI's current team wins, which
+  // is whichever team the user last switched to, not necessarily where this project belongs.
+  cli(['link', '--yes', '--project', project, ...(team ? ['--scope', team] : [])]);
   return 'ran';
 }
 
@@ -189,7 +197,23 @@ function pullValues(target: Target, names: readonly string[]): Record<string, st
   }
 }
 
-function provisionReview(project: string, warnings: string[]) {
+/** `--scope` for the commands that name the project instead of reading the link. */
+const scopeArgs = (team: string | undefined) => {
+  const scope = team ?? linkedOrg(ROOT);
+  return scope ? ['--scope', scope] : [];
+};
+
+/**
+ * Vercel Authentication is on for every new project on a team, and it sends each
+ * visitor to a Vercel login before the gate. The gate is the protection, so it goes
+ * off. Idempotent: disabling twice is fine.
+ */
+function protection(project: string, team: string | undefined): 'off' {
+  cli(['project', 'protection', 'disable', project, '--sso', ...scopeArgs(team)]);
+  return 'off';
+}
+
+function provisionReview(project: string, team: string | undefined, warnings: string[]) {
   const names = envNames(ROOT, 'production');
   let store: 'created' | 'kept' = 'kept';
   if (!names || !STORE_ENV.every((n) => names.has(n))) {
@@ -206,6 +230,8 @@ function provisionReview(project: string, warnings: string[]) {
       '-e',
       'development',
       '--no-env-pull',
+      // Unlike env and deploy, this command ignores the project link and takes the CLI's current team.
+      ...scopeArgs(team),
     ]);
     if (out?.status !== 0)
       throw new CliError('Could not add the Upstash for Redis store.', {
@@ -254,7 +280,7 @@ function setUpVercel(
   typesafeKey: string,
   warnings: string[],
 ) {
-  const linked = link(project, warnings);
+  const linked = link(project, flags.team, warnings);
   const { password, secret, rotated } = gateValues(flags['gate-password'], env);
   writeEnv(ROOT, { GATE_PASSWORD: password, GATE_SECRET: secret });
   const values: Record<string, string> = { GATE_PASSWORD: password, GATE_SECRET: secret };
@@ -262,14 +288,19 @@ function setUpVercel(
   if (flags.review && typesafeKey) values.TYPESAFE_API_KEY = typesafeKey;
   if (rotated) warnings.push('The password changed: every visitor signs in again.');
   const result: Record<string, unknown> = {
-    vercel: { project, linked, env: ensureEnv(values, new Set(rotated ? ['GATE_PASSWORD'] : [])) },
+    vercel: {
+      project,
+      linked,
+      protection: protection(project, flags.team),
+      env: ensureEnv(values, new Set(rotated ? ['GATE_PASSWORD'] : [])),
+    },
     share: { password },
   };
   if (!flags.review) return result;
   warnings.push(
     'Redeploy so the new env reaches the site; then design-hub people invite --name "<you>" --role editor.',
   );
-  return { ...result, review: provisionReview(project, warnings) };
+  return { ...result, review: provisionReview(project, flags.team, warnings) };
 }
 
 function envIgnored(warnings: string[]): void {
