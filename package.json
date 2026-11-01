@@ -15,6 +15,6 @@
     "fix": "pnpm --filter design-hub fix",
     "dev": "pnpm --filter design-hub-project dev",
     "template": "node packages/create-design-hub/index.mjs",
-    "release-check": "pnpm --filter design-hub exec design-hub release-check"
+    "release-check": "node packages/design-hub/dist/scripts/cli.js release-check"
   }
 }
