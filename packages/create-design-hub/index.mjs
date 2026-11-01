@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// npm create design-hub -- --path <absolute path> [--owner <gh account>] [--visibility private|public|none]
+// npm create @milesroxas/design-hub -- --path <absolute path> [--owner <gh account>] [--visibility private|public|none]
 //
 // Copies the template into the folder, names the project after it, pins the
 // design-hub version, starts a git repo, installs, and puts the miles-*
@@ -59,7 +59,7 @@ try {
     strict: true,
   }));
 } catch (error) {
-  fail(error.message, { fix: 'npm create design-hub -- --help' });
+  fail(error.message, { fix: 'npm create @milesroxas/design-hub -- --help' });
 }
 
 const [major, minor] = process.versions.node.split('.').map(Number);

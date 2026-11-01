@@ -4,7 +4,7 @@
 import { basename, isAbsolute } from 'node:path';
 
 export const SPEC = {
-  command: 'npm create design-hub -- --path <folder>',
+  command: 'npm create @milesroxas/design-hub -- --path <folder>',
   summary: 'Create a new project from the Design Hub template, as a local git repo or on GitHub.',
   flags: {
     '--path': {
@@ -60,6 +60,6 @@ export function validate({ path, visibility = 'none', template, link }) {
 export function projectManifest(template, { name, version, link }) {
   const pkg = JSON.parse(JSON.stringify(template));
   pkg.name = name;
-  pkg.dependencies['design-hub'] = link ? `link:${link}` : `^${version}`;
+  pkg.dependencies['@milesroxas/design-hub'] = link ? `link:${link}` : `^${version}`;
   return pkg;
 }

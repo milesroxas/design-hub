@@ -2,14 +2,14 @@
 // `@kit/<name>` is the project's kit/ first and this package's kit/ second,
 // so a project forks a kit piece by copying the file into kit/ under the same
 // name and changing the copy: every import of it, the hub's included, then
-// takes the project's. `design-hub/kit/<name>` always means the package's
+// takes the project's. `@milesroxas/design-hub/kit/<name>` always means the package's
 // copy, for a project file that extends it (kit/icons.ts adds glyphs to the base set).
 import { existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Plugin } from 'vite';
 
 const KIT_PREFIX = '@kit/';
-const PACKAGE_PREFIX = 'design-hub/kit/';
+const PACKAGE_PREFIX = '@milesroxas/design-hub/kit/';
 const CANDIDATES = ['', '.ts', '.tsx', '.css', '.json', '/index.ts', '/index.tsx'];
 
 const isFile = (path: string) => existsSync(path) && statSync(path).isFile();

@@ -24,7 +24,7 @@ A finding with a log id (`log 3f9a…`) was Jev's. When the user says it was wro
 
 ### Low gravity
 
-A prototype imports only `@kit/*` and files in its own folder. Never another prototype, never the hub's own code in `node_modules/design-hub`. Why: the moment two prototypes share a file, deleting one breaks the other, and a prototype that cannot be deleted is production.
+A prototype imports only `@kit/*` and files in its own folder. Never another prototype, never the hub's own code in `node_modules/@milesroxas/design-hub`. Why: the moment two prototypes share a file, deleting one breaks the other, and a prototype that cannot be deleted is production.
 
 ### Fork, don't flex
 

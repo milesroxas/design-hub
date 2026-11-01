@@ -1,6 +1,6 @@
 ---
 name: miles-design-hub
-description: "Start a new Design Hub project: ask every question up front, create it with `npm create design-hub`, run the setup, hand off to the Paper skill. Global install only; never load inside a project. Triggers on: design hub, new design project, start a project, new prototype repo, set up prototypes, from the template."
+description: "Start a new Design Hub project: ask every question up front, create it with `npm create @milesroxas/design-hub`, run the setup, hand off to the Paper skill. Global install only; never load inside a project. Triggers on: design hub, new design project, start a project, new prototype repo, set up prototypes, from the template."
 ---
 
 # Design Hub
@@ -37,10 +37,10 @@ The skills these lean on, installed globally: `emil-prototype`, `emil-writing-sk
 ## 3. Create the project
 
 ```bash
-npm create design-hub@latest -- --path <path> --visibility private|public|none [--owner <owner>]
+npm create @milesroxas/design-hub@latest -- --path <path> --visibility private|public|none [--owner <owner>]
 ```
 
-It copies the template, pins the `design-hub` package, installs, puts the `miles-*` skills in `.claude/skills/`, makes the first commit, and with `private` or `public` creates the GitHub repo and pushes. It prints one JSON object; `ok: false` names the fix. A second run finds the project and changes nothing, so rerun it after a fix instead of finishing by hand.
+It copies the template, pins the `@milesroxas/design-hub` package, installs, puts the `miles-*` skills in `.claude/skills/`, makes the first commit, and with `private` or `public` creates the GitHub repo and pushes. It prints one JSON object; `ok: false` names the fix. A second run finds the project and changes nothing, so rerun it after a fix instead of finishing by hand.
 
 ## 4. Run the setup
 

@@ -3,14 +3,14 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D22.18-brightgreen.svg)](packages/design-hub/package.json)
 
-Design work on one product or website, as a product you install. A project is a thin folder: its prototypes, the materials they are drawn with (tokens, the shell's chrome, icons), the design rules, the walkthroughs reviewers read, and their comments. Everything else is the `design-hub` package: the hub that lists and serves the prototypes, the review panel and its API, the password gate, the kit, the `design-hub` command, and the skills that tell a coding agent how to behave.
+Design work on one product or website, as a product you install. A project is a thin folder: its prototypes, the materials they are drawn with (tokens, the shell's chrome, icons), the design rules, the walkthroughs reviewers read, and their comments. Everything else is the `@milesroxas/design-hub` package: the hub that lists and serves the prototypes, the review panel and its API, the password gate, the kit, the `design-hub` command, and the skills that tell a coding agent how to behave.
 
 A prototype holds every state on a dial, behind a password, outside the live product. Reviewers comment on the state they are looking at, and the port to production builds from the same list of states.
 
 ## Start a project
 
 ```sh
-npm create design-hub@latest -- --path ~/Design/acme-site
+npm create @milesroxas/design-hub@latest -- --path ~/Design/acme-site
 cd ~/Design/acme-site
 pnpm bootstrap        # a free port into .env
 pnpm dev              # http://localhost:<PORT>
@@ -36,7 +36,7 @@ api/review.ts  proxy.ts  vercel.json      one line each
 .design-hub/checks.json                   the Jev thresholds
 ```
 
-The project's `AGENTS.md` is the whole contract an agent reads. Nothing in `node_modules/design-hub` is ever edited or read for prototype work, so the surface an agent works on stays small however many prototypes a project has.
+The project's `AGENTS.md` is the whole contract an agent reads. Nothing in `node_modules/@milesroxas/design-hub` is ever edited or read for prototype work, so the surface an agent works on stays small however many prototypes a project has.
 
 ## What the package does
 
@@ -55,7 +55,7 @@ A version bump brings a project everything above, with no change to its own file
 | Path | What it is |
 | --- | --- |
 | `packages/design-hub/` | The npm package. |
-| `packages/create-design-hub/` | `npm create design-hub`: the scaffolder, the thin template, the setup app. The template is also the sample project this repo runs. |
+| `packages/create-design-hub/` | `npm create @milesroxas/design-hub`: the scaffolder, the thin template, the setup app. The template is also the sample project this repo runs. |
 | `Design Hub.command` | The setup app, for people who never open a terminal. |
 
 ```sh

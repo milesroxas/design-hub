@@ -30,7 +30,7 @@ jobs:
             const fs = require("node:fs");
             const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
             const { version } = JSON.parse(fs.readFileSync(process.env.HUB + "/package.json", "utf8"));
-            pkg.dependencies["design-hub"] = "^" + version;
+            pkg.dependencies["@milesroxas/design-hub"] = "^" + version;
             fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
           '
           rm -rf node_modules pnpm-lock.yaml .git

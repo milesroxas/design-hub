@@ -1,7 +1,7 @@
 {
-  "name": "create-design-hub",
+  "name": "@milesroxas/create-design-hub",
   "version": "0.1.0",
-  "description": "Create a Design Hub project: the thin folder of prototypes, kit materials and docs that installs the design-hub package. Runs as `npm create design-hub`.",
+  "description": "Create a Design Hub project: the thin folder of prototypes, kit materials and docs that installs the @milesroxas/design-hub package. Runs as `npm create @milesroxas/design-hub`.",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -35,6 +35,6 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.3",
-    "design-hub": "workspace:*"
+    "@milesroxas/design-hub": "workspace:*"
   }
 }

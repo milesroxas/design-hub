@@ -4,7 +4,7 @@
 // prototypes reached through the registry module, the project's kit/ in
 // front of the package's, the review API in dev, and the gate's font emitted
 // where the gate serves it. A project keeps no vite.config.ts; one that wants
-// its own can import `designHub` from 'design-hub/vite'.
+// its own can import `designHub` from '@milesroxas/design-hub/vite'.
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';

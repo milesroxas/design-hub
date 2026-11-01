@@ -1,9 +1,9 @@
 {
-  "extends": "design-hub/tsconfig.project.json",
+  "extends": "@milesroxas/design-hub/tsconfig.project.json",
   "compilerOptions": {
     "paths": {
-      "@kit/*": ["./kit/*", "./node_modules/design-hub/kit/*"],
-      "design-hub/kit/*": ["./node_modules/design-hub/kit/*"]
+      "@kit/*": ["./kit/*", "./node_modules/@milesroxas/design-hub/kit/*"],
+      "@milesroxas/design-hub/kit/*": ["./node_modules/@milesroxas/design-hub/kit/*"]
     }
   },
   "include": ["prototypes", "kit", "api", "proxy.ts"]

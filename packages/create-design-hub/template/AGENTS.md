@@ -2,7 +2,7 @@
 
 The contract for every coding agent in this project (Claude, Codex, Cursor, others). `CLAUDE.md` points here.
 
-This project holds prototypes, the materials they are drawn with, and the documents around them. The hub that lists and serves them, the review panel, the password gate and the `design-hub` command are the `design-hub` package in `node_modules`: never edit it, never read it to do prototype work. Everything an agent touches is in this folder.
+This project holds prototypes, the materials they are drawn with, and the documents around them. The hub that lists and serves them, the review panel, the password gate and the `design-hub` command are the `@milesroxas/design-hub` package in `node_modules`: never edit it, never read it to do prototype work. Everything an agent touches is in this folder.
 
 ## Why it works this way
 
@@ -117,7 +117,7 @@ Say what you could not verify. Do not commit unless asked.
 
 ## Skills
 
-The `miles-*` skills in `.claude/skills/` come from the `design-hub` package (`pnpm skills` refreshes them; never edit the copies). Load one when its trigger matches.
+The `miles-*` skills in `.claude/skills/` come from the `@milesroxas/design-hub` package (`pnpm skills` refreshes them; never edit the copies). Load one when its trigger matches.
 
 | Skill | Load when |
 | --- | --- |

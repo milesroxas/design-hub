@@ -12,6 +12,6 @@
     "verbatimModuleSyntax": true,
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
-    "types": ["design-hub/client"]
+    "types": ["@milesroxas/design-hub/client"]
   }
 }

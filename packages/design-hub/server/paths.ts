@@ -8,7 +8,7 @@ import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const DEP = 'design-hub';
+const DEP = '@milesroxas/design-hub';
 
 function dependsOnHub(dir: string): boolean {
   const file = join(dir, 'package.json');

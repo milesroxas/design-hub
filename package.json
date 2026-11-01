@@ -8,11 +8,11 @@
   },
   "packageManager": "pnpm@12.6.0",
   "scripts": {
-    "build": "pnpm --filter design-hub build",
-    "check": "pnpm --filter design-hub check && pnpm --filter create-design-hub check && pnpm --filter design-hub-project check",
-    "test": "pnpm --filter design-hub test && pnpm --filter create-design-hub test",
-    "quality": "pnpm --filter design-hub quality",
-    "fix": "pnpm --filter design-hub fix",
+    "build": "pnpm --filter @milesroxas/design-hub build",
+    "check": "pnpm --filter @milesroxas/design-hub check && pnpm --filter @milesroxas/create-design-hub check && pnpm --filter design-hub-project check",
+    "test": "pnpm --filter @milesroxas/design-hub test && pnpm --filter @milesroxas/create-design-hub test",
+    "quality": "pnpm --filter @milesroxas/design-hub quality",
+    "fix": "pnpm --filter @milesroxas/design-hub fix",
     "dev": "pnpm --filter design-hub-project dev",
     "template": "node packages/create-design-hub/index.mjs",
     "release-check": "node packages/design-hub/dist/scripts/cli.js release-check"

@@ -1,6 +1,6 @@
 # design-hub
 
-The Design Hub product as an npm package: the hub that lists and serves a project's prototypes, the review panel and its API, the password gate, the kit, the `design-hub` command and the `miles-*` skills. A project installs it and keeps only its prototypes, kit materials and docs; `npm create design-hub` makes one.
+The Design Hub product as an npm package: the hub that lists and serves a project's prototypes, the review panel and its API, the password gate, the kit, the `design-hub` command and the `miles-*` skills. A project installs it and keeps only its prototypes, kit materials and docs; `npm create @milesroxas/design-hub` makes one.
 
 ```bash
 design-hub dev                    # the hub on http://localhost:<PORT>

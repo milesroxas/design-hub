@@ -13,17 +13,17 @@ test('a request needs an absolute path with a repo-safe name', () => {
 test('the manifest is named after the folder and pinned to the hub that made it', () => {
   const template = {
     name: 'design-hub-project',
-    dependencies: { 'design-hub': 'workspace:*', react: '^19' },
+    dependencies: { '@milesroxas/design-hub': 'workspace:*', react: '^19' },
   };
   assert.equal(
-    projectManifest(template, { name: 'acme', version: '0.1.0' }).dependencies['design-hub'],
+    projectManifest(template, { name: 'acme', version: '0.1.0' }).dependencies['@milesroxas/design-hub'],
     '^0.1.0',
   );
   assert.equal(projectManifest(template, { name: 'acme', version: '0.1.0' }).name, 'acme');
   assert.equal(
     projectManifest(template, { name: 'acme', version: '0.1.0', link: '/hub/packages/design-hub' })
-      .dependencies['design-hub'],
+      .dependencies['@milesroxas/design-hub'],
     'link:/hub/packages/design-hub',
   );
-  assert.equal(template.dependencies['design-hub'], 'workspace:*');
+  assert.equal(template.dependencies['@milesroxas/design-hub'], 'workspace:*');
 });

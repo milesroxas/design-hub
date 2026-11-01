@@ -171,13 +171,13 @@ importers:
       '@biomejs/biome':
         specifier: 2.6.3
         version: 2.6.3
-      design-hub:
+      '@milesroxas/design-hub':
         specifier: workspace:*
         version: link:../design-hub
 
   packages/create-design-hub/template:
     dependencies:
-      design-hub:
+      '@milesroxas/design-hub':
         specifier: workspace:*
         version: link:../../design-hub
       motion:
