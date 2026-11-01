@@ -11,7 +11,8 @@
       "!**/.impeccable",
       "!**/.claude",
       "!**/*.md",
-      "!**/pnpm-lock.yaml"
+      "!**/pnpm-lock.yaml",
+      "!**/pnpm-workspace.yaml"
     ]
   },
   "formatter": {
