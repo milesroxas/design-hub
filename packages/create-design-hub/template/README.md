@@ -9,6 +9,8 @@ pnpm dev           # http://localhost:<PORT>
 
 Or double-click `Design Hub.command`.
 
+Not a developer? The [guide](https://github.com/milesroxas/design-hub/tree/main/docs/guide) covers setup, working with Claude, sharing a link and comments.
+
 | Path | What goes there |
 | --- | --- |
 | `prototypes/<slug>/` | One prototype: its README, code, styles and fixtures. `sample-list/` is the reference; delete it once the project has a feature. |

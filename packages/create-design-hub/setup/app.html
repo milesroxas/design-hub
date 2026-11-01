@@ -623,7 +623,7 @@
       }),
       card({
         icon: 'folder', title: 'Come back later',
-        desc: 'Design Hub.command in the project folder reopens this page.',
+        desc: 'Design Hub.command in the project folder starts the hub and opens it in your browser.',
         run: async () => {
           const res = await api('/api/reveal', { path: project.path });
           return res.ok ? 'Shown in Finder.' : null;

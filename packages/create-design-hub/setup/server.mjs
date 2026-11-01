@@ -42,9 +42,12 @@ const HOME = homedir();
 const MAC = platform() === 'darwin';
 const TOKEN = randomBytes(16).toString('hex');
 const CREATE = join(HERE, '..', 'index.mjs');
-// Inside the Design Hub repo itself, new projects link the local package instead of the published one.
+// Inside a developer's checkout of the Design Hub repo, new projects link the
+// local package instead of the published one. A downloaded ZIP of the repo has
+// the same folders but no build, so it must install from npm like anyone else:
+// the link needs the built CLI, not just the package.json.
 const LOCAL_HUB = join(HERE, '..', '..', 'design-hub');
-const LINK = existsSync(join(LOCAL_HUB, 'package.json')) ? LOCAL_HUB : undefined;
+const LINK = existsSync(join(LOCAL_HUB, 'dist', 'scripts', 'cli.js')) ? LOCAL_HUB : undefined;
 // The pnpm major projects are installed with.
 const PNPM = 'pnpm@12';
 

@@ -7,6 +7,8 @@ Design work on one product or website, as a product you install. A project is a 
 
 A prototype holds every state on a dial, behind a password, outside the live product. Reviewers comment on the state they are looking at, and the port to production builds from the same list of states.
 
+New here and not a developer? Read the [guide](docs/guide/README.md): setup, working with Claude, sharing a link, comments.
+
 ## Start a project
 
 ```sh
