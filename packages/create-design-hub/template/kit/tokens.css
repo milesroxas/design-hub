@@ -1,0 +1,249 @@
+/* The neutral default scale. A project replaces these values with its own
+   design's tokens (miles-paper-to-prototype reads them from Paper) and keeps
+   the names, so every kit stylesheet and every prototype keeps working.
+   Light on :root, dark on .dark-mode (prefs.ts mirrors the theme there). */
+
+:root {
+  color-scheme: light;
+
+  /* Primitives: the only place a hex is allowed outside this file is a
+     README that names the decision. */
+  --brand-50: #eff4ff; --brand-100: #dbe6fe; --brand-200: #b9cdfc; --brand-300: #8fb0f9;
+  --brand-400: #5f8bf3; --brand-500: #3d6ee8; --brand-600: #2b57cc; --brand-700: #2246a6;
+  --gray-25: #fcfcfd; --gray-50: #f9fafb; --gray-100: #f2f4f7; --gray-200: #eaecf0;
+  --gray-300: #d0d5dd; --gray-400: #98a2b3; --gray-500: #667085; --gray-600: #475467;
+  --gray-700: #344054; --gray-800: #182230; --gray-900: #101828; --gray-950: #0c111d;
+  --error-500: #f04438;
+
+  /* Semantic: text */
+  --text-primary: #101828;
+  --text-secondary: #344054;
+  --text-secondary_hover: #182230;
+  --text-tertiary: #475467;
+  --text-quaternary: #667085;
+  --text-disabled: #667085;
+  --text-placeholder: #667085;
+  --text-white: #ffffff;
+  --text-brand-primary: #2246a6;
+  --text-brand-secondary: #2b57cc;
+  --text-brand-tertiary: #3d6ee8;
+  --text-error-primary: #d92d20;
+  --text-error-primary_hover: #b32318; /* a destructive word under the pointer on a hover fill (the Hover Ink Rule) */
+  --text-warning-primary: #dc6803;
+  --text-success-primary: #079455;
+
+  /* Semantic: borders */
+  --border-primary: #d0d5dd;
+  --border-secondary: #eaecf0;
+  --border-tertiary: #f2f4f7;
+  --border-disabled: #d0d5dd;
+  --border-brand: #3d6ee8;
+  --border-brand_alt: #2b57cc;
+  --border-error: #f04438;
+
+  /* Semantic: foreground (icons) */
+  --fg-primary: #101828;
+  --fg-secondary: #344054;
+  --fg-tertiary: #475467;
+  --fg-quaternary: #667085;
+  --fg-quinary: #98a2b3;
+  --fg-white: #ffffff;
+  --fg-disabled: #98a2b3;
+  --fg-brand-primary: #2b57cc;
+  --fg-brand-secondary: #3d6ee8;
+  --fg-error-primary: #d92d20;
+  --fg-warning-primary: #dc6803;
+  --fg-success-primary: #079455;
+
+  /* Semantic: backgrounds */
+  --bg-primary: #ffffff;
+  --bg-primary_alt: #ffffff;
+  --bg-primary_hover: #f9fafb;
+  --bg-secondary: #f9fafb;
+  --bg-secondary_alt: #f9fafb;
+  --bg-secondary_hover: #f2f4f7;
+  --bg-secondary_hover_deep: #eaecf0; /* hover on a row that already rests on bg-secondary */
+  --bg-secondary_subtle: #fcfcfd;
+  --bg-tertiary: #f2f4f7;
+  --bg-active: #f2f4f7;
+  --bg-disabled: #f2f4f7;
+  --bg-overlay: #0c111d;
+  --bg-brand-primary: #eff4ff;
+  --bg-brand-secondary: #dbe6fe;
+  --bg-brand-solid: #2b57cc;
+  --bg-brand-solid_hover: #2246a6;
+  --bg-error-primary: #fef3f2;
+  --bg-error-secondary: #fee4e2;
+  --bg-error-solid: #d92d20;
+  --bg-warning-primary: #fffaeb;
+  --bg-success-primary: #ecfdf3;
+
+  /* Component */
+  --button-primary-bg: #2b57cc;
+  --button-primary-bg_hover: #2246a6;
+  --button-primary-fg: #ffffff;
+  --button-secondary-bg: #ffffff;
+  --button-secondary-bg_hover: #f9fafb;
+  --button-secondary-bg_open: #f2f4f7; /* menu open or pressed: one step past hover (the Engaged State Rule) */
+  --button-secondary-bg_deep: #eaecf0; /* open or pressed on a surface that already wears the hover fill */
+  --button-secondary-fg: #344054;
+  --button-secondary-fg_hover: #182230;
+  --button-secondary-border: #d0d5dd;
+  --button-tertiary-fg: #475467;
+  --button-tertiary-fg_hover: #344054;
+  --button-tertiary-bg_hover: #f9fafb;
+  --button-primary-error-bg: #d92d20;
+  --button-primary-error-bg_hover: #b32318;
+  --button-secondary-error-fg: #b32318;
+  --button-secondary-error-border: #fda19b;
+  --button-secondary-error-bg_hover: #fef3f2;
+  --nav-item-icon-fg: #667085;
+  --nav-item-icon-fg_active: #344054;
+  --avatar-bg: #f2f4f7;
+  --avatar-contrast-border: rgb(0 0 0 / 0.08);
+
+  /* Utility: badges */
+  --utility-gray-50: #f9fafb; --utility-gray-200: #eaecf0; --utility-gray-700: #344054;
+  --utility-brand-50: #eff4ff; --utility-brand-200: #b9cdfc; --utility-brand-700: #2246a6;
+  --utility-error-50: #fef3f2; --utility-error-200: #fecdc9; --utility-error-600: #d92d20; --utility-error-700: #b32318;
+  --utility-warning-50: #fffaeb; --utility-warning-200: #fedf89; --utility-warning-600: #dc6803; --utility-warning-700: #b54708;
+  --utility-success-50: #ecfdf3; --utility-success-200: #a9efc5; --utility-success-600: #079455; --utility-success-700: #067647;
+
+  /* Shadows, tinted gray-900 in light mode; dark draws none (the Hairline First Rule) */
+  --shadow-xs: 0 1px 2px 0 rgb(16 24 40 / 0.05);
+  --shadow-sm: 0 1px 3px 0 rgb(16 24 40 / 0.10), 0 1px 2px 0 rgb(16 24 40 / 0.06);
+  --shadow-md: 0 4px 8px -2px rgb(16 24 40 / 0.10), 0 2px 4px -2px rgb(16 24 40 / 0.06);
+  --shadow-lg: 0 12px 16px -4px rgb(16 24 40 / 0.08), 0 4px 6px -2px rgb(16 24 40 / 0.03);
+  --shadow-xl: 0 20px 24px -4px rgb(16 24 40 / 0.08), 0 8px 8px -4px rgb(16 24 40 / 0.03);
+  --focus-ring: 0 0 0 2px #ffffff, 0 0 0 4px #3d6ee8;
+  --focus-ring-error: 0 0 0 2px #ffffff, 0 0 0 4px #f04438;
+
+  /* Radius */
+  --radius-xxs: 2px; --radius-xs: 4px; --radius-sm: 6px; --radius-md: 8px;
+  --radius-lg: 10px; --radius-xl: 12px; --radius-2xl: 16px; --radius-full: 9999px;
+
+  /* Type. No font files ship with the template: a project adds its own
+     @font-face here and names it first in --font. */
+  --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-voice: Georgia, "Times New Roman", serif;
+
+  /* Motion, one set so it can be reviewed as one. ease-out enters, ease-in
+     leaves, ease-hover for fills and colours, ease-press for a press. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-press: cubic-bezier(0.33, 1, 0.68, 1);   /* easeOutCubic: an even settle, no snap */
+  --ease-morph: cubic-bezier(0.45, 0, 0.55, 1);   /* easeInOutQuad: a glyph changing shape in place */
+  --ease-hover: cubic-bezier(0.25, 0.46, 0.45, 0.94); /* easeOutQuad: gentler than `ease` for fills */
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);          /* easeInQuad: a layer leaving accelerates away */
+  --dur-press: 160ms;
+  --dur-press-in: 90ms;
+  --dur-press-out: 160ms;
+  --dur-hover: 120ms;
+  --dur-menu: 180ms;
+  --dur-menu-out: 120ms;
+  --dur-dialog: 220ms;
+  --dur-dialog-out: 150ms;
+  --dur-sheet: 320ms;
+  --dur-toast: 260ms;
+  --dur-toast-out: 180ms;
+  --dur-swap-out: 240ms;
+  --dur-swap-in: 380ms;
+
+  /* The harness material (--harness-*) and the hub's fonts live in
+     the hub's own system.css: they belong to the hub, not the design. */
+}
+
+.dark-mode {
+  color-scheme: dark;
+
+  --gray-25: #fafafa; --gray-50: #f7f7f7; --gray-100: #f0f1f1; --gray-200: #ececed;
+  --gray-300: #cecfd2; --gray-400: #94969c; --gray-500: #85888e; --gray-600: #61656c;
+  --gray-700: #373a41; --gray-800: #22262f; --gray-900: #13161b; --gray-950: #0c0e12;
+
+  --text-primary: #f7f7f7;
+  --text-secondary: #cecfd2;
+  --text-secondary_hover: #ececed;
+  --text-tertiary: #94969c;
+  --text-quaternary: #94969c;
+  --text-disabled: #85888e;
+  --text-placeholder: #85888e;
+  --text-brand-primary: #f7f7f7;
+  --text-brand-secondary: #cecfd2;
+  --text-brand-tertiary: #94969c;
+  --text-error-primary: #f97066;
+  --text-error-primary_hover: #fda19b;
+  --text-warning-primary: #fdb022;
+  --text-success-primary: #47cd89;
+
+  --border-primary: #373a41;
+  --border-secondary: #22262f;
+  --border-tertiary: #22262f;
+  --border-disabled: #373a41;
+  --border-brand: #5f8bf3;
+  --border-brand_alt: #373a41;
+  --border-error: #f97066;
+
+  --fg-primary: #ffffff;
+  --fg-secondary: #cecfd2;
+  --fg-tertiary: #94969c;
+  --fg-quaternary: #94969c;
+  --fg-quinary: #85888e;
+  --fg-disabled: #85888e;
+  --fg-brand-primary: #3d6ee8;
+  --fg-brand-secondary: #2b57cc;
+  --fg-error-primary: #f04438;
+  --fg-warning-primary: #f79009;
+  --fg-success-primary: #17b26a;
+
+  --bg-primary: #0c0e12;
+  --bg-primary_alt: #13161b;
+  --bg-primary_hover: #22262f;
+  --bg-secondary: #13161b;
+  --bg-secondary_alt: #0c0e12;
+  --bg-secondary_hover: #22262f;
+  --bg-secondary_hover_deep: #22262f;
+  --bg-secondary_subtle: #13161b;
+  --bg-tertiary: #22262f;
+  --bg-active: #22262f;
+  --bg-disabled: #22262f;
+  --bg-overlay: #22262f;
+  --bg-brand-primary: #3d6ee8;
+  --bg-brand-secondary: #2b57cc;
+  --bg-brand-solid: #3d6ee8;
+  --bg-brand-solid_hover: #5f8bf3;
+  --bg-error-primary: #f04438;
+  --bg-error-secondary: #d92d20;
+  --bg-warning-primary: #f79009;
+  --bg-success-primary: #17b26a;
+
+  --button-primary-bg: #3d6ee8;
+  --button-primary-bg_hover: #2b57cc;
+  --button-secondary-bg: #13161b;
+  --button-secondary-bg_hover: #22262f;
+  --button-secondary-bg_open: #373a41;
+  --button-secondary-bg_deep: #42464d; /* one even step past bg_open (oklch L 0.385), so Error Ink still passes on it */
+  --button-secondary-fg: #cecfd2;
+  --button-secondary-fg_hover: #f0f1f1;
+  --button-secondary-border: #373a41;
+  --button-tertiary-fg: #94969c;
+  --button-tertiary-fg_hover: #ececed;
+  --button-tertiary-bg_hover: #22262f;
+  --button-secondary-error-fg: #fecdc9;
+  --button-secondary-error-border: #912018;
+  --button-secondary-error-bg_hover: #7a271a;
+  --nav-item-icon-fg: #94969c;
+  --nav-item-icon-fg_active: #ececed;
+  --avatar-bg: #22262f;
+  --avatar-contrast-border: rgb(255 255 255 / 0.12);
+
+  --utility-gray-50: #13161b; --utility-gray-200: #373a41; --utility-gray-700: #cecfd2;
+  --utility-brand-50: #0f1f4d; --utility-brand-200: #1c3a8a; --utility-brand-700: #8fb0f9;
+  --utility-error-50: #55160c; --utility-error-200: #912018; --utility-error-600: #f97066; --utility-error-700: #fda19b;
+  --utility-warning-50: #4e1d09; --utility-warning-200: #93370d; --utility-warning-600: #fdb022; --utility-warning-700: #fec84b;
+  --utility-success-50: #053321; --utility-success-200: #085d3a; --utility-success-600: #47cd89; --utility-success-700: #75e0a7;
+
+  --shadow-xs: none; --shadow-sm: none; --shadow-md: none; --shadow-lg: none; --shadow-xl: none;
+  --focus-ring: 0 0 0 2px #0c0e12, 0 0 0 4px #5f8bf3;
+  --focus-ring-error: 0 0 0 2px #0c0e12, 0 0 0 4px #f97066;
+}

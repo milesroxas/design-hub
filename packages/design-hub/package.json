@@ -1,0 +1,91 @@
+{
+  "name": "design-hub",
+  "version": "0.1.0",
+  "description": "The Design Hub product: the hub that lists and serves prototypes, the review panel and its API, the password gate, the kit, and the design-hub CLI. A project installs it and keeps only its prototypes, kit materials and docs.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/milesroxas/design-hub.git",
+    "directory": "packages/design-hub"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "bin": {
+    "design-hub": "./dist/scripts/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/vite/plugin.d.ts",
+      "default": "./dist/vite/plugin.js"
+    },
+    "./vite": {
+      "types": "./dist/vite/plugin.d.ts",
+      "default": "./dist/vite/plugin.js"
+    },
+    "./vercel": {
+      "types": "./dist/vercel/index.d.ts",
+      "default": "./dist/vercel/index.js"
+    },
+    "./core/*": {
+      "types": "./dist/core/*.d.ts",
+      "default": "./dist/core/*.js"
+    },
+    "./kit/*": "./kit/*",
+    "./shell/*": "./shell/*",
+    "./client": {
+      "types": "./client.d.ts"
+    },
+    "./tsconfig.project.json": "./configs/tsconfig.project.json",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "core",
+    "kit",
+    "shell",
+    "templates",
+    "guides",
+    "skills",
+    "configs",
+    "client.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "prepare": "pnpm run build",
+    "check": "tsc --noEmit && biome check .",
+    "fix": "biome check --write .",
+    "test": "node --test \"core/**/*.test.ts\" \"server/**/*.test.ts\" \"scripts/**/*.test.ts\" \"vite/**/*.test.ts\" \"vercel/**/*.test.ts\"",
+    "quality": "rm -rf .coverage && NODE_V8_COVERAGE=.coverage pnpm run --silent test > /dev/null && npx -y fallow@3.38.0 --coverage .coverage"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "dependencies": {
+    "@biomejs/biome": "2.6.3",
+    "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/geist-mono": "^5.3.0",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vercel/functions": "^3.10.4",
+    "@vitejs/plugin-react": "^6.1.2",
+    "axe-core": "^4.14.0",
+    "dialkit": "^2.1.0",
+    "marked": "^18.1.2",
+    "motion": "^14.6.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5"
+  },
+  "devDependencies": {
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "optionalDependencies": {
+    "@aiforui/lapse": "^0.19.0"
+  }
+}

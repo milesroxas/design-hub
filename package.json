@@ -1,0 +1,20 @@
+{
+  "name": "design-hub-monorepo",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "packageManager": "pnpm@12.6.0",
+  "scripts": {
+    "build": "pnpm --filter design-hub build",
+    "check": "pnpm --filter design-hub check && pnpm --filter create-design-hub check && pnpm --filter design-hub-project check",
+    "test": "pnpm --filter design-hub test && pnpm --filter create-design-hub test",
+    "quality": "pnpm --filter design-hub quality",
+    "fix": "pnpm --filter design-hub fix",
+    "dev": "pnpm --filter design-hub-project dev",
+    "template": "node packages/create-design-hub/index.mjs",
+    "release-check": "pnpm --filter design-hub exec design-hub release-check"
+  }
+}

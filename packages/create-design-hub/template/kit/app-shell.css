@@ -1,0 +1,70 @@
+/* The product shell: sidebar, content column, page head. Brand and navigation come from kit/shell.ts. */
+
+/* dvh, not vh: the phone's URL bar is part of 100vh, so a 100vh sidebar
+   overflows by its height until the bar collapses. */
+.shell { display: flex; min-height: 100dvh; }
+.sidebar { width: 320px; flex: none; background: var(--bg-secondary_subtle); border-right: 1px solid var(--border-secondary); display: flex; flex-direction: column; padding: calc(24px + env(safe-area-inset-top, 0px)) 16px calc(32px + env(safe-area-inset-bottom, 0px)) calc(16px + env(safe-area-inset-left, 0px)); position: sticky; top: 0; height: 100dvh; }
+.sidebar-logo { display: flex; align-items: center; gap: 8px; padding: 0 8px; color: var(--fg-primary); height: 28px; margin-bottom: 24px; text-decoration: none; border-radius: var(--radius-xs); }
+.sidebar-brand { font-weight: 600; font-size: 16px; line-height: 24px; color: var(--text-primary); }
+.team { display: flex; align-items: center; gap: 12px; padding: 8px; border-radius: var(--radius-sm); width: 100%; border: 0; background: transparent; text-align: left; cursor: pointer; margin-bottom: 24px; }
+.team-avatar { width: 40px; height: 40px; border-radius: var(--radius-sm); display: grid; place-items: center; font-weight: 600; font-size: 16px; color: var(--gray-900); flex: none; }
+.team-text { flex: 1; min-width: 0; }
+.team-name { font-weight: 600; display: block; }
+.team-role { color: var(--text-tertiary); display: block; }
+.team .icon { color: var(--fg-quaternary); }
+.team { transition: background-color var(--dur-hover) var(--ease-hover); }
+@media (hover: hover) and (pointer: fine) { .team:hover:not([aria-expanded="true"]) { background: var(--bg-primary_hover); } }
+.team[aria-expanded="true"] { background: var(--button-secondary-bg_open); }
+.nav { display: flex; flex-direction: column; gap: 4px; }
+.nav-item { display: flex; align-items: center; gap: 10px; height: 36px; padding: 8px; border-radius: var(--radius-sm); color: var(--text-secondary); font-weight: 600; text-decoration: none; border: 0; background: transparent; width: 100%; cursor: pointer; }
+.nav-item .icon { color: var(--nav-item-icon-fg); }
+.nav-item.is-active { background: var(--bg-active); color: var(--text-primary); }
+.nav-item.is-active .icon { color: var(--nav-item-icon-fg_active); }
+@media (hover: hover) and (pointer: fine) { .nav-item:hover { background: var(--bg-primary_hover); } }
+.nav-item:active { background: var(--bg-active); }
+.sidebar-foot { margin-top: auto; display: flex; flex-direction: column; gap: 4px; }
+.user { display: flex; align-items: center; gap: 12px; padding: 8px; margin-top: 24px; }
+.user-avatar { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--avatar-bg); border: 1px solid var(--avatar-contrast-border); font-weight: 600; color: var(--text-secondary); flex: none; }
+.user-text { flex: 1; min-width: 0; }
+.user-name { font-weight: 600; display: block; }
+.user-email { color: var(--text-tertiary); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.user .btn-icon { color: var(--fg-quaternary); }
+.content { flex: 1; min-width: 0; }
+
+.page { padding: 32px 24px 96px; max-width: 1532px; margin: 0 auto; }
+.page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+/* The title row is 42px, a header button's height, title centred in it. */
+.page-title { font-size: 24px; line-height: 32px; font-weight: 600; padding: 5px 0; }
+.page-desc { color: var(--text-tertiary); font-size: 16px; line-height: 24px; margin-top: 4px; }
+.page-actions { display: flex; gap: 12px; align-items: center; flex: none; }
+/* A 20px line with a 44px reach: the pseudo-element carries the finger's share without moving the title. */
+.back-link { position: relative; display: inline-flex; align-self: flex-start; align-items: center; gap: 6px; color: var(--text-tertiary); text-decoration: none; font-size: 14px; line-height: 20px; margin-bottom: 6px; border-radius: var(--radius-xs); }
+.back-link::before { content: ''; position: absolute; inset: -12px -8px; }
+@media (hover: hover) and (pointer: fine) { .back-link:hover { color: var(--text-secondary); } }
+.back-link:active { color: var(--text-secondary); }
+
+/* Harness: parkDials() puts the DialKit trigger beside the wordmark, where the sidebar is empty. */
+@media (min-width: 1024px) { .dialkit-root .dialkit-panel[data-position="top-left"] { left: 262px; } }
+
+@media (max-width: 1023px) {
+  .sidebar { width: calc(68px + env(safe-area-inset-left, 0px)); padding: calc(24px + env(safe-area-inset-top, 0px)) 12px calc(32px + env(safe-area-inset-bottom, 0px)) calc(12px + env(safe-area-inset-left, 0px)); }
+  .sidebar-brand { display: none; } .sidebar-logo { justify-content: center; padding: 0; }
+  .team .icon, .user-text, .user .btn-icon { display: none; }
+  .team-text, .nav-item .nav-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .team { justify-content: center; padding: 0; } .team-avatar { width: 36px; height: 36px; font-size: 14px; }
+  .nav-item { justify-content: center; padding: 0; width: 44px; margin: 0 auto; }
+  .user { justify-content: center; padding: 0; }
+  /* The head's actions wrap under the title; an unshrinkable row would push the page wider than the phone. */
+  .page-actions { flex: 0 1 auto; min-width: 0; max-width: 100%; flex-wrap: wrap; }
+}
+
+/* A finger needs 44px: the rail's icon targets grow to it, keeping their rhythm (28 + 24 = 44 + 8). */
+@media (max-width: 1023px) and (pointer: coarse) {
+  .sidebar-logo { height: 44px; margin-bottom: 8px; }
+  .team { min-height: 44px; margin-bottom: 16px; }
+  .nav-item { height: 44px; }
+}
+
+@media (max-width: 767px) {
+  .page { padding: 24px 16px 96px; }
+}

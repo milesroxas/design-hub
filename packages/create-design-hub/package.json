@@ -1,0 +1,40 @@
+{
+  "name": "create-design-hub",
+  "version": "0.1.0",
+  "description": "Create a Design Hub project: the thin folder of prototypes, kit materials and docs that installs the design-hub package. Runs as `npm create design-hub`.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/milesroxas/design-hub.git",
+    "directory": "packages/create-design-hub"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "bin": {
+    "create-design-hub": "./index.mjs"
+  },
+  "files": [
+    "index.mjs",
+    "lib.mjs",
+    "setup",
+    "template",
+    "!template/node_modules",
+    "!template/.design-hub/*",
+    "template/.design-hub/checks.json",
+    "!template/.claude/skills",
+    "!template/dist",
+    "!template/.env",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "check": "biome check --config-path ../design-hub/configs/biome .",
+    "test": "node --test \"*.test.mjs\" \"setup/*.test.mjs\""
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.3",
+    "design-hub": "workspace:*"
+  }
+}

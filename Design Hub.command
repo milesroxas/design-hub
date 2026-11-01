@@ -1,7 +1,9 @@
 #!/bin/bash
-# Double-click to set up a Design Hub project, or to open one that is set up.
-# It starts a small local page in the browser (setup/server.mjs); nothing else
-# needs a terminal. Keep the window open while you work.
+# Double-click to create a Design Hub project without a terminal. It starts a
+# small local page in the browser (packages/create-design-hub/setup/server.mjs);
+# the page asks for a name and a place, then creates, installs and opens the
+# project. A project made this way gets its own "Design Hub.command" to open
+# it again later.
 cd "$(dirname "$0")" || exit 1
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 clear
@@ -16,4 +18,4 @@ if ! command -v node >/dev/null 2>&1 ||
   exit 1
 fi
 
-exec node setup/server.mjs
+exec node packages/create-design-hub/setup/server.mjs

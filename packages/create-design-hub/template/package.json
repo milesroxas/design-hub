@@ -1,0 +1,38 @@
+{
+  "name": "design-hub-project",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "dev": "design-hub dev",
+    "build": "design-hub build",
+    "preview": "design-hub preview",
+    "bootstrap": "design-hub bootstrap",
+    "new": "design-hub new",
+    "guide": "design-hub guide",
+    "check": "design-hub check",
+    "fix": "design-hub check --fix",
+    "guard": "design-hub guard",
+    "preflight": "design-hub preflight",
+    "comments": "design-hub comments",
+    "people": "design-hub people",
+    "calibrate": "design-hub calibrate",
+    "fixtures-pull": "design-hub fixtures-pull",
+    "visual-match": "design-hub visual-match",
+    "elyx": "design-hub elyx",
+    "skills": "design-hub skills",
+    "commands": "design-hub commands"
+  },
+  "dependencies": {
+    "design-hub": "workspace:*",
+    "motion": "^14.6.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0"
+  }
+}

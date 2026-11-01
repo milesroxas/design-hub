@@ -1,128 +1,82 @@
 # Design Hub
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Node](https://img.shields.io/badge/node-%3E%3D22.18-brightgreen.svg)](prototypes/package.json)
+[![Node](https://img.shields.io/badge/node-%3E%3D22.18-brightgreen.svg)](packages/design-hub/package.json)
 
-A GitHub template for design work on one product or website. One repo holds the prototypes, the design rules, the walkthroughs reviewers read, their comments, and the skills that tell a coding agent how to behave in it.
+Design work on one product or website, as a product you install. A project is a thin folder: its prototypes, the materials they are drawn with (tokens, the shell's chrome, icons), the design rules, the walkthroughs reviewers read, and their comments. Everything else is the `design-hub` package: the hub that lists and serves the prototypes, the review panel and its API, the password gate, the kit, the `design-hub` command, and the skills that tell a coding agent how to behave.
 
-A prototype here holds every state on a dial, behind a password, outside the live project. Reviewers comment on the state they are looking at, and the port to production builds from the same list of states.
+A prototype holds every state on a dial, behind a password, outside the live product. Reviewers comment on the state they are looking at, and the port to production builds from the same list of states.
 
-## Features
-
-- **Disposable prototypes** in one Vite, React and TypeScript app. Each folder is one prototype; the hub lists them, groups them by feature and serves each at `/<slug>/`.
-- **Every state on a dial.** DialKit controls switch fixtures, variants and scenarios live, and the worst-case content (`longest`, `empty`, `max`, `missing`) is derived for you.
-- **Walkthroughs** written in Markdown under `docs/sprints/<feature>/guide.md`, served at `/guide/<feature>/` beside the prototype.
-- **Review on the deployed site.** A shared password to view, invite links to comment, and comments pinned to the element and the exact dial state.
-- **Agent skills** (`miles-*`) for Claude Code that own the judgment, with scripts that own the mechanics, so a step runs the same way every time.
-- **Guardrails**: a fidelity guard on every write, axe in dev, Biome, layer boundaries checked by fallow, and `node:test` suites for the infrastructure.
-
-## Requirements
-
-- Node.js 22.18 or later and pnpm.
-- [GitHub CLI](https://cli.github.com/) (`gh`), to create a project from the template.
-- [Claude Code](https://claude.com/claude-code), to use the skills. The app runs without it.
-- Optional: a Vercel account to deploy and share, [Paper](https://paper.design/) for comps, a TypeSafe key for the Jev checks.
-
-## Quick start
-
-### Without a terminal
-
-1. Install [Node.js](https://nodejs.org) (the LTS version).
-2. On this repo's GitHub page, choose **Code**, then **Download ZIP**, and open the ZIP.
-3. Double-click `Design Hub.command`. The first time, macOS asks whether to open a file from the internet: Control-click the file and choose **Open**, or allow it under System Settings, Privacy & Security.
-
-A page opens in the browser. It asks for a project name, saves the project to `~/Design/<name>` (or a folder you pick), and can create a private GitHub repo when the GitHub CLI is installed. When it is done, **Open Design Hub** starts the hub. The project gets its own `Design Hub.command`: double-click it to open the hub again later. Keep the Terminal window it opens; closing it stops the hub.
-
-### With Claude Code
-
-With Claude Code, install the one global skill, then ask Claude to start a project. It asks every question up front (where on disk, which GitHub owner, Paper comp or the sample, shell or not, TypeSafe or not, Conductor or not), creates the repo from this template and runs the setup.
+## Start a project
 
 ```sh
-npx skills add milesroxas/design-hub@miles-design-hub -g -y
+npm create design-hub@latest -- --path ~/Design/acme-site
+cd ~/Design/acme-site
+pnpm bootstrap        # a free port into .env
+pnpm dev              # http://localhost:<PORT>
 ```
 
-By hand, from a clone or a repo made with **Use this template**:
+With Claude Code, install the one global skill and ask it to start a project. It asks every question up front, then runs the same two commands:
 
 ```sh
-cd prototypes
-pnpm bootstrap          # picks a free port into .env and .claude/launch.json, runs pnpm install
-pnpm dev                # http://localhost:<PORT>
+npx skills add milesroxas/design-hub -g -y
 ```
 
-## Usage
+Without a terminal: download this repo as a ZIP and double-click `Design Hub.command`. A page asks for a name and a place, creates the project, installs it and opens the hub. The project gets its own `Design Hub.command` to open it again later.
 
-Run every command from `prototypes/`. Each script prints one JSON object and `--help` prints its schema; `pnpm commands` lists them all.
+## What a project holds
 
-| Command | What it does |
+```
+prototypes/<slug>/    README.md, index.tsx, styles.css, fixtures.json
+kit/                  tokens.css, shell.ts, icons.ts, AppShell, SiteShell
+docs/sprints/<feature>/   design-doc.md, guide.md, comments.md, port.md
+DESIGN.md  PRODUCT.md  AGENTS.md
+api/review.ts  proxy.ts  vercel.json      one line each
+.claude/              hooks and the miles-* skills, installed from the package
+.design-hub/checks.json                   the Jev thresholds
+```
+
+The project's `AGENTS.md` is the whole contract an agent reads. Nothing in `node_modules/design-hub` is ever edited or read for prototype work, so the surface an agent works on stays small however many prototypes a project has.
+
+## What the package does
+
+- **The hub.** Lists every prototype from its README, groups them by feature, serves each at `/<slug>/` and each walkthrough at `/guide/<feature>/`. A new folder shows up without a restart.
+- **Every state on a dial.** DialKit controls through `@kit/dials`; `longest`, `empty`, `max` and `missing` fixture sets derived by `@kit/fixtures`.
+- **The kit.** `@kit/ui`, `@kit/Space`, `@kit/Variants`, `@kit/Icon` and the rest. `@kit/<name>` resolves to the project's `kit/<name>` first and the package's second, so a project forks a piece by copying the file.
+- **Review on the deployed site.** A shared password to view, invite links to comment, comments pinned to the element and the exact dial state. Upstash Redis when deployed, a file in dev.
+- **The command.** `design-hub dev|build|new|guide|check|preflight|comments|people|bootstrap|skills|…`. Flags only, one JSON object on stdout, `--help` for the schema.
+- **Guardrails.** The fidelity guard on every write, axe in dev, Biome and TypeScript on `check`, every check a share link needs on `preflight`.
+- **Skills.** The `miles-*` skills ship in the package; `design-hub skills` copies them into a project, so a version bump updates them.
+
+A version bump brings a project everything above, with no change to its own files. Inspect tools for the port to production will arrive the same way.
+
+## This repo
+
+| Path | What it is |
 | --- | --- |
-| `pnpm dev` | The hub, every prototype and the review panel, on the port in `.env`. |
-| `pnpm new <slug> --feature <feature>` | A prototype on the quiet canvas, with the variant picker and dials. |
-| `pnpm new <slug> --app --sprint --feature <feature>` | The feature's primary prototype, inside the product shell. |
-| `pnpm new:guide <feature>` | The feature's walkthrough. |
-| `pnpm check` | TypeScript and Biome. Must pass before a change is done. |
-| `pnpm test` | The infrastructure's `node:test` suites. |
-| `pnpm quality` | fallow over real test coverage: dead code, duplication, layers, complexity, for `prototypes/` and `setup/`. |
-| `pnpm preflight` | Every check a share link needs. |
-| `pnpm comments pull` | Review comments into `docs/sprints/<feature>/comments.md`. |
+| `packages/design-hub/` | The npm package. |
+| `packages/create-design-hub/` | `npm create design-hub`: the scaffolder, the thin template, the setup app. The template is also the sample project this repo runs. |
+| `Design Hub.command` | The setup app, for people who never open a terminal. |
 
-The full contract for people and agents is [`prototypes/AGENTS.md`](prototypes/AGENTS.md).
+```sh
+pnpm install     # builds the package
+pnpm dev         # the hub on the sample project
+pnpm check && pnpm test && pnpm quality
+```
 
-## Project structure
+The contributor guide is [AGENTS.md](AGENTS.md); the package's own is [packages/design-hub/AGENTS.md](packages/design-hub/AGENTS.md).
 
-| Path | What goes there |
-| --- | --- |
-| `Design Hub.command`, `setup/` | The setup app: a page in the browser that creates a project from the template, sets it up and starts the hub, for people who never open a terminal. No dependencies; it runs `create.mjs` and `pnpm bootstrap` underneath. |
-| `prototypes/` | The app and the infrastructure around it: the review API, the password gate, the scripts. `sample-list/` is the reference prototype. |
-| `DESIGN.md`, `PRODUCT.md`, `.impeccable/` | Impeccable context: the recorded design system with its named rules and the `Shell` section, who the product is for, detector config. Run `/impeccable doctor` to check them. |
-| `docs/` | Written documentation, an Obsidian vault. `sprints/<feature>/` holds a feature's design doc, walkthrough, pulled comments and port report. |
-| `sketches/paper/` | Exports from Paper Desktop that a document cites. The comps stay in Paper. |
-| `plans/` | Plans written by the `improve-animations` skill. |
-| `design-system/` | Only with the Elyx add-on: a token project generated from `prototypes/_kit/tokens.css` by `pnpm elyx`. Never edited by hand. |
-| `.claude/` | The `miles-*` skills, the launch config, and the hooks: the writing pass on every `.md` edit, the fidelity guard on every write under `prototypes/`, and the skill hint on every prompt. |
+## Deploy and review
 
-The hub's own interface (index, walkthroughs, review panel, password page) is neutral by design: Geist, Geist Mono and pure greys from `prototypes/_shell/system.css`. A project's design lives in `prototypes/_kit/tokens.css` and `DESIGN.md` and never restyles the hub.
-
-## Skills
-
-Judgment lives in skills; mechanics live in the scripts they call (`prototypes/_scripts/`). A prose step gets skipped on some runs and the failure is silent; a script runs the same way every time.
-
-| Skill | Owns |
-| --- | --- |
-| `miles-design-hub` | Entry: the questions, the repo, the setup, the handoff. Global install only. |
-| `miles-prototype` | The low-gravity rules, the fidelity ceiling, DialKit patterns. |
-| `miles-new-feature` | Feature scaffolding and the `docs/sprints/` convention. |
-| `miles-get-hostile` | Hostile fixtures, the Webflow pull, and the design answers for edge cases. |
-| `miles-paper-to-prototype` | Paper MCP output into prototype conventions. |
-| `miles-deploy` | The pre-flight, the Vercel link, the password gate, the review store. |
-| `miles-review` | Review comments: pulling, sorting, acting, resolving, and who may comment. |
-| `miles-port` | An approved prototype into production, Webflow or another codebase. |
-| `miles-conductor` | Conductor workspaces and the machine's port registry. |
-
-A clone already has them in `.claude/skills/`. To install them globally: `npx skills add milesroxas/design-hub -g -y`.
-
-## Review and deploy
-
-Pushing `main` deploys `prototypes/` to the linked Vercel project; `pnpm bootstrap --vercel <project>` links it and sets the password gate's environment. The deployed site has two ways in. The shared password opens it to view. An invite link, made by an editor, signs one named person in to comment. A comment is pinned to the element and to the state: the URL and every dial value, so opening it later reopens what the reviewer saw. Add `--review` to the bootstrap to turn comments on; `pnpm dev` runs the same panel against a local store. The details are in [`prototypes/README.md`](prototypes/README.md).
+Pushing `main` of a project deploys it to its linked Vercel project; `pnpm bootstrap --vercel <project>` links it and sets the password gate's environment. The shared password opens the site to view. An invite link, made by an editor, signs one named person in to comment. A comment is pinned to the element and to the state: the URL and every dial value, so opening it later reopens what the reviewer saw. Add `--review` to the bootstrap to turn comments on; `pnpm dev` runs the same panel against a local store. The details are in [packages/design-hub/README.md](packages/design-hub/README.md).
 
 ## TypeSafe checks (optional)
 
-With a TypeSafe key in `prototypes/.env` (`pnpm bootstrap --typesafe-key <key>`), Jev answers the judgments that must come out the same on every run:
-
-- **The fidelity guard**, a hook on every write under `prototypes/`: data fetching, an abstraction used once, handling no fixture reaches, a state the README does not list. Code checks (an import that crosses prototypes, a new dependency) run without TypeSafe.
-- **The pre-flight**: whether a prototype renders a state its README omits, and whether an email or phone number in the fixtures belongs to a private person.
-- **Comment triage**: each comment's kind and state.
-- **The skill hint**: one line naming the `miles-*` skill a prompt needs.
-
-Every threshold is in `prototypes/checks.json`. Every judgment is logged to `.design-hub/jev.jsonl` with an id; label them with `pnpm calibrate --yes <id>` or `--no <id>`, and `pnpm calibrate --write` sets the thresholds from the labels. Without a key, every Jev question is skipped and nothing is printed.
+With a TypeSafe key in a project's `.env` (`pnpm bootstrap --typesafe-key <key>`), Jev answers the judgments that must come out the same on every run: the fidelity guard's four semantic rules, the pre-flight's state and contact checks, comment triage, and the skill hint. Every threshold is in `.design-hub/checks.json`; `pnpm calibrate` sets them from labelled judgments. Without a key, every Jev question is skipped and nothing is printed.
 
 ## Contributing
 
-Issues and pull requests are welcome.
-
-- Scope each commit to one folder, for example `prototypes: the empty state on the items list`.
-- `pnpm check`, `pnpm test` and `pnpm quality` pass before a pull request. `pnpm quality` passes with zero findings; keep it there.
-- Plain git handles the image exports. Add Git LFS only if video or very large files show up.
-- Before publishing a copy of this template, run `pnpm release-check --term <client name>` from `prototypes/` to confirm no tracked file names the client.
+Issues and pull requests are welcome. `pnpm check`, `pnpm test` and `pnpm quality` pass before a pull request, and `pnpm quality` passes with zero findings. Before publishing a copy of this repo, `pnpm release-check --term <client name>` confirms no tracked file names the client.
 
 ## License
 

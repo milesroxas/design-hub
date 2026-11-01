@@ -1,0 +1,29 @@
+# Conductor shared repository settings: https://www.conductor.build/docs/reference/settings
+# Written by `design-hub bootstrap --conductor`. Personal overrides go in
+# .conductor/settings.local.toml (gitignored).
+"$schema" = "https://conductor.build/schemas/settings.repo.schema.json"
+
+# Each workspace installs the project and serves it on its own
+# $CONDUCTOR_PORT; the dev server reads that port before .env's PORT. No
+# secrets are copied in: the GATE_* values are for Vercel only.
+[scripts]
+setup = """
+git -C "$CONDUCTOR_ROOT_PATH" fetch --prune origin && git -C "$CONDUCTOR_ROOT_PATH" pull --ff-only || true
+pnpm install && pnpm bootstrap --no-install
+"""
+run_mode = "concurrent"
+
+# strictPort refuses a taken port instead of drifting away from the Open
+# button's URL; bootstrap names the process that holds it.
+[scripts.run.prototypes]
+command = "pnpm dev"
+default = true
+icon = "play"
+available_in = ["local"]
+
+[prompts]
+general = """Land work on `{{branch}}`: `git fetch origin && git rebase origin/{{branch}}`, run `pnpm check` if prototypes/ or kit/ changed, then push or open a PR as the project owner prefers. Prototype rules: AGENTS.md."""
+
+[[preview_urls]]
+name = "Prototypes"
+url = "http://localhost:$CONDUCTOR_PORT"

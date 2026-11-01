@@ -1,0 +1,41 @@
+# macOS
+.DS_Store
+._*
+
+# Editors
+.vscode/
+.idea/
+
+# Dependencies and builds
+node_modules/
+dist/
+.vercel/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# Local state: the Jev log and its labels, the dev review store. checks.json is the project's thresholds and stays.
+.design-hub/*
+!.design-hub/checks.json
+
+# Obsidian per-machine state (docs/ is an Obsidian vault)
+docs/.obsidian/workspace*.json
+
+# Impeccable per-developer overrides and generated caches
+.impeccable/config.local.json
+.impeccable/live/
+.impeccable/hook.cache.json
+
+# Claude Code worktrees
+.claude/worktrees/
+
+# Conductor per-developer settings
+.conductor/settings.local.toml
+
+# Elyx add-on: fetched dependencies
+design-system/elyx_deps/

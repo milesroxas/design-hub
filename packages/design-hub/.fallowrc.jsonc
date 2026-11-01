@@ -1,0 +1,66 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  // The kit is the library prototypes import, including prototypes that do not
+  // exist yet, so every kit export is public API rather than dead code. The
+  // same goes for the two Vercel entries and the Vite plugin a project imports.
+  "entry": ["kit/**/*.{ts,tsx}", "shell/main.tsx"],
+  // Copied by `design-hub new`, never imported; the sample project's kit stands in for a project's.
+  "ignorePatterns": ["templates/**", "configs/**", ".coverage/**"],
+  // Lapse is loaded through an opaque specifier in shell/main.tsx, so the deploy
+  // build never resolves it; @kit/tokens.css is the project's file, found by vite/kit.ts.
+  "ignoreDependencies": ["@aiforui/lapse", "@kit/tokens.css"],
+  // The layers, from the inside out. core is pure and depends on nothing; the
+  // kit draws prototypes; the shell is the browser around them; server is the
+  // Node and HTTP side; vite is the build; vercel the deployed entries; scripts
+  // are the CLI. A project's prototypes reach only the kit, the rule the
+  // fidelity guard holds on every write.
+  "boundaries": {
+    "zones": [
+      { "name": "core", "patterns": ["core/**"] },
+      { "name": "kit", "patterns": ["kit/**"] },
+      { "name": "shell", "patterns": ["shell/**"] },
+      { "name": "server", "patterns": ["server/**"] },
+      { "name": "vercel", "patterns": ["vercel/**"] },
+      { "name": "vite", "patterns": ["vite/**"] },
+      { "name": "scripts", "patterns": ["scripts/**"] }
+    ],
+    "rules": [
+      { "from": "core", "allow": [] },
+      { "from": "kit", "allow": ["core"] },
+      { "from": "shell", "allow": ["core", "kit"] },
+      { "from": "server", "allow": ["core"] },
+      { "from": "vercel", "allow": ["core", "server"] },
+      // The plugin serves the gate's preview page and the review API in dev.
+      { "from": "vite", "allow": ["core", "server", "vercel"] },
+      { "from": "scripts", "allow": ["core", "server", "vite"] }
+    ]
+  },
+  "health": {
+    "thresholdOverrides": [
+      {
+        // The UI is not unit-tested by policy: the browser, axe and the
+        // definition of done check it. An untested function scores cyclomatic
+        // squared plus cyclomatic, and 110 is cyclomatic 10, so every UI function stays under 10.
+        "files": ["kit/**", "shell/**"],
+        "maxCrap": 110
+      },
+      {
+        // Process and network glue: commands that run vercel, git, lsof, elyx,
+        // tsc, biome or fetch, the dev server adapter and the Vite plugins (the
+        // Markdown compiler included), verified by running them. What they decide
+        // lives in tested modules, which this ceiling never loosens below their own.
+        "files": ["scripts/**/*.ts", "server/{dev,local,file-kv}.ts", "vite/**/*.ts"],
+        "maxCrap": 110
+      }
+    ]
+  },
+  "rules": {
+    // No rule packs: the boundaries above are this project's policy.
+    "policy-violation": "off",
+    // Every command module exports `spec` and `main` by contract (scripts/lib/cli.ts).
+    "duplicate-export": "off",
+    // Vercel installs every dependency at build and bundles the server functions
+    // from them, and the browser code is inlined by Vite, so nothing here installs at runtime.
+    "dev-dependency-in-production": "off"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "prototypes",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "dev"
+      ],
+      "port": 3101
+    },
+    {
+      "name": "prototypes-attach",
+      "url": "http://localhost:3101",
+      "port": 3101
+    }
+  ]
+}
