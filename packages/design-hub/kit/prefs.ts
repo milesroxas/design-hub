@@ -5,8 +5,6 @@ import { useSyncExternalStore } from 'react';
 
 export type Appearance = 'system' | 'light' | 'dark';
 
-type LapseHandle = { engine: { setSpeed(x: number): void; getSpeed(): number } };
-
 const root = document.documentElement;
 const darkQuery = matchMedia('(prefers-color-scheme: dark)');
 const motionQuery = matchMedia('(prefers-reduced-motion: reduce)');
@@ -17,7 +15,6 @@ const listeners = new Set<() => void>();
 let appearance: Appearance = readAppearance();
 let forceReduce = false;
 let speed = 1;
-let lapse: LapseHandle | null = null;
 
 function readAppearance(): Appearance {
   const fromUrl = params.get('theme');
@@ -77,21 +74,16 @@ export const useAppearance = () => useSyncExternalStore(subscribe, () => appeara
 export const useDark = () => useSyncExternalStore(subscribe, isDark);
 export const useReducedMotion = () => useSyncExternalStore(subscribe, prefersReducedMotion);
 
-export function attachLapse(handle: LapseHandle) {
-  lapse = handle;
-}
-
 export function setSpeed(x: number) {
   speed = x;
-  if (lapse) lapse.engine.setSpeed(x);
   emit();
 }
 
-export const getSpeed = () => (lapse ? lapse.engine.getSpeed() : speed);
+export const getSpeed = () => speed;
 export const useSpeed = () => useSyncExternalStore(subscribe, getSpeed);
 
 function retime(e: Event) {
-  if (lapse || speed === 1) return;
+  if (speed === 1) return;
   for (const a of (e.target as Element).getAnimations?.() ?? []) {
     if (a.playbackRate === 1) a.playbackRate = speed;
   }

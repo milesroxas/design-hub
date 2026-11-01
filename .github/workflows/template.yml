@@ -1,7 +1,9 @@
 # Regenerates the public template repo from create-design-hub on every push to
 # main, so "Use this template" on GitHub gives the same thin project `npm
-# create design-hub` does. Needs a TEMPLATE_REPO_TOKEN secret with write access
-# to the template repo.
+# create @milesroxas/design-hub` does. The push needs a TEMPLATE_REPO_TOKEN
+# secret with write access to milesroxas/design-hub-template; without it the
+# run still generates the project (so the scaffolder is exercised) and skips
+# the push.
 name: template
 on:
   push:
@@ -13,6 +15,8 @@ on:
 jobs:
   publish-template:
     runs-on: ubuntu-latest
+    env:
+      HAS_TOKEN: ${{ secrets.TEMPLATE_REPO_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -36,7 +40,11 @@ jobs:
           rm -rf node_modules pnpm-lock.yaml .git
         env:
           HUB: ${{ github.workspace }}/packages/design-hub
+      - name: Skip the push without a token
+        if: env.HAS_TOKEN != 'true'
+        run: echo "::notice::TEMPLATE_REPO_TOKEN is not set; generated the project but did not push it."
       - name: Push to the template repo
+        if: env.HAS_TOKEN == 'true'
         env:
           TOKEN: ${{ secrets.TEMPLATE_REPO_TOKEN }}
         run: |

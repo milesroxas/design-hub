@@ -248,23 +248,8 @@ importers:
       react-dom:
         specifier: ^19.3.1
         version: 19.3.1(react@19.3.1)
-    optionalDependencies:
-      '@aiforui/lapse':
-        specifier: ^0.19.0
-        version: 0.19.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
 
 packages:
-
-  '@aiforui/lapse@0.19.0':
-    resolution: {integrity: sha512-+QRQVPe/l5XQGcO3R52z3SLklmHoouFzG8uUwmvOLJwTzcV13dU62qoBZwdizOPSF5KgWIL3V5pJftZiT05ZNg==, tarball: https://aiforui.dev/npm/@aiforui/lapse/-/lapse-0.19.0.tgz}
-    peerDependencies:
-      react: '>=18.0.0'
-      react-dom: '>=18.0.0'
-    peerDependenciesMeta:
-      react:
-        optional: true
-      react-dom:
-        optional: true
 
   '@biomejs/biome@2.6.3':
     resolution: {integrity: sha512-va/0xPku7wnfzv+D8Zpdm5uKiGJWiV8neqoEPnRjvNQQwhl4tVXS4fETs4H0CCB2rGeqJ4cu9y4iOZOnOYKAUA==}
@@ -953,12 +938,6 @@ packages:
     resolution: {integrity: sha512-WPsqwxITS2tzx1bzhIKsEs19ABD5vmCVa4xBo2tq/SrV4RNZtfws1EnCWQXM6yh8bD08a1idvkB5MZSBiZsjwg==}
 
 snapshots:
-
-  '@aiforui/lapse@0.19.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
-    optionalDependencies:
-      react: 19.3.1
-      react-dom: 19.3.1(react@19.3.1)
-    optional: true
 
   '@biomejs/biome@2.6.3':
     optionalDependencies:

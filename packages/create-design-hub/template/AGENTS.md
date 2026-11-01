@@ -95,7 +95,7 @@ One slug in two places: `docs/sprints/<feature>/` and the `feature:` line of eve
 | `@kit/prefs`, `@kit/hooks`, `@kit/format`, `@kit/motion` | Theme and motion preferences; `useHashRoute`, `useStoredState`; `fmtDate`, `plural`; `ease.*` and `spring.*`. |
 | `@kit/tokens.css` | The design's tokens, light and `.dark-mode`. Loaded globally. |
 
-URL switches on any prototype: `?v=2`, `?theme=dark|light|system`, `?motion=reduce`, `?lapse`, `?a11y=0`.
+URL switches on any prototype: `?v=2`, `?theme=dark|light|system`, `?motion=reduce`, `?a11y=0`.
 
 ## Code
 

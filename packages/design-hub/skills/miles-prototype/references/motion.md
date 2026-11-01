@@ -55,5 +55,5 @@ In JS, `useReducedMotion()` from `@kit/prefs`. Keep fades and color changes, dro
 ## Tuning and review
 
 - Every number you are unsure of goes on a dial (`DialVars` for CSS, `useDials` for JS). The decision is the number the user settles on; copy it from DialKit into the README.
-- Watch at 0.25x: the Space speed dial, or `?lapse` for frame-by-frame takes, scrubbing and a jank report.
+- Watch at 0.25x with the Space speed dial.
 - Test the interruption: open, then close mid-open. It should reverse from where it is.

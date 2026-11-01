@@ -2,7 +2,7 @@ import axe from 'axe-core';
 
 // Dev only: axe runs once the page has been quiet for a moment and logs
 // new violations as [a11y] warnings. ?a11y=0 turns it off.
-const HARNESS = [['.proto-picker'], ['.dialkit-root'], ['[data-harness]'], ['[data-lapse-panel]']];
+const HARNESS = [['.proto-picker'], ['.dialkit-root'], ['[data-harness]']];
 
 export function watchA11y() {
   let timer = 0;

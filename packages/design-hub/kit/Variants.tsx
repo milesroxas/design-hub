@@ -11,7 +11,7 @@ type Props = {
 
 const POPUPS = '[role="menu"], [role="listbox"], [role="dialog"]';
 const OWNS_KEYS = `input, textarea, select, [contenteditable=""], [contenteditable="true"], ${POPUPS}`;
-const HARNESS = '.dialkit-root, [data-harness], [data-lapse-panel]';
+const HARNESS = '.dialkit-root, [data-harness]';
 
 const popupOpen = () =>
   [...document.querySelectorAll(POPUPS)].some((el) => !el.closest(HARNESS) && el.getClientRects().length > 0);
