@@ -21,8 +21,21 @@ pnpm dev              # http://localhost:<PORT>
 With Claude Code, install the one global skill and ask it to start a project. It asks every question up front, then runs the same two commands:
 
 ```sh
-npx skills add milesroxas/design-hub -g -y
+npx skills add milesroxas/design-hub --skill miles-design-hub -g -y
 ```
+
+Or paste this into Claude Code and let it do both:
+
+```text
+Install the Design Hub skill globally:
+
+npx skills add milesroxas/design-hub --skill miles-design-hub -g -y
+
+Then use the miles-design-hub skill to start a new Design Hub project for <project name>.
+Ask me every setup question in one message before you create anything.
+```
+
+Once the skill is installed, a new session needs only the last two lines.
 
 Without a terminal: download this repo as a ZIP and double-click `Design Hub.command`. A page asks for a name and a place, creates the project, installs it and opens the hub. The project gets its own `Design Hub.command` to open it again later.
 
