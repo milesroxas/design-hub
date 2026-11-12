@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import react from '@vitejs/plugin-react';
-import type { InlineConfig, Plugin, PluginOption } from 'vite';
+import { type InlineConfig, type Plugin, type PluginOption, searchForWorkspaceRoot } from 'vite';
 import { devReview } from '../server/dev.ts';
 import { devPort, readEnv } from '../server/env.ts';
 import { PACKAGE, PACKAGE_KIT, SHELL } from '../server/paths.ts';
@@ -92,7 +92,9 @@ export function hubConfig({ root }: HubOptions, command: 'serve' | 'build'): Inl
     plugins: designHub({ root }),
     resolve: { dedupe: ['react', 'react-dom'] },
     optimizeDeps: { entries: [join(SHELL, 'index.html'), join(root, 'prototypes', '*', 'index.tsx')] },
-    server: { port, strictPort: true, fs: { allow: [root, PACKAGE] } },
+    // A linked package (a checkout of this repo) keeps its dependencies in
+    // the checkout's node_modules, outside both; its workspace root covers them.
+    server: { port, strictPort: true, fs: { allow: [root, PACKAGE, searchForWorkspaceRoot(PACKAGE)] } },
     preview: port === undefined ? undefined : { port, strictPort: true },
     build: { outDir: join(root, 'dist'), emptyOutDir: true },
   };
