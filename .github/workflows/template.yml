@@ -1,7 +1,8 @@
 # Regenerates the public template repo from create-design-hub on every push to
 # main, so "Use this template" on GitHub gives the same thin project `npm
-# create @milesroxas/design-hub` does. The push needs a TEMPLATE_REPO_TOKEN
-# secret with write access to milesroxas/design-hub-template; without it the
+# create @milesroxas/design-hub` does. The push needs a TEMPLATE_DEPLOY_KEY
+# secret: the private half of a write deploy key on
+# milesroxas/design-hub-template, so it can touch no other repo. Without it the
 # run still generates the project (so the scaffolder is exercised) and skips
 # the push.
 name: template
@@ -12,11 +13,13 @@ on:
       - 'packages/create-design-hub/**'
       - 'packages/design-hub/package.json'
       - 'packages/design-hub/skills/**'
+      - '.github/workflows/template.yml'
+  workflow_dispatch:
 jobs:
   publish-template:
     runs-on: ubuntu-latest
     env:
-      HAS_TOKEN: ${{ secrets.TEMPLATE_REPO_TOKEN != '' }}
+      HAS_KEY: ${{ secrets.TEMPLATE_DEPLOY_KEY != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -40,18 +43,22 @@ jobs:
           rm -rf node_modules pnpm-lock.yaml .git
         env:
           HUB: ${{ github.workspace }}/packages/design-hub
-      - name: Skip the push without a token
-        if: env.HAS_TOKEN != 'true'
-        run: echo "::notice::TEMPLATE_REPO_TOKEN is not set; generated the project but did not push it."
+      - name: Skip the push without a key
+        if: env.HAS_KEY != 'true'
+        run: echo "::notice::TEMPLATE_DEPLOY_KEY is not set; generated the project but did not push it."
       - name: Push to the template repo
-        if: env.HAS_TOKEN == 'true'
+        if: env.HAS_KEY == 'true'
         env:
-          TOKEN: ${{ secrets.TEMPLATE_REPO_TOKEN }}
+          DEPLOY_KEY: ${{ secrets.TEMPLATE_DEPLOY_KEY }}
         run: |
+          key="$RUNNER_TEMP/deploy_key"
+          printf '%s\n' "$DEPLOY_KEY" > "$key"
+          chmod 600 "$key"
+          export GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
           cd "$RUNNER_TEMP/design-hub-template"
           git init -b main
           git config user.name "design-hub[bot]"
           git config user.email "design-hub@users.noreply.github.com"
           git add -A
           git commit -q -m "Template from design-hub ${{ github.sha }}"
-          git push --force "https://x-access-token:${TOKEN}@github.com/milesroxas/design-hub-template.git" main
+          git push --force git@github.com:milesroxas/design-hub-template.git main
