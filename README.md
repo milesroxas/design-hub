@@ -14,11 +14,10 @@ New here and not a developer? Read the [guide](docs/guide/README.md): setup, wor
 ```sh
 npm create @milesroxas/design-hub@latest -- --path ~/Design/acme-site
 cd ~/Design/acme-site
-pnpm bootstrap        # a free port into .env
-pnpm dev              # http://localhost:<PORT>
+pnpm dev              # http://localhost:<PORT>; the first start claims a free port for this folder
 ```
 
-With Claude Code, install the one global skill and ask it to start a project. It asks every question up front, then runs the same two commands:
+With Claude Code, install the one global skill and ask it to start a project. It asks every question up front, then runs the scaffolder and `pnpm bootstrap` with your answers:
 
 ```sh
 npx skills add milesroxas/design-hub --skill miles-design-hub -g -y
@@ -38,6 +37,8 @@ Ask me every setup question in one message before you create anything.
 Once the skill is installed, a new session needs only the last two lines.
 
 Without a terminal: download this repo as a ZIP and double-click `Design Hub.command`. A page asks for a name and a place, creates the project, installs it and opens the hub. The project gets its own `Design Hub.command` to open it again later.
+
+Worktrees and parallel agents need no setup, whatever runs them: a plain `git worktree`, T3 Code, Conductor, Claude Code or Cursor. Each folder claims its own port on its first `pnpm dev`. A harness that assigns ports sets `DESIGN_HUB_PORT`, and Conductor's `CONDUCTOR_PORT` also works. The `miles-worktrees` skill has the details.
 
 ## What a project holds
 
