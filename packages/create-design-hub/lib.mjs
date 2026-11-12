@@ -39,7 +39,7 @@ export const RENAMES = { _gitignore: '.gitignore', _gitattributes: '.gitattribut
 export const SKIP = new Set(['node_modules', 'dist', '.env', 'pnpm-lock.yaml']);
 export const SKIP_DIRS = {
   '.design-hub': new Set(['checks.json']),
-  '.claude': new Set(['settings.json', 'launch.json']),
+  '.claude': new Set(['settings.json']),
 };
 
 /** The problems with a create request, by flag; empty when it is valid. */

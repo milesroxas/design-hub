@@ -44,15 +44,37 @@ export function writeEnv(dir: string, updates: Record<string, string>): void {
   writeFileSync(file, text, { mode: 0o600 });
 }
 
+/** The variables a harness (Conductor, T3 Code, a script) may hand a worktree its port in, first wins. */
+const HARNESS_PORT_VARS = ['DESIGN_HUB_PORT', 'CONDUCTOR_PORT'] as const;
+
+function asPort(value: string | undefined): number | undefined {
+  const port = Number(value);
+  return Number.isInteger(port) && port > 0 ? port : undefined;
+}
+
 /**
- * The dev server's port. Inside a Conductor workspace, Conductor's own port
- * wins, because its Open button always points there; everywhere else it is
- * the PORT that `pnpm bootstrap` wrote to .env.
+ * The port a harness gave this process, and the variable it came in. A
+ * harness owns these ports: they never enter the machine registry. A bare
+ * `PORT` is not one: shells and other tools export it for their own servers.
+ */
+export function harnessPort(
+  processEnv: Record<string, string | undefined> = process.env,
+): { port: number; from: (typeof HARNESS_PORT_VARS)[number] } | null {
+  for (const from of HARNESS_PORT_VARS) {
+    const port = asPort(processEnv[from]);
+    if (port !== undefined) return { port, from };
+  }
+  return null;
+}
+
+/**
+ * The dev server's port: the harness's when one gave it, because its Open
+ * button points there; else the PORT in .env, which `design-hub dev` and
+ * `design-hub bootstrap` claim for this folder.
  */
 export function devPort(
   fileEnv: Record<string, string>,
   processEnv: Record<string, string | undefined> = process.env,
 ): number | undefined {
-  const port = Number(processEnv.CONDUCTOR_PORT || fileEnv.PORT);
-  return Number.isInteger(port) && port > 0 ? port : undefined;
+  return harnessPort(processEnv)?.port ?? asPort(fileEnv.PORT);
 }

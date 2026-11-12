@@ -20,7 +20,7 @@ pnpm check          # tsc and Biome over every package
 pnpm test           # node:test suites of both packages
 pnpm quality        # fallow over real test coverage, zero findings
 pnpm build          # packages/design-hub/dist from the TypeScript sources
-pnpm template -- --path /abs/new-project --visibility none --link "$PWD/packages/design-hub"   # a project on this checkout
+pnpm template --path /abs/new-project --visibility none --link "$PWD/packages/design-hub"   # a project on this checkout
 ```
 
 `pnpm check`, `pnpm test` and `pnpm quality` pass before a change is done. Scope each commit to one package.

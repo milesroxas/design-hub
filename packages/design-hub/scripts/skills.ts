@@ -18,6 +18,8 @@ export const spec = {
 } as const satisfies CommandSpec;
 
 const GLOBAL_ONLY = new Set(['miles-design-hub']);
+/** Skills the package no longer ships, removed from a project on update. miles-conductor became miles-worktrees in 0.2.0. */
+const RETIRED = ['miles-conductor'];
 
 export function installSkills(from = PACKAGE_SKILLS, into = SKILLS): string[] {
   const names = readdirSync(from, { withFileTypes: true })
@@ -25,6 +27,7 @@ export function installSkills(from = PACKAGE_SKILLS, into = SKILLS): string[] {
     .map((d) => d.name)
     .sort();
   mkdirSync(into, { recursive: true });
+  for (const name of RETIRED) rmSync(join(into, name), { recursive: true, force: true });
   for (const name of names) {
     const dest = join(into, name);
     if (existsSync(dest)) rmSync(dest, { recursive: true, force: true });

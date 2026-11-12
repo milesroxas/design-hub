@@ -3,8 +3,8 @@
 Prototypes for one product or website, built on [Design Hub](https://github.com/milesroxas/design-hub). One repo holds the prototypes, the design rules, the walkthroughs reviewers read, and their comments.
 
 ```bash
-pnpm bootstrap     # once per clone: a free port into .env, install
-pnpm dev           # http://localhost:<PORT>
+pnpm install
+pnpm dev           # http://localhost:<PORT>; the first start claims a free port for this folder
 ```
 
 Or double-click `Design Hub.command`.

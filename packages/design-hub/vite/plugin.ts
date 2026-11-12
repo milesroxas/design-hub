@@ -72,8 +72,8 @@ export function designHub({ root }: HubOptions): PluginOption[] {
 
 /**
  * The whole config `design-hub dev` and `design-hub build` run on. One port per
- * project: Conductor's per-workspace port when it runs us, else the PORT
- * `design-hub bootstrap` wrote to .env. strictPort refuses a taken port rather
+ * folder: the harness's ($DESIGN_HUB_PORT, $CONDUCTOR_PORT) when one runs us,
+ * else the PORT `design-hub dev` or `bootstrap` claimed in .env. strictPort refuses a taken port rather
  * than drifting to the next one, because a fallback silently serves the wrong
  * project. A build needs no port, so Vercel builds without a .env.
  */
@@ -81,7 +81,7 @@ export function hubConfig({ root }: HubOptions, command: 'serve' | 'build'): Inl
   const port = devPort(readEnv(root));
   if (command === 'serve' && port === undefined)
     throw new Error(
-      'PORT is not set. Run `design-hub bootstrap` once to pick a free port and write it to .env.',
+      'PORT is not set. `design-hub dev` claims one; a config of your own runs `design-hub bootstrap` first.',
     );
   return {
     configFile: false,

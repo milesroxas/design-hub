@@ -34,3 +34,6 @@ packages/create-design-hub/template/.impeccable/hook.cache.json
 
 # fallow coverage
 .coverage/
+
+# Per-folder preview config, written by design-hub dev and bootstrap
+**/.claude/launch.json
