@@ -1,6 +1,6 @@
 {
   "name": "@milesroxas/create-design-hub",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "Create a Design Hub project: the thin folder of prototypes, kit materials and docs that installs the @milesroxas/design-hub package. Runs as `npm create @milesroxas/design-hub`.",
   "license": "MIT",
   "repository": {

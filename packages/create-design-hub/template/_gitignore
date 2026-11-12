@@ -31,8 +31,9 @@ docs/.obsidian/workspace*.json
 .impeccable/live/
 .impeccable/hook.cache.json
 
-# Claude Code worktrees
+# Claude Code worktrees, and the preview config: it holds this folder's port, like .env
 .claude/worktrees/
+.claude/launch.json
 
 # Conductor per-developer settings
 .conductor/settings.local.toml

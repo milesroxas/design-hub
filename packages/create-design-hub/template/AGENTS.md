@@ -49,7 +49,7 @@ pnpm fixtures-pull <slug> --collection <id> --map key=field   # real fixtures fr
 pnpm commands                             # every command, with its flags, as JSON
 ```
 
-The port is Conductor's `$CONDUCTOR_PORT` in a workspace, else the `PORT` in `.env` that `pnpm bootstrap` picked. A taken port is refused. Never pass another port: a second port silently serves the wrong project.
+Each checkout (the main clone, a git worktree, a harness workspace) runs on its own port. A new one needs only `pnpm install && pnpm dev`: the first start claims a free port for the folder and writes it to `.env`. A harness that assigns ports sets `$DESIGN_HUB_PORT` (Conductor's `$CONDUCTOR_PORT` also works), and that wins. A taken port is refused. Never pass another port: a second port silently serves the wrong project.
 
 ## Layout
 
@@ -128,6 +128,6 @@ The `miles-*` skills in `.claude/skills/` come from the `@milesroxas/design-hub`
 | `miles-deploy` | Deploying, sharing a link, the password, checking the work before either. |
 | `miles-review` | Comments from the deployed prototypes, and who may comment. |
 | `miles-port` | Turning an approved prototype into production. |
-| `miles-conductor` | Conductor workspaces and port collisions. |
+| `miles-worktrees` | Worktrees, parallel agents, Conductor or any harness, and port collisions. |
 
 Existing skills these lean on: `emil-prototype`, `emil-animations`, `emil-touch-and-accessibility`, `emil-performance`, `emil-writing-skills` for every Markdown file, `impeccable` for a design pass. If a skill disagrees with this file, this file wins.

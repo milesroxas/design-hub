@@ -73,7 +73,8 @@ const errors = validate(values);
 if (Object.keys(errors).length) fail(Object.values(errors).join(' '), { errors });
 const { path, visibility = 'none', link } = values;
 const name = basename(path);
-const next = `pnpm --dir "${path}" bootstrap`;
+// dev claims the folder's port on its first start; bootstrap is only for its flags (TypeSafe, Vercel, Conductor).
+const next = `pnpm --dir "${path}" ${values['no-install'] ? 'install' : 'dev'}`;
 
 // A second run finds the project already there and changes nothing.
 if (existsSync(join(path, 'package.json')) && existsSync(join(path, '.git'))) {
