@@ -8,11 +8,13 @@ import { createServer, build as viteBuild, preview as vitePreview } from 'vite';
 import { devPort, readEnv } from '../server/env.ts';
 import { ROOT } from '../server/paths.ts';
 import { hubConfig } from '../vite/plugin.ts';
+import { ensurePort } from './bootstrap.ts';
 import type { Args, CommandSpec } from './lib/cli.ts';
 
 export const spec = {
   name: 'dev',
-  summary: 'Serve the hub, every prototype and the review panel on the port in .env.',
+  summary:
+    "Serve the hub, every prototype and the review panel: on $DESIGN_HUB_PORT or $CONDUCTOR_PORT when a harness sets one, else this folder's port in .env, claimed on first run.",
   flags: { open: { type: 'boolean', description: 'Open the browser once the server is up.' } },
   output: "Vite's own log; the command runs until stopped.",
 } as const satisfies CommandSpec;
@@ -26,7 +28,7 @@ export const buildSpec = {
 
 export const previewSpec = {
   name: 'preview',
-  summary: 'Serve dist/ as built, on the port in .env.',
+  summary: 'Serve dist/ as built, on the same port as `design-hub dev`.',
   flags: {},
   output: "Vite's own log; the command runs until stopped.",
 } as const satisfies CommandSpec;
@@ -50,7 +52,15 @@ function openBrowser(url: string): void {
     .unref();
 }
 
+/** A port before Vite starts; a new claim is said on stderr, beside Vite's own log. */
+function settlePort(): void {
+  const { port, claimed, warnings } = ensurePort();
+  for (const warning of warnings) console.error(`design-hub: ${warning}`);
+  if (claimed) console.error(`design-hub: claimed port ${port} for this folder and wrote it to .env.`);
+}
+
 async function serve(open: boolean): Promise<void> {
+  settlePort();
   const server = await createServer(hubConfig({ root: ROOT }, 'serve'));
   await server.listen();
   server.printUrls();
@@ -77,6 +87,7 @@ export async function build(): Promise<{ ok: boolean; outDir: string; error?: st
 }
 
 export async function previewBuilt() {
+  settlePort();
   const server = await vitePreview(hubConfig({ root: ROOT }, 'build'));
   server.printUrls();
   await new Promise(() => {});

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, readdirSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -14,4 +14,16 @@ test('every project-facing skill is copied, with its references; the global one 
   assert.deepEqual(readdirSync(into).sort(), names);
   assert.ok(existsSync(join(into, 'miles-prototype', 'references', 'motion.md')));
   assert.deepEqual(installSkills(PACKAGE_SKILLS, into), names);
+});
+
+test('a retired skill is removed from the project; a skill of its own is kept', () => {
+  const into = mkdtempSync(join(tmpdir(), 'skills-'));
+  for (const name of ['miles-conductor', 'team-notes']) {
+    mkdirSync(join(into, name));
+    writeFileSync(join(into, name, 'SKILL.md'), '---\nname: x\n---\n');
+  }
+  const names = installSkills(PACKAGE_SKILLS, into);
+  assert.ok(names.includes('miles-worktrees'));
+  assert.ok(!existsSync(join(into, 'miles-conductor')));
+  assert.ok(existsSync(join(into, 'team-notes', 'SKILL.md')));
 });

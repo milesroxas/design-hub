@@ -8,7 +8,7 @@ import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { readEnv, writeEnv } from '../server/env.ts';
+import { harnessPort, readEnv, writeEnv } from '../server/env.ts';
 import { ROOT, TEMPLATES } from '../server/paths.ts';
 import { type Args, CliError, type CommandSpec } from './lib/cli.ts';
 import { holderOf, pickPort, readClaims, writeClaim } from './lib/ports.ts';
@@ -78,17 +78,16 @@ function checkNode(): string {
 }
 
 function choosePort(wanted: number | undefined, current: number | undefined, warnings: string[]): number {
-  const conductor = process.env.CONDUCTOR_PORT;
-  if (conductor) {
-    // Conductor owns its workspace ports; they never go in the machine registry.
-    const port = Number(conductor);
-    const held = holderOf(port);
+  const harness = harnessPort();
+  if (harness) {
+    // The harness owns its worktree ports; they never go in the machine registry.
+    const held = holderOf(harness.port);
     if (held && held.cwd !== ROOT)
-      throw new CliError(`Conductor's port ${port} is taken.`, {
+      throw new CliError(`Port ${harness.port} from $${harness.from} is taken.`, {
         holder: held,
         fix: 'Stop that server; never use another port.',
       });
-    return port;
+    return harness.port;
   }
   const choice = pickPort({ dir: ROOT, wanted, current, claims: readClaims(), holder: holderOf });
   if (!choice.ok) throw new CliError(choice.error, choice.detail);
@@ -97,13 +96,71 @@ function choosePort(wanted: number | undefined, current: number | undefined, war
   return choice.port;
 }
 
-/** Keeps .claude/launch.json on the same port, when the project has one. */
+/** Settles the port and records it where the dev server and the preview tools read it. */
+function settlePort(wanted: number | undefined, current: number | undefined, warnings: string[]): number {
+  const port = choosePort(wanted, current, warnings);
+  // A harness port belongs to that run; .env keeps the folder's own claim.
+  if (!harnessPort()) writeEnv(ROOT, { PORT: String(port) });
+  writeLaunch(port);
+  return port;
+}
+
+function envPort(env: Record<string, string>): number | undefined {
+  return env.PORT ? Number(env.PORT) : undefined;
+}
+
+/**
+ * What `design-hub dev`, `open` and `preview` run first, so a fresh clone or
+ * worktree starts in any harness without a bootstrap: the harness's port when
+ * it gave one, else this folder's claim, else a free port claimed now. A .env
+ * copied from another checkout carries that checkout's claim, so this folder
+ * gets its own. `claimed` is true when the port is new.
+ */
+export function ensurePort(): { port: number; claimed: boolean; warnings: string[] } {
+  const warnings: string[] = [];
+  const harness = harnessPort();
+  if (harness) return { port: harness.port, claimed: false, warnings };
+  const current = envPort(readEnv(ROOT));
+  if (current !== undefined && readClaims()[ROOT] === current)
+    return { port: current, claimed: false, warnings };
+  const port = settlePort(undefined, current, warnings);
+  return { port, claimed: port !== current, warnings };
+}
+
+type Launch = {
+  version: string;
+  configurations: {
+    name: string;
+    runtimeExecutable?: string;
+    runtimeArgs?: string[];
+    port?: number;
+    url?: string;
+  }[];
+};
+
+/** Claude Code's preview servers for this folder: start the hub, or attach to one already running. */
+function defaultLaunch(port: number): Launch {
+  return {
+    version: '0.0.1',
+    configurations: [
+      { name: 'prototypes', runtimeExecutable: 'pnpm', runtimeArgs: ['dev'], port },
+      { name: 'prototypes-attach', url: `http://localhost:${port}`, port },
+    ],
+  };
+}
+
+/**
+ * Keeps .claude/launch.json on this folder's port, writing it when missing.
+ * It is per folder like .env, and gitignored, so worktrees never conflict on it.
+ */
 function writeLaunch(port: number): void {
   const file = join(ROOT, '.claude', 'launch.json');
-  if (!existsSync(file)) return;
-  const launch = JSON.parse(readFileSync(file, 'utf8')) as {
-    configurations: { port?: number; url?: string }[];
-  };
+  if (!existsSync(file)) {
+    mkdirSync(join(ROOT, '.claude'), { recursive: true });
+    writeFileSync(file, `${JSON.stringify(defaultLaunch(port), null, 2)}\n`);
+    return;
+  }
+  const launch = JSON.parse(readFileSync(file, 'utf8')) as Launch;
   for (const c of launch.configurations) {
     if ('port' in c) c.port = port;
     if (c.url) c.url = c.url.replace(/localhost:\d+/, `localhost:${port}`);
@@ -309,6 +366,14 @@ function envIgnored(warnings: string[]): void {
   } catch {
     warnings.push('.env is not gitignored; it holds secrets. Add `.env` to .gitignore before committing.');
   }
+  // Projects made before 0.2.0 committed it; each worktree then rewrites a tracked file.
+  const tracked = spawnSync('git', ['-C', ROOT, 'ls-files', '--error-unmatch', '.claude/launch.json'], {
+    stdio: 'ignore',
+  });
+  if (tracked.status === 0)
+    warnings.push(
+      '.claude/launch.json is committed but holds this folder’s port. Run `git rm --cached .claude/launch.json` and add it to .gitignore.',
+    );
 }
 
 export function main({ flags }: Args<typeof spec>) {
@@ -316,9 +381,7 @@ export function main({ flags }: Args<typeof spec>) {
   const warnings: string[] = [];
   const node = checkNode();
   const env = readEnv(ROOT);
-  const port = choosePort(flags.port, env.PORT ? Number(env.PORT) : undefined, warnings);
-  writeEnv(ROOT, { PORT: String(port) });
-  writeLaunch(port);
+  const port = settlePort(flags.port, envPort(env), warnings);
   const installed = install(flags['no-install']);
   const typesafeKey = typesafe(flags['typesafe-key'], env.TYPESAFE_API_KEY);
   const result: Record<string, unknown> = {
