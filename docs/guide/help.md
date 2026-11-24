@@ -11,7 +11,7 @@
 | "Review is not set up on this site" | Comments are not on yet. Tell Claude: "Turn on comments." |
 | The password is rejected | It was changed. Ask Claude: "What is the share password?" |
 | "This invite link has expired or was revoked" | Ask an editor for a new link, or tell Claude: "Reissue Dana's link." |
-| Claude asks you to run `vercel login` | Open Terminal, paste `vercel login`, finish in the browser, then tell Claude to continue. |
+| Claude sends a Vercel sign-in link | Open it and choose **Allow**. If the link has expired, tell Claude: "Send a new sign-in link." |
 | Claude asks you to accept the Marketplace terms | Open the link Claude gives, accept, then tell Claude to run it again. |
 
 ## Where is my work?

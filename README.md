@@ -75,7 +75,7 @@ A version bump brings all of this to a project without touching its files. Inspe
 
 ## Deploy and review
 
-`pnpm bootstrap --vercel <project>` links a project and sets its password gate; pushing `main` deploys it. Add `--review` to turn on comments. Opening a comment reopens the exact URL and dial values the reviewer saw. Details: [packages/design-hub/README.md](packages/design-hub/README.md).
+Nothing to type. `design-hub signin` turns the Vercel sign-in into a link to click; `pnpm bootstrap --vercel <project> [--review]` links the project, connects its repo, sets the password gate and, with `--review`, the comment store; `pnpm share` runs the pre-flight, deploys, waits for the build and checks the live link shows the password page. Opening a comment reopens the exact URL and dial values the reviewer saw. Details: [packages/design-hub/README.md](packages/design-hub/README.md).
 
 ## TypeSafe checks (optional)
 
