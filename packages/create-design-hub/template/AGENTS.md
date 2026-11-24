@@ -47,7 +47,7 @@ pnpm check                                # TypeScript and Biome; must pass befo
 pnpm fix                                  # Biome format and safe fixes
 pnpm preflight                            # every check a share link needs (miles-deploy)
 pnpm comments pull                        # review comments into docs/sprints/<feature>/comments.md (miles-review)
-pnpm fixtures-pull <slug> --collection <id> --map key=field   # real fixtures from Webflow (miles-get-hostile)
+pnpm fixtures-pull <slug> --collection <id> --map key=path   # real fixtures from the CMS: Webflow, Payload, WordPress, or --from a JSON file (miles-get-hostile)
 pnpm commands                             # every command, with its flags, as JSON
 ```
 
