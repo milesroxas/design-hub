@@ -11,16 +11,19 @@ import { join } from 'node:path';
 import { harnessPort, readEnv, writeEnv } from '../server/env.ts';
 import { ROOT, TEMPLATES } from '../server/paths.ts';
 import { type Args, CliError, type CommandSpec } from './lib/cli.ts';
+import { gitConnected } from './lib/deploy.ts';
 import { holderOf, pickPort, readClaims, writeClaim } from './lib/ports.ts';
 import {
   ENVIRONMENTS,
   envNames,
   linkedOrg,
   linkedProject,
+  projectInfo,
   STORE_ENV,
   setEnv,
   type Target,
   vercel,
+  whoami,
 } from './lib/vercel.ts';
 
 export const spec = {
@@ -50,7 +53,8 @@ export const spec = {
       description: 'Provision the review store (Upstash Redis) on the Vercel project.',
     },
   },
-  output: '{ ok, node, port, install, typesafe, conductor?, vercel?, share?, review?, warnings }',
+  output:
+    '{ ok, node, port, install, typesafe, conductor?, vercel: { project, linked, git, protection, env }?, share?, review?, warnings }',
 } as const satisfies CommandSpec;
 
 const MIN_NODE = [22, 18] as const;
@@ -193,7 +197,7 @@ function cli(args: string[], input?: string): string {
     throw new CliError(`vercel ${args.slice(0, 2).join(' ')} failed.`, {
       stderr: out.stderr.trim().slice(-600),
       fix: /log ?in|credentials|token/i.test(out.stderr)
-        ? 'Ask the user to run `vercel login` in their terminal.'
+        ? 'design-hub signin, send the user its url, then run this again.'
         : undefined,
     });
   return out.stdout;
@@ -209,6 +213,35 @@ function link(project: string, team: string | undefined, warnings: string[]): 'r
   return 'ran';
 }
 
+/** The `origin` remote, or null when the project has none. */
+function origin(): string | null {
+  const out = spawnSync('git', ['-C', ROOT, 'remote', 'get-url', 'origin'], { encoding: 'utf8' });
+  return out.status === 0 ? out.stdout.trim() || null : null;
+}
+
+/**
+ * Connects the Vercel project to the repo, so pushing the production branch
+ * deploys it. Without a remote, or when Vercel cannot reach the repo, it stays
+ * unconnected and `design-hub share` uploads the folder instead.
+ */
+function connectGit(
+  project: string,
+  team: string | undefined,
+  warnings: string[],
+): 'connected' | 'kept' | 'none' {
+  const remote = origin();
+  if (!remote) return 'none';
+  if (gitConnected(projectInfo(ROOT, project, team ?? linkedOrg(ROOT)))) return 'kept';
+  const out = vercel(ROOT, ['git', 'connect', remote, '--yes']);
+  if (out?.status === 0) return 'connected';
+  warnings.push(
+    `Could not connect ${remote} to the Vercel project, so design-hub share will upload the folder instead of deploying on push. ` +
+      'To deploy on push, the user gives Vercel access to the repo at https://github.com/apps/vercel/installations/new, then run this again. ' +
+      (out?.stderr.trim().split('\n').pop() ?? ''),
+  );
+  return 'none';
+}
+
 /** Sets each value where it is missing; `rotate` names the ones given again, which replace what is there. */
 function ensureEnv(
   values: Record<string, string>,
@@ -218,7 +251,9 @@ function ensureEnv(
   for (const target of ENVIRONMENTS) {
     const names = envNames(ROOT, target);
     if (!names)
-      throw new CliError(`vercel env ls ${target} failed.`, { fix: 'vercel login, then run this again.' });
+      throw new CliError(`vercel env ls ${target} failed.`, {
+        fix: 'design-hub signin, then run this again.',
+      });
     for (const [name, value] of Object.entries(values)) {
       const key = `${name}:${target}`;
       const exists = names.has(name);
@@ -293,7 +328,7 @@ function provisionReview(project: string, team: string | undefined, warnings: st
     if (out?.status !== 0)
       throw new CliError('Could not add the Upstash for Redis store.', {
         stderr: out?.stderr.trim().slice(-600),
-        fix: `Ask the user to run \`vercel integration add ${UPSTASH}\` once in their terminal (it accepts the Marketplace terms), then run this again.`,
+        fix: `The Marketplace terms need accepting once per team: send the user https://vercel.com/marketplace/upstash to choose Install and accept for this team, then run this again.`,
       });
     store = 'created';
   }
@@ -337,6 +372,10 @@ function setUpVercel(
   typesafeKey: string,
   warnings: string[],
 ) {
+  if (!whoami(ROOT))
+    throw new CliError('The Vercel CLI is not installed or not signed in.', {
+      fix: 'design-hub signin, send the user its url, then run this again.',
+    });
   const linked = link(project, flags.team, warnings);
   const { password, secret, rotated } = gateValues(flags['gate-password'], env);
   writeEnv(ROOT, { GATE_PASSWORD: password, GATE_SECRET: secret });
@@ -348,6 +387,7 @@ function setUpVercel(
     vercel: {
       project,
       linked,
+      git: connectGit(project, flags.team, warnings),
       protection: protection(project, flags.team),
       env: ensureEnv(values, new Set(rotated ? ['GATE_PASSWORD'] : [])),
     },
@@ -355,7 +395,7 @@ function setUpVercel(
   };
   if (!flags.review) return result;
   warnings.push(
-    'Redeploy so the new env reaches the site; then design-hub people invite --name "<you>" --role editor.',
+    'Run design-hub share so the new env reaches the site; then design-hub people invite --name "<you>" --role editor --site <url>.',
   );
   return { ...result, review: provisionReview(project, flags.team, warnings) };
 }

@@ -5,6 +5,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import type { ProjectInfo } from './deploy.ts';
 
 export const ENVIRONMENTS = ['production', 'preview'] as const;
 export type Target = (typeof ENVIRONMENTS)[number] | 'development';
@@ -59,4 +60,27 @@ export function gateEnvMissing(cwd: string): string[] | null {
     for (const name of GATE_ENV) if (!names.has(name)) missing.push(`${name}:${target}`);
   }
   return missing;
+}
+
+/** The signed-in account, or null when the CLI is missing or signed out. */
+export function whoami(cwd: string): string | null {
+  const out = vercel(cwd, ['whoami']);
+  if (out?.status !== 0) return null;
+  return out.stdout.trim().split('\n').pop()?.trim() || null;
+}
+
+/** `GET /v9/projects/<name>` through the CLI's own credentials, or null when it fails. */
+export function projectInfo(cwd: string, project: string, scope: string | null): ProjectInfo | null {
+  const out = vercel(cwd, [
+    'api',
+    `/v9/projects/${encodeURIComponent(project)}`,
+    '--raw',
+    ...(scope ? ['--scope', scope] : []),
+  ]);
+  if (out?.status !== 0) return null;
+  try {
+    return JSON.parse(out.stdout) as ProjectInfo;
+  } catch {
+    return null;
+  }
 }

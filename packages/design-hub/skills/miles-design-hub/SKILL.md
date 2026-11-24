@@ -48,7 +48,12 @@ The tracks decide everything a shell question used to: product draws `AppShell`,
 | TypeSafe | Turn on TypeSafe's Jev checks? | Off (Recommended) · On: I have an API key. Why opt-in: a template anyone can use cannot require a paid account. |
 | Conductor | Will the project run in Conductor workspaces? | No (Recommended) · Yes, landing on `main` · Yes, on another branch (they type it in "Other") |
 
-**Round 3: the front end, only for Payload or WordPress.** One question: Astro (Recommended) · Next.js. Webflow renders its own pages and EmDash is always Astro, so neither is asked.
+**Round 3: the share link, and the front end.** Ask Front end only for Payload or WordPress: Webflow renders its own pages and EmDash is always Astro.
+
+| Header | Question | Options |
+|---|---|---|
+| Share | Put the prototypes on a password-protected link now? | Yes, with comments (Recommended) · Yes, view only · Later. Why now: everything it needs is answered in one sitting, and the first link proves the deploy works before there is client work on it. |
+| Front end | Which front end will the site use? | Astro (Recommended) · Next.js |
 
 **Round 4: typed answers, one short chat message each, only for what was chosen.**
 
@@ -58,7 +63,7 @@ The tracks decide everything a shell question used to: product draws `AppShell`,
 
 Without a question tool (another agent, or a host that lacks one), ask everything in one message with defaults in brackets, and wait for every answer. Nothing in steps 3 to 6 runs until every round is answered.
 
-Comments and the share link come later, with `miles-deploy`, because they need a Vercel project.
+With Share answered Later, comments and the share link come later, with `miles-deploy`.
 
 ## 3. Create the project
 
@@ -77,6 +82,18 @@ pnpm --dir <path> bootstrap [--typesafe-key <key>] [--conductor --branch <branch
 
 It picks a port nothing holds and no other project claims, writes it to `.env` and `.claude/launch.json`, and applies the flags. Read the JSON's `warnings`. With the skills answered globally: `npx skills add milesroxas/design-hub -g -y`.
 
+## 4b. Put it on a link, when Share was a yes
+
+The user does nothing in a terminal here; each step that needs them is one link to click.
+
+1. `pnpm --dir <path> signin`. Signed out, it prints a `url`: send it to the user to approve, then `pnpm --dir <path> signin --wait 300`.
+2. `vercel teams ls`; with more than one team, ask which with the question tool (personal account first when it is listed).
+3. `pnpm --dir <path> bootstrap --vercel <name> --team <team-slug>`, plus `--review` for comments. It links the project, connects the GitHub repo, sets the password and turns Vercel's own login off. A first `--review` on a team can stop on the Marketplace terms: send the user the link in `fix`, then rerun.
+4. `pnpm --dir <path> share --cli`. `--cli` uploads the folder, since the setup may have left files uncommitted; later deploys push `main`. On `ok: false`, follow `stage` and `fix` (the pre-flight steps are in `miles-deploy`).
+5. With comments: `pnpm --dir <path> people invite --name "<user>" --role editor --site <share.url>`.
+
+Give the user `share.url`, `share.password` and the invite link in the closing message, and say the link shows the samples until the first feature replaces them.
+
 ## 5. Record what was answered
 
 Write the shell of each track under `DESIGN.md`, Shell: product is `AppShell`, website is `SiteShell`, brand has none; add the Paper frames that hold each, or "from the sample" without Paper. It is built once and every later session reads it instead of asking. The tracks themselves live in `.design-hub/project.json`; never copy them into prose that could drift from it. Fill `PRODUCT.md` from what the user said about the product; leave a section empty only when they said nothing about it, and say so.
@@ -94,4 +111,4 @@ Write the shell of each track under `DESIGN.md`, Shell: product is `AppShell`, w
 
   The next step is `miles-new-feature`.
 
-Close with the path, the port, the repo URL when there is one, the tracks and the website platform, whether TypeSafe is on, and the one command that starts the server. Nothing is committed unless the user asks.
+Close with the path, the port, the repo URL when there is one, the share link, password and invite when Share was a yes, the tracks and the website platform, whether TypeSafe is on, and the one command that starts the server. Nothing is committed unless the user asks.

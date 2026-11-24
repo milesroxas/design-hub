@@ -22,6 +22,8 @@ import * as create from './new.ts';
 import * as people from './people.ts';
 import * as preflight from './preflight.ts';
 import * as releaseCheck from './release-check.ts';
+import * as share from './share.ts';
+import * as signin from './signin.ts';
 import * as skillHint from './skill-hint.ts';
 import * as skills from './skills.ts';
 import * as tracks from './tracks.ts';
@@ -44,6 +46,8 @@ const COMMANDS: Record<string, Command> = {
   check,
   guard,
   preflight,
+  signin,
+  share,
   people,
   comments,
   calibrate,
