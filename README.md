@@ -31,7 +31,7 @@ Install the Design Hub skill globally:
 npx skills add milesroxas/design-hub --skill miles-design-hub -g -y
 
 Then use the miles-design-hub skill to start a new Design Hub project for <project name>.
-Ask me every setup question in one message before you create anything.
+Ask me every setup question before you create anything.
 ```
 
 Once the skill is installed, a new session needs only the last two lines.
