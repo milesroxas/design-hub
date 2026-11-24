@@ -11,6 +11,7 @@
     "preview": "design-hub preview",
     "bootstrap": "design-hub bootstrap",
     "new": "design-hub new",
+    "tracks": "design-hub tracks",
     "guide": "design-hub guide",
     "check": "design-hub check",
     "fix": "design-hub check --fix",

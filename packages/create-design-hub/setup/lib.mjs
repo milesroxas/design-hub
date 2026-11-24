@@ -2,6 +2,7 @@
 // create-design-hub and bootstrap, and the plain-language version of their errors.
 // No I/O here, so every rule is tested without a server or a disk.
 import { isAbsolute, join } from 'node:path';
+import { tracksProblem } from '../lib.mjs';
 import { slugify } from './slug.mjs';
 
 /** What to do when nothing more specific is known. */
@@ -61,7 +62,18 @@ export function validateCreate(body, { home }) {
   const target = projectPath(b, home);
   Object.assign(errors, target.errors);
   value.path = target.path;
+  Object.assign(value, trackValue(b, errors));
   return Object.keys(errors).length ? { ok: false, errors } : { ok: true, value };
+}
+
+/** The tracks and website platform from the page, recording the problem under `track`. */
+function trackValue(b, errors) {
+  const track = Array.isArray(b.track) ? b.track.map(String) : [];
+  const platform = String(b.platform ?? '').trim() || undefined;
+  const frontend = String(b.frontend ?? '').trim() || undefined;
+  const problem = track.length ? tracksProblem({ track, platform, frontend }) : 'Pick at least one.';
+  if (problem) errors.track = problem;
+  return { track, platform, frontend };
 }
 
 /** Flags for create-design-hub: the copy only; the install is its own step. `link` is a local design-hub checkout. */

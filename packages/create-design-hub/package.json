@@ -23,6 +23,7 @@
     "!template/node_modules",
     "!template/.design-hub/*",
     "template/.design-hub/checks.json",
+    "template/.design-hub/project.json",
     "!template/.claude/skills",
     "!template/dist",
     "!template/.env",

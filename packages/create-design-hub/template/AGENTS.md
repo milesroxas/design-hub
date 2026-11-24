@@ -2,14 +2,14 @@
 
 The contract for every coding agent in this project (Claude, Codex, Cursor, others). `CLAUDE.md` points here.
 
-This project holds prototypes, the materials they are drawn with, and the documents around them. The hub that lists and serves them, the review panel, the password gate and the `design-hub` command are the `@milesroxas/design-hub` package in `node_modules`: never edit it, never read it to do prototype work. Everything an agent touches is in this folder.
+This project holds prototypes, the materials they are drawn with, and the documents around them. Its tracks, in `.design-hub/project.json`, say what kind of engagement it is: **product** (app screens, handed to the client's engineers as a spec), **website** (pages on a CMS: Webflow, Payload, WordPress or EmDash), **brand** (collateral: social posts, slides, print), or any mix. Read it before starting work; `pnpm tracks` prints it. The hub that lists and serves them, the review panel, the password gate and the `design-hub` command are the `@milesroxas/design-hub` package in `node_modules`: never edit it, never read it to do prototype work. Everything an agent touches is in this folder.
 
 ## Why it works this way
 
 Code here is for sketching, not shipping. Following Karri Saarinen's [Design is more than code](https://linear.app/now/design-is-more-than-code), a prototype answers a question that was written down first, in words. Speed comes from removing production constraints, never from skipping the problem.
 
 1. **Problem first.** `README.md` states the problem and the one question before any code exists. Restate it when you present the prototype.
-2. **Two places to stand.** Pick one per prototype: the disposable shell (`AppShell` for a product, `SiteShell` for a website), the project's chrome from `kit/shell.ts` and `DESIGN.md`, Shell; or the low-gravity space (`Space`), one thing alone on a quiet canvas with the picker and live dials.
+2. **Two places to stand.** Pick one per prototype: the shell of its track (`AppShell` for product, `SiteShell` for website), the project's chrome from `kit/shell.ts` and `DESIGN.md`, Shell; or the low-gravity space (`Space`), one thing alone on a quiet canvas with the picker and live dials.
 3. **Low gravity.** A prototype imports only `@kit/*` and its own folder. Never another prototype. No tests, no stories, no abstractions for later. The fidelity ceiling is in the `miles-prototype` skill, and the fidelity guard hook says so when a write goes over it.
 4. **Fork, don't flex.** If a kit piece needs to behave differently, copy it into the prototype folder and change the copy. Never add a prop or a variant to `kit/` for one prototype.
 5. **Promote on second use.** When a second prototype copies the same thing, move it into `kit/` and point both at it.
@@ -37,9 +37,11 @@ Run from the project root. Every command prints one JSON object; `--help` prints
 
 ```bash
 pnpm dev                                  # http://localhost:<PORT>, review panel and all
+pnpm tracks                               # the project's tracks and website platform
 pnpm new <slug> --feature <feature>       # a space prototype with the picker and dials
-pnpm new <slug> --app --sprint --feature <feature>   # the feature's one primary prototype, in the shell
+pnpm new <slug> --app --sprint --feature <feature>   # the feature's one primary prototype, in its track's shell
 pnpm new <slug> --app --alternate --feature <feature>   # another take on the primary
+pnpm new <slug> --app --track website ... # with several tracks, name the one it belongs to
 pnpm guide <feature>                      # the feature's walkthrough, docs/sprints/<feature>/guide.md
 pnpm check                                # TypeScript and Biome; must pass before you report done
 pnpm fix                                  # Biome format and safe fixes
@@ -58,15 +60,16 @@ prototypes/<slug>/   one prototype: README.md, index.tsx, styles.css, fixtures.j
 kit/                 the project's materials: tokens.css, shell.ts (brand, nav), icons.ts, AppShell, SiteShell
 docs/sprints/<feature>/   design-doc.md, guide.md, comments.md (generated), port.md, assets/
 DESIGN.md  PRODUCT.md     the design system's named rules; who the product is for
+.design-hub/project.json  the tracks and website platform (pnpm tracks set rewrites it)
 .design-hub/checks.json   the Jev thresholds (design-hub calibrate --write rewrites it)
 api/review.ts  proxy.ts  vercel.json   the deploy entries; one line each, never edited
 ```
 
-`prototypes/sample-list/` is the reference for every convention; delete it once the project has a feature.
+Each track's sample is the reference for its conventions: `prototypes/sample-list/` for product, `prototypes/sample-page/` for website. Setup keeps only the samples of the project's tracks; delete one, with its `docs/sprints/` folder, once its track has a feature of its own.
 
 ## A prototype
 
-README frontmatter, all fields required (`feature` may be empty for a one-off): `title`, `summary`, `context` (space | app), `status` (exploring | decided | archived), `kind` (sprint | alternate | exploration), `feature`, `created`. `pnpm new` writes it.
+README frontmatter, all fields required (`feature` may be empty for a one-off): `title`, `summary`, `context` (space | app), `track` (product | website | brand), `status` (exploring | decided | archived), `kind` (sprint | alternate | exploration), `feature`, `created`. `pnpm new` writes it.
 
 The README's `## States` table lists every state the prototype holds and how to reach it. The fidelity guard asks whether a write adds a state that is not there, and `miles-port` refuses a folder without the table.
 

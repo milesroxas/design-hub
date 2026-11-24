@@ -13,7 +13,7 @@ Not a developer? The [guide](https://github.com/milesroxas/design-hub/tree/main/
 
 | Path | What goes there |
 | --- | --- |
-| `prototypes/<slug>/` | One prototype: its README, code, styles and fixtures. `sample-list/` is the reference; delete it once the project has a feature. |
+| `prototypes/<slug>/` | One prototype: its README, code, styles and fixtures. Each track keeps its sample as the reference (`sample-list/` for product, `sample-page/` for website); delete one once its track has a feature. |
 | `kit/` | The project's materials: `tokens.css`, `shell.ts` (brand and navigation), `icons.ts`, the disposable `AppShell` and `SiteShell`. |
 | `docs/sprints/<feature>/` | A feature's design doc, walkthrough, pulled comments and port report. |
 | `DESIGN.md`, `PRODUCT.md` | The recorded design system and who the product is for. |

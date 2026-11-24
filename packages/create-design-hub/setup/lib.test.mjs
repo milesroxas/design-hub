@@ -33,9 +33,20 @@ test('readPort reads the PORT line', () => {
 });
 
 test('validateCreate builds the path and rejects bad fields', () => {
-  const ok = validateCreate({ name: 'Acme', visibility: 'local' }, { home: HOME });
+  const ok = validateCreate({ name: 'Acme', visibility: 'local', track: ['product'] }, { home: HOME });
   assert.equal(ok.ok, true);
   assert.equal(ok.value.path, '/Users/sam/Design/acme');
+  assert.deepEqual(ok.value.track, ['product']);
+  const site = validateCreate(
+    { name: 'Acme', track: ['website'], platform: 'payload', frontend: 'next' },
+    { home: HOME },
+  );
+  assert.deepEqual([site.value.platform, site.value.frontend], ['payload', 'next']);
+  assert.match(validateCreate({ name: 'Acme' }, { home: HOME }).errors.track, /at least one/);
+  assert.match(
+    validateCreate({ name: 'Acme', track: ['website'], platform: 'wordpress' }, { home: HOME }).errors.track,
+    /needs --frontend/,
+  );
   const bad = validateCreate(
     {
       name: '!!',
@@ -46,7 +57,14 @@ test('validateCreate builds the path and rejects bad fields', () => {
     },
     { home: HOME },
   );
-  assert.deepEqual(Object.keys(bad.errors).sort(), ['name', 'owner', 'parent', 'typesafeKey', 'visibility']);
+  assert.deepEqual(Object.keys(bad.errors).sort(), [
+    'name',
+    'owner',
+    'parent',
+    'track',
+    'typesafeKey',
+    'visibility',
+  ]);
 });
 
 test('createArgs maps local to none, drops the owner there, never installs, and links a local hub', () => {

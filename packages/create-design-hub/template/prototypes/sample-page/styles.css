@@ -1,0 +1,27 @@
+/* The journal: a grid of cards that keeps its rows level whatever the
+   content. Cards arrive 6px up, one after another, on the dials in index.tsx
+   (--rise, --stagger, unitless ms). */
+.journal-head { display: flex; flex-direction: column; gap: 8px; margin-bottom: 40px; }
+.journal-head h1 { font-size: 40px; line-height: 48px; letter-spacing: -0.02em; }
+.journal-lede { font-size: 18px; line-height: 28px; color: var(--text-secondary); max-width: 56ch; }
+.posts { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px 24px; }
+.journal[data-columns="2"] .posts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.post { animation: post-rise calc(var(--rise, 260) * 1ms) var(--ease-out) calc(var(--i, 0) * var(--stagger, 40) * 1ms) backwards; }
+.post-link { display: flex; flex-direction: column; gap: 8px; height: 100%; padding: 8px; margin: -8px; border-radius: var(--radius-md); color: inherit; text-decoration: none; transition: background-color var(--dur-hover) var(--ease-hover); }
+@media (hover: hover) and (pointer: fine) { .post-link:hover { background: var(--bg-primary_hover); } }
+.post-link:active { background: var(--bg-active); }
+.post-image { aspect-ratio: 3 / 2; border-radius: var(--radius-sm); box-shadow: inset 0 0 0 1px rgb(16 24 40 / 0.08); margin-bottom: 8px; }
+.post-image.is-missing { background: var(--bg-secondary); box-shadow: none; outline: 1px dashed var(--border-primary); outline-offset: -1px; }
+.post-meta { display: flex; gap: 12px; font-size: 12px; line-height: 18px; color: var(--text-tertiary); }
+.post-category { font-weight: 600; color: var(--text-secondary); }
+.post-title { font-size: 18px; line-height: 26px; font-weight: 600; color: var(--text-primary); overflow-wrap: anywhere; text-wrap: pretty; }
+.post-untitled { color: var(--text-quaternary); font-style: italic; font-weight: 500; }
+.post-excerpt { color: var(--text-secondary); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
+.journal-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 48px 0; }
+.journal-empty p { color: var(--text-secondary); margin-bottom: 8px; }
+.journal-foot { margin-top: 40px; color: var(--text-tertiary); font-size: 14px; }
+@keyframes post-rise { from { opacity: 0; translate: 0 6px; } }
+:root[data-motion="reduce"] .post { animation-name: post-fade; }
+@keyframes post-fade { from { opacity: 0; } }
+@media (max-width: 900px) { .posts, .journal[data-columns="2"] .posts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .posts, .journal[data-columns="2"] .posts { grid-template-columns: minmax(0, 1fr); } }

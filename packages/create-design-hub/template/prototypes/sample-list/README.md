@@ -2,6 +2,7 @@
 title: Sample list
 summary: A list page with every fixture set on a dial, as the reference for the conventions.
 context: app
+track: product
 status: exploring
 kind: sprint
 feature: sample

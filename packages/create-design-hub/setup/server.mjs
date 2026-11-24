@@ -23,6 +23,7 @@ import { createServer } from 'node:http';
 import { homedir, platform } from 'node:os';
 import { basename, delimiter, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { tracksArgs } from '../lib.mjs';
 import {
   bootstrapArgs,
   createArgs,
@@ -182,8 +183,8 @@ async function prepare(body, send) {
   return path && { path, value: checked.value };
 }
 
-/** pnpm install, then the miles-* skills from the installed package. */
-function install(path) {
+/** pnpm install, then the miles-* skills from the installed package, then the tracks (which drop the other samples). */
+function install(path, value) {
   return new Promise((resolve) => {
     const child = spawn('pnpm', ['install'], { cwd: path, env: process.env });
     let err = '';
@@ -191,7 +192,10 @@ function install(path) {
     child.on('error', (e) => resolve({ ok: false, error: 'pnpm is not installed.', stderr: e.message }));
     child.on('close', (code) => {
       if (code !== 0) return resolve({ ok: false, error: 'pnpm install failed.', stderr: err.slice(-1200) });
-      resolve(runJson(join(path, 'node_modules', '.bin', 'design-hub'), ['skills'], path));
+      const hub = join(path, 'node_modules', '.bin', 'design-hub');
+      runJson(hub, ['skills'], path).then((skills) =>
+        resolve(skills.ok ? runJson(hub, tracksArgs(value), path) : skills),
+      );
     });
   });
 }
@@ -199,7 +203,7 @@ function install(path) {
 async function create(body, send) {
   const ready = await prepare(body, send);
   if (!ready) return;
-  const installed = await step(send, 'install', () => install(ready.path));
+  const installed = await step(send, 'install', () => install(ready.path, ready.value));
   if (!installed) return;
   const hub = join(ready.path, 'node_modules', '.bin', 'design-hub');
   const ported = await step(send, 'port', () =>

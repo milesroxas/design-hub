@@ -1,18 +1,20 @@
 #!/usr/bin/env node
 // npm create @milesroxas/design-hub -- --path <absolute path> [--owner <gh account>] [--visibility private|public|none]
+//   [--track product|website|brand ...] [--platform webflow|payload|wordpress|emdash] [--frontend astro|next]
 //
 // Copies the template into the folder, names the project after it, pins the
 // design-hub version, starts a git repo, installs, and puts the miles-*
-// skills in place. With --visibility private or public it also creates the
+// skills in place. With --track it records the project's tracks and keeps
+// only their samples. With --visibility private or public it also creates the
 // GitHub repo and pushes. Flags only, never a prompt, one JSON object on
 // stdout, `--help` prints the schema, a second run finds the project and
 // changes nothing.
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { projectManifest, RENAMES, SKIP, SKIP_DIRS, SPEC, validate } from './lib.mjs';
+import { projectManifest, RENAMES, SKIP, SKIP_DIRS, SPEC, tracksArgs, validate } from './lib.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const TEMPLATE = join(HERE, 'template');
@@ -37,6 +39,7 @@ function run(cmd, args, cwd) {
     fail(`${cmd} ${args[0]} failed.`, {
       command: [cmd, ...args].join(' '),
       stderr: out.stderr.trim().slice(-600),
+      stdout: out.stdout.trim().slice(-600),
     });
   return out.stdout.trim();
 }
@@ -54,6 +57,9 @@ try {
       owner: { type: 'string' },
       visibility: { type: 'string' },
       link: { type: 'string' },
+      track: { type: 'string', multiple: true },
+      platform: { type: 'string' },
+      frontend: { type: 'string' },
       'no-install': { type: 'boolean' },
     },
     strict: true,
@@ -71,10 +77,13 @@ if (major < 22 || (major === 22 && minor < 18))
 
 const errors = validate(values);
 if (Object.keys(errors).length) fail(Object.values(errors).join(' '), { errors });
-const { path, visibility = 'none', link } = values;
+const { path, visibility = 'none', link, track = [] } = values;
 const name = basename(path);
 // dev claims the folder's port on its first start; bootstrap is only for its flags (TypeSafe, Vercel, Conductor).
-const next = `pnpm --dir "${path}" ${values['no-install'] ? 'install' : 'dev'}`;
+const next =
+  values['no-install'] && track.length
+    ? `pnpm --dir "${path}" install, then pnpm --dir "${path}" exec design-hub ${tracksArgs(values).join(' ')}`
+    : `pnpm --dir "${path}" ${values['no-install'] ? 'install' : 'dev'}`;
 
 // A second run finds the project already there and changes nothing.
 if (existsSync(join(path, 'package.json')) && existsSync(join(path, '.git'))) {
@@ -114,6 +123,7 @@ run('git', ['init', '-b', 'main'], path);
 if (!values['no-install']) {
   run('pnpm', ['install'], path);
   run(join(path, 'node_modules', '.bin', 'design-hub'), ['skills'], path);
+  if (track.length) run(join(path, 'node_modules', '.bin', 'design-hub'), tracksArgs(values), path);
 }
 run('git', ['add', '-A'], path);
 run(
@@ -152,4 +162,4 @@ if (visibility !== 'none') {
   );
   repo = `https://github.com/${owner}/${name}`;
 }
-print({ ok: true, path, repo, created: true, next });
+print({ ok: true, path, repo, created: true, ...(track.length ? { tracks: track } : {}), next });

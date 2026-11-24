@@ -69,10 +69,10 @@ One paragraph on what the product is for and how the interface serves that. Name
 
 ## Shell
 
-Every project has a shell: a product's sidebar, top bar and content, or a website's header and footer, with a pre-footer when the design treats one as a global. Record the answer `miles-design-hub` collected so it is built once and never asked again:
+The shell follows the tracks in `.design-hub/project.json`: a product draws `AppShell` (sidebar, top bar, content), a website draws `SiteShell` (header and footer, with a pre-footer when the design treats one as a global), and brand collateral has no shell. Record, per track the project has, what `miles-design-hub` collected so it is built once and never asked again:
 
-- **Kind:** product or website.
-- **Paper frames:** the link to each frame that holds the shell (header, sidebar, footer, pre-footer). Empty when the design has no shell and prototypes stand in the Space.
+- **Product:** the link to each Paper frame that holds the sidebar and top bar, or "from the sample".
+- **Website:** the link to each Paper frame that holds the header, footer and pre-footer, or "from the sample".
 - **Where it is built:** `kit/shell.ts` (brand, navigation, people) and `AppShell.tsx` or `SiteShell.tsx`. A prototype never rebuilds the shell inside its own folder.
 
 ## Colors

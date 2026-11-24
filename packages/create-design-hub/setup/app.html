@@ -204,6 +204,13 @@
   .choice input:checked { border: 1.5px solid var(--text); }
   .choice input:checked::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--text); }
   .choice input:focus-visible { outline: none; }
+  .choice input[type=checkbox] { border-radius: 4px; }
+  .choice input[type=checkbox]:checked { background: var(--text); border-color: var(--text); }
+  .choice input[type=checkbox]:checked::after { width: 8px; height: 4px; border-radius: 0; background: none; border-left: 1.5px solid var(--surface); border-bottom: 1.5px solid var(--surface); transform: translateY(-1px) rotate(-45deg); }
+  fieldset { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: var(--s2); }
+  legend { padding: 0; margin-bottom: var(--s2); font-size: var(--text-sm); font-weight: 500; }
+  .inline-choices { display: flex; flex-wrap: wrap; gap: var(--s2); }
+  .inline-choices .choice { padding: var(--s3) var(--s4); }
   .choice-body { display: grid; gap: 2px; }
   .choice-title { font-weight: 500; }
   .choice:has(input:disabled) .choice-title { color: var(--disabled-text); }
@@ -374,6 +381,50 @@
             <button type="button" class="small quiet" id="pick-folder" aria-label="Change where the project is saved">Change…</button>
           </div>
         </div>
+        <fieldset>
+          <legend>What is this project? <span class="optional">Pick every one that applies</span></legend>
+          <div class="choices">
+            <label class="choice">
+              <input type="checkbox" name="track" value="product">
+              <div class="choice-body">
+                <div class="choice-title">Product</div>
+                <div class="choice-desc">App screens in a sidebar and top bar, handed to the client's engineers as a spec.</div>
+              </div>
+            </label>
+            <label class="choice">
+              <input type="checkbox" name="track" value="website">
+              <div class="choice-body">
+                <div class="choice-title">Website</div>
+                <div class="choice-desc">Pages with a header and footer, built on a CMS.</div>
+              </div>
+            </label>
+            <label class="choice">
+              <input type="checkbox" name="track" value="brand">
+              <div class="choice-body">
+                <div class="choice-title">Brand collateral</div>
+                <div class="choice-desc">Social posts, slides and print, from the brand's design system.</div>
+              </div>
+            </label>
+          </div>
+          <p class="error-text" data-error="track" role="alert"></p>
+        </fieldset>
+        <fieldset id="platform-field" hidden>
+          <legend>Where is the website built?</legend>
+          <div class="inline-choices">
+            <label class="choice"><input type="radio" name="platform" value="webflow"><div class="choice-body"><div class="choice-title">Webflow</div></div></label>
+            <label class="choice"><input type="radio" name="platform" value="payload"><div class="choice-body"><div class="choice-title">Payload</div></div></label>
+            <label class="choice"><input type="radio" name="platform" value="wordpress"><div class="choice-body"><div class="choice-title">WordPress</div></div></label>
+            <label class="choice"><input type="radio" name="platform" value="emdash"><div class="choice-body"><div class="choice-title">EmDash</div></div></label>
+          </div>
+          <p class="hint" id="platform-hint">Not decided yet? Leave it; you can set it later.</p>
+        </fieldset>
+        <fieldset id="frontend-field" hidden>
+          <legend>Which front end?</legend>
+          <div class="inline-choices">
+            <label class="choice"><input type="radio" name="frontend" value="astro"><div class="choice-body"><div class="choice-title">Astro</div></div></label>
+            <label class="choice"><input type="radio" name="frontend" value="next"><div class="choice-body"><div class="choice-title">Next.js</div></div></label>
+          </div>
+        </fieldset>
         <div class="actions"><button class="primary" type="submit">Continue</button></div>
       </form>
     </section>
@@ -703,8 +754,33 @@
     if (res.path) { form.parent = res.path; form.parentDisplay = res.display; renderWhere(); }
   };
 
+  const checked = (name) => $$(`input[name=${name}]:checked`).map((i) => i.value);
+  const PLATFORM_HINT = {
+    webflow: 'Webflow renders its own pages.',
+    emdash: 'EmDash sites are built with Astro and deployed on Cloudflare.',
+  };
+  function syncTracks() {
+    const website = checked('track').includes('website');
+    const [platform] = checked('platform');
+    $('#platform-field').hidden = !website;
+    $('#frontend-field').hidden = !website || !['payload', 'wordpress'].includes(platform);
+    $('#platform-hint').textContent = PLATFORM_HINT[platform] ?? 'Not decided yet? Leave it; you can set it later.';
+    $('[data-error=track]').textContent = '';
+  }
+  for (const i of $$('input[name=track], input[name=platform]')) i.addEventListener('change', syncTracks);
+  function tracks() {
+    const track = checked('track');
+    const [platform = ''] = track.includes('website') ? checked('platform') : [];
+    const [frontend = ''] = ['payload', 'wordpress'].includes(platform) ? checked('frontend') : [];
+    return { track, platform, frontend };
+  }
+
   $('#name-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!checked('track').length) {
+      $('[data-error=track]').textContent = 'Pick at least one.';
+      return $('input[name=track]').focus();
+    }
     const name = $('#project-name').value;
     const res = await api('/api/path', { name, parent: form.parent });
     if (!res.ok) {
@@ -786,6 +862,7 @@
       owner: $('#owner').value,
       typesafeKey: $('#typesafe-key').value,
       conductorBranch: $('#conductor-branch').value,
+      ...tracks(),
     };
   }
 
@@ -815,6 +892,7 @@
         const n = $(`[data-error=${field}]`);
         if (n) n.textContent = msg;
       }
+      if (event.errors.track) return show('name');
       if (event.errors.name || event.errors.parent) {
         $('#name-error').textContent = event.errors.name ?? event.errors.parent;
         return show('name');

@@ -1,0 +1,78 @@
+{
+  "real": [
+    {
+      "id": "1",
+      "title": "How we plan a site rebuild in two weeks",
+      "excerpt": "The questions we ask before the first frame, and the ones we leave for the build.",
+      "category": "Process",
+      "published": "2026-10-28",
+      "image": "#dbe6fe"
+    },
+    {
+      "id": "2",
+      "title": "Choosing a CMS your editors will like",
+      "excerpt": "Webflow, Payload, WordPress and EmDash, compared on the work editors do every day.",
+      "category": "Platforms",
+      "published": "2026-10-21",
+      "image": "#fedf89"
+    },
+    {
+      "id": "3",
+      "title": "A pricing page that answers the second question",
+      "excerpt": "Visitors read the price, then look for what happens after they pay.",
+      "category": "Case study",
+      "published": "2026-10-14",
+      "image": "#a9efc5"
+    },
+    {
+      "id": "4",
+      "title": "Motion that survives a slow phone",
+      "excerpt": "What we animate, what we fade, and what we never move.",
+      "category": "Craft",
+      "published": "2026-10-07",
+      "image": "#fecdc9"
+    },
+    {
+      "id": "5",
+      "title": "Writing alt text people actually hear",
+      "excerpt": "Short, specific, and written for the sentence around the image.",
+      "category": "Accessibility",
+      "published": "2026-09-30",
+      "image": "#e9d7fe"
+    },
+    {
+      "id": "6",
+      "title": "The footer is a sitemap, not a junk drawer",
+      "excerpt": "Three columns, one note, and nothing a visitor has to hunt for.",
+      "category": "Craft",
+      "published": "2026-09-23",
+      "image": "#d1fadf"
+    }
+  ],
+  "missing": [
+    {
+      "id": "m1",
+      "title": "A post with no image",
+      "excerpt": "Editors skip the image more often than the design expects.",
+      "category": "Process",
+      "published": "2026-10-28",
+      "image": null
+    },
+    {
+      "id": "m2",
+      "title": "A post with no excerpt",
+      "excerpt": "",
+      "category": "",
+      "published": "2026-10-21",
+      "image": "#fedf89"
+    },
+    {
+      "id": "m3",
+      "title": "",
+      "excerpt": "A draft that was published before it had a title.",
+      "category": "Platforms",
+      "published": "",
+      "image": "#a9efc5"
+    }
+  ]
+}

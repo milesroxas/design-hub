@@ -19,9 +19,10 @@ dist/
 # Logs
 *.log
 
-# Local state: the Jev log and its labels, the dev review store. checks.json is the project's thresholds and stays.
+# Local state: the Jev log and its labels, the dev review store. checks.json (the thresholds) and project.json (the tracks) stay.
 .design-hub/*
 !.design-hub/checks.json
+!.design-hub/project.json
 
 # Obsidian per-machine state (docs/ is an Obsidian vault)
 docs/.obsidian/workspace*.json

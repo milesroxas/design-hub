@@ -34,6 +34,7 @@ export const SITE = {
   nav: [
     { href: '#/', label: 'Home' },
     { href: '#/work', label: 'Work' },
+    { href: '#/journal', label: 'Journal' },
     { href: '#/about', label: 'About' },
     { href: '#/contact', label: 'Contact' },
   ] satisfies SiteLink[],
