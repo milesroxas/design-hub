@@ -48,6 +48,8 @@ pnpm export <slug>                        # brand artboards to exports/<slug>/: 
 pnpm check                                # TypeScript and Biome; must pass before you report done
 pnpm fix                                  # Biome format and safe fixes
 pnpm preflight                            # every check a share link needs (miles-deploy)
+pnpm signin                               # Vercel sign-in as a link for the user to click; --wait 300 after (miles-deploy)
+pnpm share                                # preflight, deploy, wait, check the live gate, print the handover (miles-deploy)
 pnpm comments pull                        # review comments into docs/sprints/<feature>/comments.md (miles-review)
 pnpm fixtures-pull <slug> --collection <id> --map key=path   # real fixtures from the CMS: Webflow, Payload, WordPress, or --from a JSON file (miles-get-hostile)
 pnpm commands                             # every command, with its flags, as JSON
@@ -132,7 +134,7 @@ The `miles-*` skills in `.claude/skills/` come from the `@milesroxas/design-hub`
 | `miles-new-feature` | Starting a feature or a prototype: the folder, the README, `docs/sprints/<feature>/`. |
 | `miles-get-hostile` | Writing `fixtures.json` or deciding what an edge case looks like. |
 | `miles-paper-to-prototype` | Every Paper MCP read. Maps Paper output onto the kit's tokens and components. |
-| `miles-deploy` | Deploying, sharing a link, the password, checking the work before either. |
+| `miles-deploy` | Deploying, sharing or updating the link, signing in to Vercel, the password, turning on comments, checking the work before any of those. The user never types these commands: run them and send any link they must click. |
 | `miles-review` | Comments from the deployed prototypes, and who may comment. |
 | `miles-port` | Turning an approved prototype into production. |
 | `miles-brand` | Brand collateral: social posts, slides, print; artboards, formats and export. |

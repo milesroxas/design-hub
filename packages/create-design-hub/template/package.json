@@ -18,6 +18,8 @@
     "fix": "design-hub check --fix",
     "guard": "design-hub guard",
     "preflight": "design-hub preflight",
+    "signin": "design-hub signin",
+    "share": "design-hub share",
     "comments": "design-hub comments",
     "people": "design-hub people",
     "calibrate": "design-hub calibrate",
