@@ -62,8 +62,10 @@ The project's `AGENTS.md` is the whole contract an agent reads. Nothing in `node
 - **The hub.** Lists every prototype from its README, groups them by feature, filters them by track, serves each at `/<slug>/` and each walkthrough at `/guide/<feature>/`. A new folder shows up without a restart.
 - **Every state on a dial.** DialKit controls through `@kit/dials`; `longest`, `empty`, `max` and `missing` fixture sets derived by `@kit/fixtures`.
 - **The kit.** `@kit/ui`, `@kit/Space`, `@kit/Variants`, `@kit/Icon` and the rest. `@kit/<name>` resolves to the project's `kit/<name>` first and the package's second, so a project forks a piece by copying the file.
+- **Brand collateral.** `@kit/Artboard` draws posts, stories, banners, slides and print at their real pixel size on a board; `design-hub export` writes them to PNG and PDF through the Chrome already on the machine.
+- **Real content.** `design-hub fixtures-pull` reads Webflow, Payload or WordPress, or a JSON file from EmDash or any other CMS, keeping only the fields a prototype renders.
 - **Review on the deployed site.** A shared password to view, invite links to comment, comments pinned to the element and the exact dial state. Upstash Redis when deployed, a file in dev.
-- **The command.** `design-hub dev|build|new|guide|check|preflight|comments|people|bootstrap|skills|…`. Flags only, one JSON object on stdout, `--help` for the schema.
+- **The command.** `design-hub dev|build|new|guide|tracks|export|check|preflight|comments|people|bootstrap|skills|…`. Flags only, one JSON object on stdout, `--help` for the schema.
 - **Guardrails.** The fidelity guard on every write, axe in dev, Biome and TypeScript on `check`, every check a share link needs on `preflight`.
 - **Skills.** The `miles-*` skills ship in the package; `design-hub skills` copies them into a project, so a version bump updates them.
 

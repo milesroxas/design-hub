@@ -35,6 +35,19 @@ Say what you want, in plain words.
 
 Claude changes the prototype, adds a state, or makes a second prototype, and tells you which.
 
+## Brand collateral
+
+With the brand track, ask for collateral the same way:
+
+> Make a launch post template for Instagram and LinkedIn: square, portrait and story.
+> Make a five-slide deck for the pitch.
+
+Each piece sits on a board at its real size, with the copy, layout and tone on Controls. When it is right:
+
+> Export the posts.
+
+Claude writes the files into the project's `exports/` folder: PNGs for posts, a PDF for slides and print. Chrome has to be installed on the computer.
+
 ## Where things live
 
 Everything is in your project folder. Claude keeps it in order; you never need to open these.
