@@ -3,29 +3,13 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D22.18-brightgreen.svg)](packages/design-hub/package.json)
 
-Design work on one product or website, as a product you install. A project is a thin folder: its prototypes, the materials they are drawn with (tokens, the shell's chrome, icons), the design rules, the walkthroughs reviewers read, and their comments. Everything else is the `@milesroxas/design-hub` package: the hub that lists and serves the prototypes, the review panel and its API, the password gate, the kit, the `design-hub` command, and the skills that tell a coding agent how to behave.
+Prototype every state of a product, website or brand piece in code, share it behind a password, and port it from the same list of states. A project is a thin folder of prototypes, materials and docs; everything else installs as `@milesroxas/design-hub`.
 
-A prototype holds every state on a dial, behind a password, outside the live product. Reviewers comment on the state they are looking at, and the port to production builds from the same list of states.
-
-New here and not a developer? Read the [guide](docs/guide/README.md): setup, working with Claude, sharing a link, comments.
+Not a developer? Start with the [guide](docs/guide/README.md).
 
 ## Start a project
 
-```sh
-npm create @milesroxas/design-hub@latest -- --path ~/Design/acme-site --track website --platform webflow
-cd ~/Design/acme-site
-pnpm dev              # http://localhost:<PORT>; the first start claims a free port for this folder
-```
-
-A project has one or more tracks: `product` (app screens, handed to the client's engineers as a spec), `website` (pages on Webflow, Payload, WordPress or EmDash, with Astro or Next as the front end where it is a choice) and `brand` (social posts, slides, print). The tracks decide each prototype's shell, the samples a project starts with, and how `miles-port` hands the work off. They live in `.design-hub/project.json`; `design-hub tracks set` changes them.
-
-With Claude Code, install the one global skill and ask it to start a project. It asks every question up front, then runs the scaffolder and `pnpm bootstrap` with your answers:
-
-```sh
-npx skills add milesroxas/design-hub --skill miles-design-hub -g -y
-```
-
-Or paste this into Claude Code and let it do both:
+**With Claude Code** (paste this; after the first time, only the last two lines):
 
 ```text
 Install the Design Hub skill globally:
@@ -36,48 +20,73 @@ Then use the miles-design-hub skill to start a new Design Hub project for <proje
 Ask me every setup question before you create anything.
 ```
 
-Once the skill is installed, a new session needs only the last two lines.
+**In a terminal:**
 
-Without a terminal: download this repo as a ZIP and double-click `Design Hub.command`. A page asks for a name and a place, creates the project, installs it and opens the hub. The project gets its own `Design Hub.command` to open it again later.
+```sh
+npm create @milesroxas/design-hub@latest -- --path ~/Design/acme-site --track website --platform webflow
+cd ~/Design/acme-site && pnpm dev    # the first start claims a free port for this folder
+```
 
-Worktrees and parallel agents need no setup, whatever runs them: a plain `git worktree`, T3 Code, Conductor, Claude Code or Cursor. Each folder claims its own port on its first `pnpm dev`. A harness that assigns ports sets `DESIGN_HUB_PORT`, and Conductor's `CONDUCTOR_PORT` also works. The `miles-worktrees` skill has the details.
+**Without a terminal:** download this repo as a ZIP and double-click `Design Hub.command`.
+
+### Tracks
+
+Pick one or more when the project is made; they decide each prototype's shell, the starting samples, and how work is handed off.
+
+| Track | For | Draws in | Hand-off |
+| --- | --- | --- | --- |
+| `product` | App screens | `AppShell` | A spec for the client's engineers |
+| `website` | Pages on Webflow, Payload, WordPress or EmDash (Astro or Next) | `SiteShell` | A build on the site's platform |
+| `brand` | Social posts, slides, print | Artboards at real size | PNG and PDF from `design-hub export` |
+
+They live in `.design-hub/project.json`; `design-hub tracks set` changes them.
+
+### Worktrees and harnesses
+
+Nothing to set up. Each folder claims its own port on its first `pnpm dev`, in a plain `git worktree`, T3 Code, Conductor, Claude Code or Cursor. A harness that assigns ports sets `DESIGN_HUB_PORT` (`CONDUCTOR_PORT` also works).
 
 ## What a project holds
 
 ```
-prototypes/<slug>/    README.md, index.tsx, styles.css, fixtures.json
-kit/                  tokens.css, shell.ts, icons.ts, AppShell, SiteShell
+prototypes/<slug>/        README.md, index.tsx, styles.css, fixtures.json
+kit/                      tokens.css, shell.ts, icons.ts, AppShell, SiteShell
 docs/sprints/<feature>/   design-doc.md, guide.md, comments.md, port.md
 DESIGN.md  PRODUCT.md  AGENTS.md
-api/review.ts  proxy.ts  vercel.json      one line each
-.claude/              hooks and the miles-* skills, installed from the package
-.design-hub/project.json                  the tracks and website platform
-.design-hub/checks.json                   the Jev thresholds
+.design-hub/              project.json (tracks), checks.json (Jev thresholds)
+.claude/                  hooks and the miles-* skills, copied from the package
+api/review.ts  proxy.ts  vercel.json   one line each
 ```
 
-The project's `AGENTS.md` is the whole contract an agent reads. Nothing in `node_modules/@milesroxas/design-hub` is ever edited or read for prototype work, so the surface an agent works on stays small however many prototypes a project has.
+`AGENTS.md` is everything an agent reads. The package in `node_modules` is never edited or read for prototype work, so the agent's surface stays small.
 
 ## What the package does
 
-- **The hub.** Lists every prototype from its README, groups them by feature, filters them by track, serves each at `/<slug>/` and each walkthrough at `/guide/<feature>/`. A new folder shows up without a restart.
-- **Every state on a dial.** DialKit controls through `@kit/dials`; `longest`, `empty`, `max` and `missing` fixture sets derived by `@kit/fixtures`.
-- **The kit.** `@kit/ui`, `@kit/Space`, `@kit/Variants`, `@kit/Icon` and the rest. `@kit/<name>` resolves to the project's `kit/<name>` first and the package's second, so a project forks a piece by copying the file.
-- **Brand collateral.** `@kit/Artboard` draws posts, stories, banners, slides and print at their real pixel size on a board; `design-hub export` writes them to PNG and PDF through the Chrome already on the machine.
-- **Real content.** `design-hub fixtures-pull` reads Webflow, Payload or WordPress, or a JSON file from EmDash or any other CMS, keeping only the fields a prototype renders.
-- **Review on the deployed site.** A shared password to view, invite links to comment, comments pinned to the element and the exact dial state. Upstash Redis when deployed, a file in dev.
-- **The command.** `design-hub dev|build|new|guide|tracks|export|check|preflight|comments|people|bootstrap|skills|…`. Flags only, one JSON object on stdout, `--help` for the schema.
-- **Guardrails.** The fidelity guard on every write, axe in dev, Biome and TypeScript on `check`, every check a share link needs on `preflight`.
-- **Skills.** The `miles-*` skills ship in the package; `design-hub skills` copies them into a project, so a version bump updates them.
+- **Hub.** Lists prototypes by feature and track; serves each at `/<slug>/` and its walkthrough at `/guide/<feature>/`.
+- **States on dials.** DialKit through `@kit/dials`; `longest`, `empty`, `max` and `missing` fixture sets from `@kit/fixtures`.
+- **Kit.** `@kit/ui`, `@kit/Space`, `@kit/Artboard` and more. A project's `kit/<name>` overrides the package's.
+- **Real content.** `fixtures-pull` reads Webflow, Payload, WordPress, or a JSON file (EmDash, anything else).
+- **Brand export.** `export` writes artboards to PNG and PDF through the installed Chrome.
+- **Review.** A shared password to view, invite links to comment, comments pinned to the element and dial state.
+- **Guardrails.** The fidelity guard on every write, axe in dev, `check` (TypeScript, Biome), `preflight` before sharing.
+- **CLI and skills.** `design-hub <command>`: flags only, one JSON object out, `--help` for the schema. The `miles-*` skills ship with it.
 
-A version bump brings a project everything above, with no change to its own files. Inspect tools for the port to production will arrive the same way.
+A version bump brings all of this to a project without touching its files. Inspect tools for the port to production will arrive the same way.
+
+## Deploy and review
+
+`pnpm bootstrap --vercel <project>` links a project and sets its password gate; pushing `main` deploys it. Add `--review` to turn on comments. Opening a comment reopens the exact URL and dial values the reviewer saw. Details: [packages/design-hub/README.md](packages/design-hub/README.md).
+
+## TypeSafe checks (optional)
+
+With a key in the project's `.env` (`pnpm bootstrap --typesafe-key <key>`), Jev answers the judgments that must come out the same every run: the fidelity guard, the pre-flight's state and contact checks, comment triage, the skill hint. Thresholds are in `.design-hub/checks.json`; `pnpm calibrate` tunes them. Without a key, those checks are skipped.
 
 ## This repo
 
 | Path | What it is |
 | --- | --- |
-| `packages/design-hub/` | The npm package. |
-| `packages/create-design-hub/` | `npm create @milesroxas/design-hub`: the scaffolder, the thin template, the setup app. The template is also the sample project this repo runs. |
-| `Design Hub.command` | The setup app, for people who never open a terminal. |
+| `packages/design-hub/` | The npm package |
+| `packages/create-design-hub/` | The scaffolder, the template (also this repo's sample project), the setup app |
+| `Design Hub.command` | The setup app launcher |
 
 ```sh
 pnpm install     # builds the package
@@ -85,19 +94,7 @@ pnpm dev         # the hub on the sample project
 pnpm check && pnpm test && pnpm quality
 ```
 
-The contributor guide is [AGENTS.md](AGENTS.md); the package's own is [packages/design-hub/AGENTS.md](packages/design-hub/AGENTS.md).
-
-## Deploy and review
-
-Pushing `main` of a project deploys it to its linked Vercel project; `pnpm bootstrap --vercel <project>` links it and sets the password gate's environment. The shared password opens the site to view. An invite link, made by an editor, signs one named person in to comment. A comment is pinned to the element and to the state: the URL and every dial value, so opening it later reopens what the reviewer saw. Add `--review` to the bootstrap to turn comments on; `pnpm dev` runs the same panel against a local store. The details are in [packages/design-hub/README.md](packages/design-hub/README.md).
-
-## TypeSafe checks (optional)
-
-With a TypeSafe key in a project's `.env` (`pnpm bootstrap --typesafe-key <key>`), Jev answers the judgments that must come out the same on every run: the fidelity guard's four semantic rules, the pre-flight's state and contact checks, comment triage, and the skill hint. Every threshold is in `.design-hub/checks.json`; `pnpm calibrate` sets them from labelled judgments. Without a key, every Jev question is skipped and nothing is printed.
-
-## Contributing
-
-Issues and pull requests are welcome. `pnpm check`, `pnpm test` and `pnpm quality` pass before a pull request, and `pnpm quality` passes with zero findings. Before publishing a copy of this repo, `pnpm release-check --term <client name>` confirms no tracked file names the client.
+Contributor rules: [AGENTS.md](AGENTS.md) and [packages/design-hub/AGENTS.md](packages/design-hub/AGENTS.md). Pull requests pass all three commands, `quality` with zero findings. Before publishing a copy, `pnpm release-check --term <client name>` must be clean.
 
 ## License
 
