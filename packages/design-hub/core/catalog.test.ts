@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { byIndexOrder, isLive, readMeta } from './catalog.ts';
+import { byIndexOrder, isLive, placeLabel, readMeta } from './catalog.ts';
 import { frontmatter } from './frontmatter.ts';
 
 const readme = (fm: string, body = '') => `---\n${fm}\n---\n\n# X\n${body}`;
@@ -41,4 +41,12 @@ test('open questions sort above answered ones, newest first, then by title', () 
     ['a', 'c', 'b'],
   );
   assert.equal(isLive({ status: 'archived' }), false);
+});
+
+test('the track is read when known, and names the shell a prototype stands in', () => {
+  assert.equal(readMeta('x', readme('track: website')).track, 'website');
+  assert.equal(readMeta('x', readme('track: app')).track, '');
+  assert.equal(placeLabel({ context: 'app', track: 'website' }), 'Site shell');
+  assert.equal(placeLabel({ context: 'app', track: '' }), 'App shell');
+  assert.equal(placeLabel({ context: 'space', track: 'website' }), 'Space');
 });

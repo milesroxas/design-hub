@@ -18,6 +18,7 @@ import * as preflight from './preflight.ts';
 import * as releaseCheck from './release-check.ts';
 import * as skillHint from './skill-hint.ts';
 import * as skills from './skills.ts';
+import * as tracks from './tracks.ts';
 import * as visualMatch from './visual-match.ts';
 
 export const spec = {
@@ -44,6 +45,7 @@ export const COMMANDS: CommandSpec[] = [
   visualMatch.spec,
   elyx.spec,
   skills.spec,
+  tracks.spec,
   skillHint.spec,
   releaseCheck.spec,
   spec,

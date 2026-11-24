@@ -14,22 +14,23 @@ One feature is one slug used in two places: `docs/sprints/<slug>/` and the `feat
    - The feature's main prototype, the one its walkthrough opens → `--sprint`. One per feature; `pnpm new` refuses a second.
    - Another full take on the same flow, to compare against the primary → `--alternate`. Refused until the primary exists.
    - A side question about one part (a menu's motion, a loading state) → exploration, the default.
-3. **Where does it stand?** `--app` when the question is about the feature in context (the shell from `DESIGN.md`, Shell); nothing when it is one thing alone in the Space.
-4. **Scaffold.** From the project root:
+3. **Which track?** Read `.design-hub/project.json` (or `pnpm tracks`). A project with one track uses it. A project with several needs `--track product|website|brand`: product is app screens, website is CMS pages, brand is collateral (social posts, slides, print). `pnpm new` refuses a track the project does not have, because the track decides the shell, the sample to read, and how `miles-port` hands it off.
+4. **Where does it stand?** `--app` when the question is about the feature in context: the track's shell, `AppShell` for product and `SiteShell` for website, as `DESIGN.md`, Shell, describes. Nothing when it is one thing alone in the Space.
+5. **Scaffold.** From the project root:
    ```bash
-   pnpm new <slug> --app --sprint --feature <feature> --title "Title"
+   pnpm new <slug> --app --sprint --feature <feature> --track website --title "Title"
    pnpm guide <feature>              # once per feature, for the sprint
    ```
-   The scaffolder fills the frontmatter and refuses a bad slug, a second sprint, or an alternate without a primary. Never create the folder by hand: a folder without the README's frontmatter is invisible to the index.
-5. **Write the README before any code**, top to bottom:
+   The scaffolder fills the frontmatter, `track` included, and refuses a bad slug, a second sprint, an alternate without a primary, or a track the project lacks. Never create the folder by hand: a folder without the README's frontmatter is invisible to the index.
+6. **Write the README before any code**, top to bottom:
    - **Problem.** What is wrong or unknown today, and for whom. Two sentences.
    - **Question.** The one decision the prototype exists to make. One sentence, a question mark. If there are two questions, there are two prototypes.
    - **Flows** (app) or **Directions** (space). A table: each flow with where it starts and its edge cases; each direction with its name and the axis it varies on.
    - **States.** Every state the prototype will hold and how to reach it. Start with the five fixture sets (`miles-get-hostile`); add the feature's own (selected, editing, a run in progress). The guard and `miles-port` read this table.
    - **Fixtures.** Where `real` comes from and the design's maximum count.
    - **Decision.** Empty.
-6. **Design doc.** `docs/sprints/<slug>/design-doc.md` holds what the prototype tests: the context, the proposal, the open decisions. Write it when the feature has more than one flow; a single exploration needs only its README.
-7. **Then build**, under `miles-prototype`.
+7. **Design doc.** `docs/sprints/<slug>/design-doc.md` holds what the prototype tests: the context, the proposal, the open decisions. Write it when the feature has more than one flow; a single exploration needs only its README.
+8. **Then build**, under `miles-prototype`.
 
 ## The walkthrough
 

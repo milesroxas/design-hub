@@ -1,0 +1,6 @@
+.page-hero { display: flex; flex-direction: column; align-items: flex-start; gap: 16px; padding: 48px 0 64px; }
+.page-hero h1 { font-size: 48px; line-height: 1.1; letter-spacing: -0.02em; max-width: 18ch; text-wrap: balance; }
+.page-lede { font-size: 18px; line-height: 28px; color: var(--text-secondary); max-width: 56ch; }
+.page-section { display: flex; flex-direction: column; gap: 8px; padding: 48px 0; border-top: 1px solid var(--border-secondary); }
+.page-section h2 { font-size: 24px; line-height: 32px; }
+.page-section p { color: var(--text-secondary); max-width: 64ch; }

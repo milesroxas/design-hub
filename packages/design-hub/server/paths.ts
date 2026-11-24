@@ -56,6 +56,8 @@ export const SKILLS = join(ROOT, '.claude', 'skills');
 /** Local state, gitignored but for checks.json: the Jev log and its labels, the dev review store. */
 export const STATE_DIR = join(ROOT, '.design-hub');
 export const CHECKS_FILE = join(STATE_DIR, 'checks.json');
+/** The project's tracks and website platform (core/project.ts); committed, like checks.json. */
+export const PROJECT_JSON = join(STATE_DIR, 'project.json');
 
 /** The nearest ancestor of `from` whose package.json names this package, so source and dist agree. */
 export function packageRoot(from: string): string {

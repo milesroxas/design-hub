@@ -10,7 +10,9 @@ import {
   useRef,
   useState,
 } from 'react';
+import { placeLabel } from '../core/catalog';
 import { featureTitle, guideHref } from '../core/feature';
+import { TRACK_LABEL, TRACKS, type Track } from '../core/project';
 import { type Entry, entries, guides } from './registry';
 import './shell.css';
 
@@ -60,17 +62,34 @@ const groupsOf = (list: Entry[]): Group[] => {
   ].filter((g) => g.items.length || g.alternates.length || g.explorations.length);
 };
 
+/** The track the index shows, remembered per browser. Only the tracks the prototypes use are offered; a stale choice shows all. */
+function useTrackFilter() {
+  const [track, setTrack] = useStoredState<Track | 'all'>('index-track', 'all');
+  const tracks = TRACKS.filter((t) => entries.some((e) => e.track === t));
+  const inTrack = (e: Entry) => track === 'all' || !tracks.includes(track) || e.track === track;
+  return { filter: { tracks, value: track, onChange: setTrack }, inTrack };
+}
+
+const byQuery = (q: string) => (e: Entry) =>
+  !q || `${e.title} ${e.summary} ${e.slug}`.toLowerCase().includes(q);
+
+/** The filter text and the track, and the entries they leave: the chosen track's, matching the text. */
+function useIndexFilter() {
+  const [query, setQuery] = useState('');
+  const q = useDeferredValue(query.trim().toLowerCase());
+  const { filter, inTrack } = useTrackFilter();
+  return { query, setQuery, q, shown: entries.filter(inTrack).filter(byQuery(q)), trackFilter: filter };
+}
+
 const RISE_CAP = 8;
 const rise = (i: number) => ({ '--i': Math.min(i, RISE_CAP) }) as CSSProperties;
 
 export function Index() {
-  const [query, setQuery] = useState('');
+  const { query, setQuery, q, shown, trackFilter } = useIndexFilter();
   const [leaving, setLeaving] = useState<string | null>(null);
   const [opened, setOpened] = useStoredState<Record<string, boolean>>('index-explorations-open', {});
   const [instant, setInstant] = useState(false);
-  const q = useDeferredValue(query.trim().toLowerCase());
   const main = useRef<HTMLElement>(null);
-  const shown = entries.filter((e) => !q || `${e.title} ${e.summary} ${e.slug}`.toLowerCase().includes(q));
   const groups = groupsOf(shown);
   const archivedTotal = entries.filter((e) => e.status === 'archived').length;
 
@@ -136,6 +155,7 @@ export function Index() {
           High-fidelity sketches in code, made as we sprint on features and improve the product.
         </p>
       </header>
+      <TrackFilter {...trackFilter} />
       {entries.length > 6 ? (
         <label className="index-filter">
           <span className="sr-only">Filter prototypes</span>
@@ -286,10 +306,35 @@ function Explorations({
   );
 }
 
+/** One button per track the project's prototypes use, plus All; shown only when there are two or more. */
+function TrackFilter({
+  tracks,
+  value,
+  onChange,
+}: {
+  tracks: Track[];
+  value: Track | 'all';
+  onChange: (t: Track | 'all') => void;
+}) {
+  if (tracks.length < 2) return null;
+  const options: (Track | 'all')[] = ['all', ...tracks];
+  return (
+    <fieldset className="index-tracks">
+      <legend className="sr-only">Track</legend>
+      {options.map((t) => (
+        <button key={t} type="button" aria-pressed={value === t} onClick={() => onChange(t)}>
+          {t === 'all' ? 'All' : TRACK_LABEL[t]}
+        </button>
+      ))}
+    </fieldset>
+  );
+}
+
 function EntryMeta({ entry, className }: { entry: Entry; className: string }) {
   return (
     <span className={className}>
-      <span>{entry.context === 'app' ? 'App shell' : 'Space'}</span>
+      {entry.track ? <span>{TRACK_LABEL[entry.track]}</span> : null}
+      <span>{placeLabel(entry)}</span>
       <span className="index-status" data-status={entry.status}>
         {entry.status}
       </span>

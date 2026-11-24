@@ -1,14 +1,17 @@
 #!/usr/bin/env node
 /// <reference types="node" />
 // Scaffolds a prototype from the package's templates/ (a Space, or --app inside the
-// shell), or a feature's walkthrough at docs/sprints/<feature>/guide.md.
+// track's shell: AppShell for a product, SiteShell for a website), or a
+// feature's walkthrough at docs/sprints/<feature>/guide.md.
 // A feature has one primary prototype (--sprint); --alternate is refused
 // until it exists, so the index always has a primary to show first.
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { featureTitle, guideHref, SLUG } from '../core/feature.ts';
+import { TRACKS, type Track, trackFor } from '../core/project.ts';
 import { devPort, readEnv } from '../server/env.ts';
 import { DOCS, PROTOTYPES, ROOT, TEMPLATES } from '../server/paths.ts';
+import { readProject } from '../server/project.ts';
 import { primaryOf } from './lib/catalog.ts';
 import { type Args, CliError, type CommandSpec } from './lib/cli.ts';
 
@@ -19,7 +22,17 @@ export const spec = {
     { name: 'slug', description: 'kebab-case folder name (with --guide: the feature)', required: true },
   ],
   flags: {
-    app: { type: 'boolean', description: 'Inside the product or site shell instead of the Space.' },
+    app: {
+      type: 'boolean',
+      description:
+        "Inside the track's shell (AppShell for product, SiteShell for website) instead of the Space.",
+    },
+    track: {
+      type: 'string',
+      choices: TRACKS,
+      description:
+        "The track it belongs to. Default: the project's only track; required when it has several.",
+    },
     sprint: { type: 'boolean', description: "The feature's one primary prototype. Needs --feature." },
     alternate: {
       type: 'boolean',
@@ -65,6 +78,29 @@ function guide(feature: string) {
 
 type Kind = 'sprint' | 'alternate' | 'exploration';
 
+/** The template folder: the Space, or the shell of the prototype's track. A project without tracks gets the product shell, as before. */
+export function templateFor(track: Track | '', app: boolean): string {
+  if (track === 'brand')
+    throw new CliError('Brand templates are not in this version of design-hub yet.', {
+      fix: 'Start a brand piece as a Space prototype in another track for now, or update design-hub.',
+    });
+  if (!app) return 'space';
+  return track === 'website' ? 'site' : 'app';
+}
+
+/** The prototype's track from --track and project.json, refused when the project cannot take it. */
+function resolveTrack(asked: string | undefined): Track | '' {
+  const { project, problems } = readProject();
+  if (problems.length)
+    throw new CliError('.design-hub/project.json is invalid.', {
+      problems,
+      fix: 'Rewrite it with design-hub tracks set --track <track>.',
+    });
+  const resolved = trackFor(project, asked);
+  if ('problem' in resolved) throw new CliError(resolved.problem);
+  return resolved.track;
+}
+
 /** The kind the flags ask for, refused when the feature's state does not allow it. */
 export function kindFor(
   flags: Pick<Args<typeof spec>['flags'], 'sprint' | 'alternate'>,
@@ -95,17 +131,20 @@ function prototype(slug: string, { flags }: Args<typeof spec>) {
   if (feature && !SLUG.test(feature))
     throw new CliError('--feature takes a kebab-case slug.', { got: feature });
   const kind = kindFor(flags, feature);
+  const track = resolveTrack(flags.track);
   const context = flags.app ? 'app' : 'space';
-  scaffold(join(TEMPLATES, context), join(PROTOTYPES, slug), {
+  scaffold(join(TEMPLATES, templateFor(track, flags.app)), join(PROTOTYPES, slug), {
     title: flags.title ?? featureTitle(slug),
     slug,
     created: created(),
     kind,
     feature,
+    track,
   });
   return {
     created: `prototypes/${slug}/`,
     context,
+    track,
     kind,
     feature,
     url: localUrl(`/${slug}/`),

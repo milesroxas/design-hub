@@ -2,6 +2,7 @@
 title: {{title}}
 summary: One line on what this explores.
 context: space
+track: {{track}}
 status: exploring
 kind: {{kind}}
 feature: {{feature}}

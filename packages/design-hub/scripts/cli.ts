@@ -23,6 +23,7 @@ import * as preflight from './preflight.ts';
 import * as releaseCheck from './release-check.ts';
 import * as skillHint from './skill-hint.ts';
 import * as skills from './skills.ts';
+import * as tracks from './tracks.ts';
 import * as visualMatch from './visual-match.ts';
 
 type Command = { spec: CommandSpec; main: (args: any) => Result | Promise<Result> };
@@ -49,6 +50,7 @@ const COMMANDS: Record<string, Command> = {
   'visual-match': visualMatch,
   elyx,
   skills,
+  tracks,
   'skill-hint': skillHint,
   'release-check': releaseCheck,
   commands,

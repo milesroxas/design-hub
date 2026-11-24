@@ -19,7 +19,17 @@ Read `prototypes/<slug>/`, never the running prototype. Refuse to start, naming 
 
 ## Branch: where is it going?
 
-Ask one question first: Webflow, or a codebase (the path to its repo)? Then walk one branch. Both follow three rules:
+The prototype's `track:` and `.design-hub/project.json` answer this before anyone is asked:
+
+| Track | Where it goes |
+| --- | --- |
+| `product` | The client's engineers build it; this studio does not touch their codebase. The port is the report alone: the state map, tokens and components by name, the fixtures as their test data. Skip both build branches below. |
+| `website`, platform `webflow` | The Webflow branch. |
+| `website`, platform `payload`, `wordpress` or `emdash` | The codebase branch, on the site's front end (`website.frontend`: Astro or Next; EmDash is always Astro, deployed to Cloudflare). Ask only for the path to the site's repo. |
+| `website` without a platform | Stop and ask where the site is built, then record it: `pnpm tracks set --track <every track> --platform <platform> [--frontend astro|next]`. |
+| no `track:` (a project made before tracks) | Ask one question: Webflow, or a codebase (the path to its repo)? |
+
+Then walk one branch. Both follow three rules:
 
 - **The target's conventions win.** Where a token or component has no match in the target, list it in the port report. Never invent one in the target.
 - **Dials become fixed values.** DialKit never ships. Each dial's committed default is the value; the README's Decision is the source.
@@ -44,7 +54,7 @@ Ask one question first: Webflow, or a codebase (the path to its repo)? Then walk
 3. **Fixtures travel.** Each fixture set becomes a test fixture or a story in the target's own convention, and each README state a test or a story. Why: the hostile sets are where QA catches the edge cases, so they go with the feature.
 4. **A new branch**, never the target's main. Name it after the feature slug.
 
-Read the reference for the target's stack before step 2, when there is one: `references/next.md` for Next.js, `references/astro.md` for Astro. The target's own `AGENTS.md` still wins over both. For any other stack, the target's docs are the reference.
+Read the reference for the target's stack before step 2, when there is one: `references/next.md` for Next.js, `references/astro.md` for Astro. The target's own `AGENTS.md` still wins over both. For any other stack, the target's docs are the reference. The CMS (Payload, WordPress, EmDash) owns the content model: map each fixture key to a field of the collection the page reads, and list a key with no field in the report instead of adding one to the CMS unasked.
 
 ## Output: the port report
 
@@ -54,6 +64,7 @@ Read the reference for the target's stack before step 2, when there is one: `ref
 - **Mapped.** Tokens and components with their target names.
 - **Not mapped.** Tokens with no target, states with no mechanism, and what the user has to decide for each.
 - **Webflow build spec** (Webflow branch): the structure, classes, variables and interactions a person builds in the Designer, in build order.
+- **Engineering hand-off** (product track): the states, values and fixtures an engineer needs without opening the prototype, in the order they would build them.
 - **Where it is.** The branch, the collection, the draft items.
 
 The report is the review surface. Nothing goes live until the user has read it.

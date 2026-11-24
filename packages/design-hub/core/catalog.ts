@@ -3,6 +3,7 @@
 // (shell/registry.ts) and the Node scripts (scripts/lib/catalog.ts), so
 // they never disagree about what a prototype is.
 import { frontmatter } from './frontmatter.ts';
+import { TRACKS, type Track } from './project.ts';
 import { parseStates, type State } from './states.ts';
 
 export type Kind = 'sprint' | 'alternate' | 'exploration';
@@ -12,6 +13,8 @@ export type Meta = {
   title: string;
   summary: string;
   context: string;
+  /** The track it belongs to; empty in a project made before tracks. */
+  track: Track | '';
   status: string;
   kind: Kind;
   feature: string;
@@ -27,6 +30,7 @@ export function readMeta(slug: string, readme: string): Meta {
     title: data.title || slug,
     summary: data.summary || '',
     context: data.context || 'space',
+    track: TRACKS.includes(data.track as Track) ? (data.track as Track) : '',
     status: data.status || 'exploring',
     kind: data.kind === 'sprint' || data.kind === 'alternate' ? data.kind : 'exploration',
     feature: data.feature || '',
@@ -41,3 +45,7 @@ export const isLive = (m: Pick<Meta, 'status'>) => m.status !== 'archived';
 const rank = (status: string) => (status === 'exploring' ? 0 : 1);
 export const byIndexOrder = (a: Meta, b: Meta) =>
   rank(a.status) - rank(b.status) || b.created.localeCompare(a.created) || a.title.localeCompare(b.title);
+
+/** Where a prototype stands, in words: the Space, or the shell its track draws. */
+export const placeLabel = (m: Pick<Meta, 'context' | 'track'>) =>
+  m.context !== 'app' ? 'Space' : m.track === 'website' ? 'Site shell' : 'App shell';

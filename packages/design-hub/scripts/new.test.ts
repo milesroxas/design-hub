@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { kindFor } from './new.ts';
+import { kindFor, templateFor } from './new.ts';
 
 const none = () => undefined;
 const has = () => 'list-v1';
@@ -22,4 +22,12 @@ test('a sprint needs a feature without a primary; an alternate needs one with it
 test('refuses both kinds at once, and a kind without its feature', () => {
   assert.throws(() => kindFor({ sprint: true, alternate: true }, 'list', none), /Pick one/);
   assert.throws(() => kindFor({ sprint: true, alternate: false }, '', none), /names its feature/);
+});
+
+test("--app picks the track's shell; a project without tracks keeps the product shell", () => {
+  assert.equal(templateFor('website', true), 'site');
+  assert.equal(templateFor('product', true), 'app');
+  assert.equal(templateFor('', true), 'app');
+  assert.equal(templateFor('website', false), 'space');
+  assert.throws(() => templateFor('brand', false), /Brand templates/);
 });

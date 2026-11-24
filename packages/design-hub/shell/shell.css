@@ -10,7 +10,7 @@
    is not a row carries that 12px itself. */
 .index { width: min(744px, 100% - 8px); margin: 0 auto; padding: 96px 0 128px; display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; column-gap: 20px; align-content: start; }
 .index > * { grid-column: 1 / -1; }
-.index-head, .index-filter, .index-section, .index-subsection, .index-empty, .index-none, .index-foot { padding-inline: 12px; }
+.index-head, .index-tracks, .index-filter, .index-section, .index-subsection, .index-empty, .index-none, .index-foot { padding-inline: 12px; }
 
 .index-head { display: flex; flex-direction: column; gap: 8px; margin-bottom: 40px; }
 .index-head h1 { font-size: 18px; line-height: 28px; font-weight: 600; text-wrap: balance; }
@@ -18,6 +18,10 @@
 .index code { font: 13px/20px var(--sys-font-mono); color: var(--text-secondary); }
 
 .index-filter { margin-bottom: 24px; }
+.index-tracks { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 16px; border: 0; min-width: 0; }
+.index-tracks button { height: 32px; padding: 0 12px; border: 1px solid var(--border-secondary); border-radius: var(--radius-md); background: var(--bg-primary); color: var(--text-secondary); font: inherit; font-weight: 500; cursor: pointer; transition: background-color var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover); }
+.index-tracks button[aria-pressed="true"] { background: var(--bg-active); border-color: var(--border-primary); color: var(--text-primary); }
+@media (hover: hover) { .index-tracks button:hover { color: var(--text-primary); } }
 .index-filter input { width: 100%; height: 40px; padding: 0 12px; border: 1px solid var(--border-primary); border-radius: var(--radius-md); background: var(--bg-primary); box-shadow: var(--shadow-xs); font-size: 16px; transition: border-color var(--dur-hover) var(--ease-hover); }
 .index-filter input::placeholder { color: var(--text-placeholder); }
 .index-filter input:focus-visible { border-color: var(--border-brand); }
@@ -136,9 +140,9 @@
    prototype, and the chosen row holds, so the eye keeps what it picked.
    The browser paints this page until the next one is ready, so the fade
    fills a wait that was blank. */
-.index-head, .index-filter, .index-section, .index-subsection, .index-alternates-label, .index-foot { transition: opacity var(--dur-dialog-out) var(--ease-in); }
+.index-head, .index-tracks, .index-filter, .index-section, .index-subsection, .index-alternates-label, .index-foot { transition: opacity var(--dur-dialog-out) var(--ease-in); }
 .index.is-leaving .index-alternates::before { opacity: 0; transition: opacity var(--dur-dialog-out) var(--ease-in); }
-.index.is-leaving :is(.index-head, .index-filter, .index-section, .index-subsection, .index-alternates-label, .index-foot, .index-row:not([data-chosen]), .index-card:not([data-chosen])) { opacity: 0; }
+.index.is-leaving :is(.index-head, .index-tracks, .index-filter, .index-section, .index-subsection, .index-alternates-label, .index-foot, .index-row:not([data-chosen]), .index-card:not([data-chosen])) { opacity: 0; }
 .index.is-leaving :is(.index-row, .index-card) { pointer-events: none; }
 
 :root[data-motion="reduce"] .index-rise { animation-name: index-fade; animation-duration: 120ms; animation-timing-function: linear; }

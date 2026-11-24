@@ -34,20 +34,25 @@ Ask with the host's question tool (`AskUserQuestion` in Claude Code), never as a
 |---|---|---|
 | Location | Where should `<name>` live? Its folder name becomes the repo name. | `~/SITES/<name>` (Recommended) · `~/Design/<name>`; in a cloud container, `<working dir>/<name>` (Recommended). "Other" takes any absolute path. |
 | GitHub | Who owns the repo, and who can see it? | `<gh login>`, private (Recommended) · `<gh login>`, public · `<org>`, private for the first org from step 1 · No GitHub repo. "Other" takes another owner. |
-| Start | Start from a Paper comp or from the sample prototype? | Sample prototype (Recommended) · Paper comp |
-| Shell | Does the design have a shell? | No shell: prototypes stand in the Space (Recommended) · Product: sidebar, top bar, content · Website: header and footer, plus a pre-footer when the design treats it as a global |
+| Tracks | What is this engagement? Pick every one that applies. (`multiSelect: true`) | Product: app screens, handed to the client's engineers as a spec · Website: pages on a CMS · Brand collateral: social posts, slides, print. A full-service project picks all three. |
+| Start | Start from a Paper comp or from the samples? | The samples (Recommended) · Paper comp |
 
-**Round 2: the extras.** Leave Conductor out in a cloud container.
+The tracks decide everything a shell question used to: product draws `AppShell`, website draws `SiteShell`, brand draws fixed-size artboards with no shell. Never ask about a shell separately.
+
+**Round 2: the setup.** Ask Platform only with the website track; leave Conductor out in a cloud container.
 
 | Header | Question | Options |
 |---|---|---|
+| Platform | Where is the website built? | Webflow · Payload · WordPress · EmDash: Astro, deployed on Cloudflare. "Other": not decided yet, which leaves the platform unset until the port asks. |
 | Skills | Install the `miles-*` skills for this project only, or globally? | Project only: the project already has them (Recommended) · Globally |
 | TypeSafe | Turn on TypeSafe's Jev checks? | Off (Recommended) · On: I have an API key. Why opt-in: a template anyone can use cannot require a paid account. |
 | Conductor | Will the project run in Conductor workspaces? | No (Recommended) · Yes, landing on `main` · Yes, on another branch (they type it in "Other") |
 
-**Round 3: typed answers, one short chat message each, only for what was chosen.**
+**Round 3: the front end, only for Payload or WordPress.** One question: Astro (Recommended) · Next.js. Webflow renders its own pages and EmDash is always Astro, so neither is asked.
 
-- Paper: the link to the Paper frame or page, and, with a shell, which frames hold it.
+**Round 4: typed answers, one short chat message each, only for what was chosen.**
+
+- Paper: the link to the Paper frame or page, and which frames hold the shell of each track: the sidebar and top bar for product, the header, footer and any pre-footer for website.
 - TypeSafe on: the API key. If the host has a secret field (such as `request_secret`), use it instead of chat, because a key typed in chat stays in the transcript.
 - Always, last: "Anything about the product for `PRODUCT.md`? Reply 'skip' to leave it empty."
 
@@ -58,10 +63,11 @@ Comments and the share link come later, with `miles-deploy`, because they need a
 ## 3. Create the project
 
 ```bash
-npm create @milesroxas/design-hub@latest -- --path <path> --visibility private|public|none [--owner <owner>]
+npm create @milesroxas/design-hub@latest -- --path <path> --visibility private|public|none [--owner <owner>] \
+  --track <track> [--track <track> ...] [--platform webflow|payload|wordpress|emdash] [--frontend astro|next]
 ```
 
-It copies the template, pins the `@milesroxas/design-hub` package, installs, puts the `miles-*` skills in `.claude/skills/`, makes the first commit, and with `private` or `public` creates the GitHub repo and pushes. It prints one JSON object; `ok: false` names the fix. A second run finds the project and changes nothing, so rerun it after a fix instead of finishing by hand.
+One `--track` per track picked. It copies the template, pins the `@milesroxas/design-hub` package, installs, puts the `miles-*` skills in `.claude/skills/`, records the tracks and platform in `.design-hub/project.json`, keeps only the picked tracks' samples, makes the first commit, and with `private` or `public` creates the GitHub repo and pushes. It prints one JSON object; `ok: false` names the fix. A second run finds the project and changes nothing, so rerun it after a fix instead of finishing by hand.
 
 ## 4. Run the setup
 
@@ -73,11 +79,19 @@ It picks a port nothing holds and no other project claims, writes it to `.env` a
 
 ## 5. Record what was answered
 
-Write the shell answer under `DESIGN.md`, Shell (kind, the Paper frames, or "none"), so it is built once and every later session reads it instead of asking. Fill `PRODUCT.md` from what the user said about the product; leave a section empty only when they said nothing about it, and say so.
+Write the shell of each track under `DESIGN.md`, Shell: product is `AppShell`, website is `SiteShell`, brand has none; add the Paper frames that hold each, or "from the sample" without Paper. It is built once and every later session reads it instead of asking. The tracks themselves live in `.design-hub/project.json`; never copy them into prose that could drift from it. Fill `PRODUCT.md` from what the user said about the product; leave a section empty only when they said nothing about it, and say so.
 
 ## 6. Hand off
 
-- **Paper start:** open the Paper link and load `miles-paper-to-prototype`. It reads the fonts and tokens first, then the shell frames, then the feature frame, and leaves `sample-list/` in place as the reference until the first feature exists.
-- **Sample start:** `pnpm dev` and open `http://localhost:<port>/sample-list/`; point the user at `/guide/sample/` for the walkthrough. The next step is `miles-new-feature`.
+- **Paper start:** open the Paper link and load `miles-paper-to-prototype`. It reads the fonts and tokens first, then the shell frames, then the feature frame, and leaves the samples in place as the reference until the first feature exists.
+- **Sample start:** `pnpm dev`, then open each kept track's sample and point the user at its walkthrough:
 
-Close with the path, the port, the repo URL when there is one, whether TypeSafe is on, and the one command that starts the server. Nothing is committed unless the user asks.
+  | Track | Sample | Walkthrough |
+  |---|---|---|
+  | product | `/sample-list/` | `/guide/sample/` |
+  | website | `/sample-page/` | `/guide/sample-site/` |
+  | brand | `/sample-social/` | `/guide/sample-brand/` |
+
+  The next step is `miles-new-feature`.
+
+Close with the path, the port, the repo URL when there is one, the tracks and the website platform, whether TypeSafe is on, and the one command that starts the server. Nothing is committed unless the user asks.
