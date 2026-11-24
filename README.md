@@ -9,16 +9,17 @@ Not a developer? Start with the [guide](docs/guide/README.md).
 
 ## Start a project
 
-**With Claude Code** (paste this; after the first time, only the last two lines):
+**With Claude Code** (paste this; after the first time, only the last line):
 
 ```text
 Install the Design Hub skill globally:
 
 npx skills add milesroxas/design-hub --skill miles-design-hub -g -y
 
-Then use the miles-design-hub skill to start a new Design Hub project for <project name>.
-Ask me every setup question before you create anything.
+Then use the miles-design-hub skill to start a new Design Hub project called <project name>.
 ```
+
+The skill asks every setup question before it creates anything.
 
 **In a terminal:**
 
