@@ -9,30 +9,51 @@ The entry point. The user never starts in a terminal: they ask for a new project
 
 Someone who does not use Claude Code gets the same result from the setup app: `Design Hub.command` in the Design Hub repo opens a page that asks the name, the place and GitHub, then runs the same two commands. Point a non-technical user there instead of this skill when they ask how to start without Claude.
 
-## 1. Ask, all at once, before anything runs
+## 1. Check the machine first
 
-Ask these in one message and wait for every answer. Defaults in brackets.
-
-1. **Where should the project live?** An absolute path; its folder name becomes the repo name. [`~/SITES/<name>`]
-2. **Which GitHub account or org owns the repo, private or public, or no GitHub repo?** [the account `gh` is signed in as, private]
-3. **Start from a Paper comp or from the sample prototype?** [sample]
-4. **If Paper: the link to the Paper frame or page.**
-5. **Does the design include a shell? Which frames hold it?** A product shell is sidebar, top bar and content; a website shell is header and footer, plus a pre-footer when the design treats it as a global. [no shell: prototypes stand in the Space]
-6. **Install the `miles-*` skills globally or for this project only?** [project only; the clone already has them]
-7. **Turn on TypeSafe checks? If yes, the TypeSafe API key.** [off] Why opt-in: a template anyone can use cannot require a paid account.
-8. **Will the project run in Conductor workspaces? If yes, the branch they land on.** [no]
-
-Comments and the share link come later, with `miles-deploy`, because they need a Vercel project.
-
-## 2. Check the machine
+These are read-only, and their answers become the choices in step 2, so run them before asking anything.
 
 ```bash
-node --version     # 22.18 or newer; else install the current LTS
-pnpm --version     # else: corepack enable
-gh auth status     # only with a GitHub repo; else ask the user to run gh auth login
+node --version                          # 22.18 or newer; else install the current LTS
+pnpm --version                          # else: corepack enable
+gh auth status                          # the signed-in account; none means "No GitHub repo" is the only working choice until gh auth login
+gh api user/orgs --jq '.[].login'       # the orgs that can own the repo
 ```
 
 The skills these lean on, installed globally: `emil-prototype`, `emil-writing-skills`, `impeccable`. Check `~/.claude/skills/` and install any that is missing with `npx skills add <source> -g -y`; say which were added.
+
+A cloud container (no `~/SITES`, a home such as `/home/user`, a fresh VM per session) loses anything installed under `~` when the session ends. There, default the location to the working directory and skip the Conductor question: Conductor runs on the user's own machine.
+
+## 2. Ask before anything is created
+
+Ask with the host's question tool (`AskUserQuestion` in Claude Code), never as a numbered list in chat. Why: each answer is one click, the recommended choice is already marked, and nothing gets skipped in a wall of text. The tool takes at most 4 questions per call and 2 to 4 options per question, and it always adds "Other" for a typed answer. Put the recommended option first with "(Recommended)" at the end of its label. Take the project name from the request; ask for it in chat only when the request has none.
+
+**Round 1: the project.**
+
+| Header | Question | Options |
+|---|---|---|
+| Location | Where should `<name>` live? Its folder name becomes the repo name. | `~/SITES/<name>` (Recommended) · `~/Design/<name>`; in a cloud container, `<working dir>/<name>` (Recommended). "Other" takes any absolute path. |
+| GitHub | Who owns the repo, and who can see it? | `<gh login>`, private (Recommended) · `<gh login>`, public · `<org>`, private for the first org from step 1 · No GitHub repo. "Other" takes another owner. |
+| Start | Start from a Paper comp or from the sample prototype? | Sample prototype (Recommended) · Paper comp |
+| Shell | Does the design have a shell? | No shell: prototypes stand in the Space (Recommended) · Product: sidebar, top bar, content · Website: header and footer, plus a pre-footer when the design treats it as a global |
+
+**Round 2: the extras.** Leave Conductor out in a cloud container.
+
+| Header | Question | Options |
+|---|---|---|
+| Skills | Install the `miles-*` skills for this project only, or globally? | Project only: the project already has them (Recommended) · Globally |
+| TypeSafe | Turn on TypeSafe's Jev checks? | Off (Recommended) · On: I have an API key. Why opt-in: a template anyone can use cannot require a paid account. |
+| Conductor | Will the project run in Conductor workspaces? | No (Recommended) · Yes, landing on `main` · Yes, on another branch (they type it in "Other") |
+
+**Round 3: typed answers, one short chat message each, only for what was chosen.**
+
+- Paper: the link to the Paper frame or page, and, with a shell, which frames hold it.
+- TypeSafe on: the API key. If the host has a secret field (such as `request_secret`), use it instead of chat, because a key typed in chat stays in the transcript.
+- Always, last: "Anything about the product for `PRODUCT.md`? Reply 'skip' to leave it empty."
+
+Without a question tool (another agent, or a host that lacks one), ask everything in one message with defaults in brackets, and wait for every answer. Nothing in steps 3 to 6 runs until every round is answered.
+
+Comments and the share link come later, with `miles-deploy`, because they need a Vercel project.
 
 ## 3. Create the project
 
@@ -48,7 +69,7 @@ It copies the template, pins the `@milesroxas/design-hub` package, installs, put
 pnpm --dir <path> bootstrap [--typesafe-key <key>] [--conductor --branch <branch>]
 ```
 
-It picks a port nothing holds and no other project claims, writes it to `.env` and `.claude/launch.json`, and applies the flags. Read the JSON's `warnings`. With question 6 answered globally: `npx skills add milesroxas/design-hub -g -y`.
+It picks a port nothing holds and no other project claims, writes it to `.env` and `.claude/launch.json`, and applies the flags. Read the JSON's `warnings`. With the skills answered globally: `npx skills add milesroxas/design-hub -g -y`.
 
 ## 5. Record what was answered
 
