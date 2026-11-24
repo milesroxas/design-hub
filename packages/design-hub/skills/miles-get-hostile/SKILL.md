@@ -1,6 +1,6 @@
 ---
 name: miles-get-hostile
-description: "Hostile fixtures for a prototype: fixtures.json with real data from the CMS or the comp, the missing set by hand, and the strategy and design answers for the edge cases (longest, empty, maximum count, missing media). Load when writing or changing fixtures.json, when a reviewer asks what happens with no items or a long name, or when a state needs data to reach it. Triggers on: fixtures, fixture set, hostile, edge case, worst content, longest, empty state, max count, missing image, real data, CMS pull, collection items, fixtures-pull, Webflow token."
+description: "Hostile fixtures for a prototype: fixtures.json with real data from the CMS or the comp, the missing set by hand, and the strategy and design answers for the edge cases (longest, empty, maximum count, missing media). Load when writing or changing fixtures.json, when a reviewer asks what happens with no items or a long name, or when a state needs data to reach it. Triggers on: fixtures, fixture set, hostile, edge case, worst content, longest, empty state, max count, missing image, real data, CMS pull, collection items, fixtures-pull, Webflow token, Payload, WordPress, EmDash."
 ---
 
 # Get hostile
@@ -23,10 +23,12 @@ Pretty placeholder data hides the decision. Every prototype carries five sets, s
 
 ## Where `real` comes from, cheapest first
 
-1. **A Webflow project with `WEBFLOW_TOKEN` in `.env`.** Run `pnpm fixtures-pull <slug> --collection <id>` once with no `--map`: it lists the collection's fields. Then pull with one `--map key=field.path` per field the component renders (`--map cover=thumbnail.url`). It pages through any `--limit` and keeps every other key in `fixtures.json`. Why a script: it costs no tokens per item, so a pull of 200 items costs the same as 20.
-2. **A Webflow project without a token.** One call to the Webflow MCP's CMS tool for the collection behind the design, `limit` 20 or fewer. Keep only the fields the component renders. Never a full-collection pull: every field of every item spends tokens on nothing the component shows.
-3. **No CMS.** Write `real` from the content in the Paper comp, word for word. Eight items minimum, because a list of three never shows its rhythm.
-4. **A different CMS.** One read of up to 20 items with the same field cut. Say which tool was used in the README's Fixtures section.
+1. **The project's CMS, by script.** `pnpm fixtures-pull <slug>` reads the platform in `.design-hub/project.json`: Webflow (`WEBFLOW_TOKEN`), Payload (`PAYLOAD_URL`, `PAYLOAD_API_KEY`) or WordPress (`WORDPRESS_URL`), each in `.env`; a missing key comes back with the fix. Run it once with `--collection <id or slug>` and no `--map`: it lists the field paths with a sample of each. Then pull with one `--map key=path` per field the component renders (`--map cover=thumbnail.url`, `--map title=title.rendered`). It pages through any `--limit`, keeps every other key in `fixtures.json`, and turns WordPress's rendered HTML into plain text. Why a script: it costs no tokens per item, so a pull of 200 items costs the same as 20.
+2. **EmDash, or any CMS with a JSON export.** Write the items to a file (EmDash: `npx emdash content list <collection> --json > items.json`), then `pnpm fixtures-pull <slug> --from items.json`, first without `--map` to list the paths, then with it. Delete the file after: it is a copy of client content.
+3. **A Webflow project without a token.** One call to the Webflow MCP's CMS tool for the collection behind the design, `limit` 20 or fewer. Keep only the fields the component renders. Never a full-collection pull: every field of every item spends tokens on nothing the component shows.
+4. **No CMS.** Write `real` from the content in the Paper comp, word for word. Eight items minimum, because a list of three never shows its rhythm.
+
+Say where `real` came from in the README's Fixtures section: the platform and the collection.
 
 Strip anything that identifies a private person before writing it down: a phone number, a personal email, a home address. `pnpm preflight` stops on every email and phone number until each is replaced or confirmed as a business contact.
 

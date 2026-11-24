@@ -54,7 +54,7 @@ Then walk one branch. Both follow three rules:
 3. **Fixtures travel.** Each fixture set becomes a test fixture or a story in the target's own convention, and each README state a test or a story. Why: the hostile sets are where QA catches the edge cases, so they go with the feature.
 4. **A new branch**, never the target's main. Name it after the feature slug.
 
-Read the reference for the target's stack before step 2, when there is one: `references/next.md` for Next.js, `references/astro.md` for Astro. The target's own `AGENTS.md` still wins over both. For any other stack, the target's docs are the reference. The CMS (Payload, WordPress, EmDash) owns the content model: map each fixture key to a field of the collection the page reads, and list a key with no field in the report instead of adding one to the CMS unasked.
+Read the references for the target's stack before step 2: the front end's (`references/next.md` for Next.js, `references/astro.md` for Astro) and the CMS's (`references/payload.md`, `references/wordpress.md`, `references/emdash.md`). The target's own `AGENTS.md` still wins over both. For any other stack, the target's docs are the reference. The CMS (Payload, WordPress, EmDash) owns the content model: map each fixture key to a field of the collection the page reads, and list a key with no field in the report instead of adding one to the CMS unasked.
 
 ## Output: the port report
 
