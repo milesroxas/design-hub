@@ -23,6 +23,7 @@ dist/
 # Local state of the sample project: the Jev log, the dev review store, the installed skills
 **/.design-hub/*
 !**/.design-hub/checks.json
+!**/.design-hub/project.json
 packages/create-design-hub/template/.claude/skills/
 packages/create-design-hub/template/docs/.obsidian/workspace*.json
 packages/create-design-hub/template/.impeccable/config.local.json

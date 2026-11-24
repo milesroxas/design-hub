@@ -12,10 +12,12 @@ New here and not a developer? Read the [guide](docs/guide/README.md): setup, wor
 ## Start a project
 
 ```sh
-npm create @milesroxas/design-hub@latest -- --path ~/Design/acme-site
+npm create @milesroxas/design-hub@latest -- --path ~/Design/acme-site --track website --platform webflow
 cd ~/Design/acme-site
 pnpm dev              # http://localhost:<PORT>; the first start claims a free port for this folder
 ```
+
+A project has one or more tracks: `product` (app screens, handed to the client's engineers as a spec), `website` (pages on Webflow, Payload, WordPress or EmDash, with Astro or Next as the front end where it is a choice) and `brand` (social posts, slides, print). The tracks decide each prototype's shell, the samples a project starts with, and how `miles-port` hands the work off. They live in `.design-hub/project.json`; `design-hub tracks set` changes them.
 
 With Claude Code, install the one global skill and ask it to start a project. It asks every question up front, then runs the scaffolder and `pnpm bootstrap` with your answers:
 
@@ -49,6 +51,7 @@ docs/sprints/<feature>/   design-doc.md, guide.md, comments.md, port.md
 DESIGN.md  PRODUCT.md  AGENTS.md
 api/review.ts  proxy.ts  vercel.json      one line each
 .claude/              hooks and the miles-* skills, installed from the package
+.design-hub/project.json                  the tracks and website platform
 .design-hub/checks.json                   the Jev thresholds
 ```
 
@@ -56,7 +59,7 @@ The project's `AGENTS.md` is the whole contract an agent reads. Nothing in `node
 
 ## What the package does
 
-- **The hub.** Lists every prototype from its README, groups them by feature, serves each at `/<slug>/` and each walkthrough at `/guide/<feature>/`. A new folder shows up without a restart.
+- **The hub.** Lists every prototype from its README, groups them by feature, filters them by track, serves each at `/<slug>/` and each walkthrough at `/guide/<feature>/`. A new folder shows up without a restart.
 - **Every state on a dial.** DialKit controls through `@kit/dials`; `longest`, `empty`, `max` and `missing` fixture sets derived by `@kit/fixtures`.
 - **The kit.** `@kit/ui`, `@kit/Space`, `@kit/Variants`, `@kit/Icon` and the rest. `@kit/<name>` resolves to the project's `kit/<name>` first and the package's second, so a project forks a piece by copying the file.
 - **Review on the deployed site.** A shared password to view, invite links to comment, comments pinned to the element and the exact dial state. Upstash Redis when deployed, a file in dev.

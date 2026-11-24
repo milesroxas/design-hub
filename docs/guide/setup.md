@@ -22,11 +22,12 @@ Design Hub runs on Node.js, a free program.
 ## 4. Create your first project
 
 1. **Project name**: the product or site, for example "Acme website".
-2. **Where should it live**: **This computer** is the simplest. Choose **GitHub** if your team already works there; the page walks you through signing in.
-3. Leave **TypeSafe API key** and **Conductor branch** empty unless someone gave you one.
-4. Click **Create project**. Setup takes a minute or two. When the page says **Your project is ready**, click **Open Design Hub**.
+2. **What is this project?** Tick every one that applies: **Product** for app screens, **Website** for pages on a CMS, **Brand collateral** for social posts, slides and print. A full-service client gets all three. With **Website**, pick where the site is built (Webflow, Payload, WordPress or EmDash), and for Payload or WordPress, the front end. Not sure yet? Leave the platform empty; you can set it later.
+3. **Where should it live**: **This computer** is the simplest. Choose **GitHub** if your team already works there; the page walks you through signing in.
+4. Leave **TypeSafe API key** and **Conductor branch** empty unless someone gave you one.
+5. Click **Create project**. Setup takes a minute or two. When the page says **Your project is ready**, click **Open Design Hub**.
 
-Your browser shows the **Prototypes** page with one sample prototype. That is your project.
+Your browser shows the **Prototypes** page with a sample prototype for each kind of work you ticked. That is your project.
 
 ## 5. Install Claude Code
 
