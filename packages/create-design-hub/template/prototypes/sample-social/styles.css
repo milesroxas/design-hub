@@ -1,0 +1,20 @@
+/* Real pixels: every artboard is 1080 wide. The copy block sits at the
+   bottom; the story's extra height goes to the photo, and its 250px top and
+   bottom bands stay clear of type and the mark. */
+.post-art { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 56px; padding: 88px; background: var(--bg-brand-solid); color: var(--text-white); font-family: inherit; }
+.post-art[data-tone="light"] { background: var(--bg-primary); color: var(--text-primary); }
+.post-photo { flex: 1; min-height: 0; border-radius: 24px; box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.2); }
+.post-photo.is-missing { background: transparent; outline: 3px dashed currentColor; outline-offset: -3px; opacity: 0.4; }
+.post-copy { display: flex; flex-direction: column; gap: 24px; }
+.post-art[data-layout="type"] .post-copy { flex: 1; justify-content: center; }
+.post-kicker { font-size: 28px; line-height: 36px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.8; }
+.post-headline { font-size: 80px; line-height: 1.05; font-weight: 700; letter-spacing: -0.02em; text-wrap: balance; overflow-wrap: anywhere; }
+.post-art[data-layout="type"] .post-headline { font-size: 104px; }
+.post-sub { font-size: 34px; line-height: 46px; max-width: 28ch; opacity: 0.85; }
+.post-cta { align-self: flex-start; padding: 18px 32px; border-radius: 999px; background: var(--text-white); color: var(--bg-brand-solid); font-size: 30px; line-height: 36px; font-weight: 600; }
+.post-art[data-tone="light"] .post-cta { background: var(--bg-brand-solid); color: var(--text-white); }
+.post-brand { display: flex; align-items: center; gap: 16px; font-size: 32px; line-height: 40px; font-weight: 600; }
+.post-none { justify-content: center; align-items: center; font-size: 40px; opacity: 0.7; }
+[data-format="post-square"] .post-art { gap: 40px; padding: 72px; }
+[data-format="post-square"] .post-headline { font-size: 68px; }
+[data-format="story"] .post-art { padding: 250px 88px; }

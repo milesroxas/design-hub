@@ -75,6 +75,16 @@ The shell follows the tracks in `.design-hub/project.json`: a product draws `App
 - **Website:** the link to each Paper frame that holds the header, footer and pre-footer, or "from the sample".
 - **Where it is built:** `kit/shell.ts` (brand, navigation, people) and `AppShell.tsx` or `SiteShell.tsx`. A prototype never rebuilds the shell inside its own folder.
 
+## Brand
+
+For a project with the brand track. Collateral is drawn from the same tokens as everything else; this section holds what tokens cannot say. `miles-brand` reads it before any artboard. Leave it out when the project has no brand track.
+
+- **Logo:** each lockup, its file in `kit/icons.ts` or `public/`, its clear space (in units of the mark's height) and its minimum size in pixels. When it goes on the brand colour and when on the page colour.
+- **Imagery:** the photo or illustration style in two sentences, the crops each format uses, and what never appears.
+- **Collateral type:** the headline, subhead and body sizes at 1080 wide, and the shortest headline that still reads at feed size.
+- **Formats:** the formats the brand runs (`post-square`, `post-portrait`, `story`, `link-preview`, `banner`, `slide`, `a4`, `letter`) and where each goes. A story keeps type and the logo out of its top and bottom 250px.
+- **Voice:** the rule for headlines and calls to action, with one right and one wrong example.
+
 ## Colors
 
 Group by role: primary, neutral, status, any utility family. For each colour, its name, hex, token, what it is for and its dark value. Then the named rules, each a bold name and a paragraph that says the rule and why it holds.

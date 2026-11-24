@@ -1,0 +1,46 @@
+{
+  "real": [
+    {
+      "id": "1",
+      "kicker": "New",
+      "headline": "Plan a site rebuild in two weeks",
+      "sub": "The questions we ask before the first frame.",
+      "cta": "Read the guide",
+      "image": "#dbe6fe"
+    },
+    {
+      "id": "2",
+      "kicker": "Case study",
+      "headline": "A pricing page that answers the second question",
+      "sub": "What visitors look for after they read the price.",
+      "cta": "See the work",
+      "image": "#fedf89"
+    },
+    {
+      "id": "3",
+      "kicker": "Event",
+      "headline": "Design review, live, every Thursday",
+      "sub": "Bring a screen. Leave with three decisions.",
+      "cta": "Save a seat",
+      "image": "#a9efc5"
+    }
+  ],
+  "missing": [
+    {
+      "id": "m1",
+      "kicker": "",
+      "headline": "A post with no image and no kicker",
+      "sub": "Editors skip the image more often than the design expects.",
+      "cta": "Read more",
+      "image": null
+    },
+    {
+      "id": "m2",
+      "kicker": "New",
+      "headline": "A post with no subhead or call to action",
+      "sub": "",
+      "cta": "",
+      "image": "#fecdc9"
+    }
+  ]
+}

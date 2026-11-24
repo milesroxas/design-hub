@@ -9,6 +9,9 @@
 # Dependencies and builds
 node_modules/
 dist/
+
+# Exported collateral: files to hand over, rebuilt from the prototype any time
+exports/
 .vercel/
 
 # Environment and secrets

@@ -9,6 +9,7 @@
     "dev": "design-hub dev",
     "build": "design-hub build",
     "preview": "design-hub preview",
+    "export": "design-hub export",
     "bootstrap": "design-hub bootstrap",
     "new": "design-hub new",
     "tracks": "design-hub tracks",
