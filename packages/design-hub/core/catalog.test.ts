@@ -49,4 +49,5 @@ test('the track is read when known, and names the shell a prototype stands in', 
   assert.equal(placeLabel({ context: 'app', track: 'website' }), 'Site shell');
   assert.equal(placeLabel({ context: 'app', track: '' }), 'App shell');
   assert.equal(placeLabel({ context: 'space', track: 'website' }), 'Space');
+  assert.equal(placeLabel({ context: 'board', track: 'brand' }), 'Artboards');
 });

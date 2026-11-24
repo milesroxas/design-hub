@@ -78,12 +78,13 @@ function guide(feature: string) {
 
 type Kind = 'sprint' | 'alternate' | 'exploration';
 
-/** The template folder: the Space, or the shell of the prototype's track. A project without tracks gets the product shell, as before. */
+/**
+ * The template folder: brand collateral is always a board of artboards;
+ * otherwise the Space, or the shell of the prototype's track. A project
+ * without tracks gets the product shell, as before.
+ */
 export function templateFor(track: Track | '', app: boolean): string {
-  if (track === 'brand')
-    throw new CliError('Brand templates are not in this version of design-hub yet.', {
-      fix: 'Start a brand piece as a Space prototype in another track for now, or update design-hub.',
-    });
+  if (track === 'brand') return 'brand';
   if (!app) return 'space';
   return track === 'website' ? 'site' : 'app';
 }
@@ -132,7 +133,7 @@ function prototype(slug: string, { flags }: Args<typeof spec>) {
     throw new CliError('--feature takes a kebab-case slug.', { got: feature });
   const kind = kindFor(flags, feature);
   const track = resolveTrack(flags.track);
-  const context = flags.app ? 'app' : 'space';
+  const context = track === 'brand' ? 'board' : flags.app ? 'app' : 'space';
   scaffold(join(TEMPLATES, templateFor(track, flags.app)), join(PROTOTYPES, slug), {
     title: flags.title ?? featureTitle(slug),
     slug,

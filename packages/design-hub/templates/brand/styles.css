@@ -1,0 +1,5 @@
+/* Values are real pixels at the artboard's size (1080 wide for posts). */
+.piece { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; gap: 24px; padding: 96px; background: var(--bg-brand-solid, var(--bg-primary)); color: var(--text-white, var(--text-primary)); }
+.piece-kicker { font-size: 28px; line-height: 36px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; opacity: 0.8; }
+.piece-headline { font-size: 88px; line-height: 1.05; font-weight: 700; letter-spacing: -0.02em; text-wrap: balance; max-width: 16ch; }
+.piece-sub { font-size: 32px; line-height: 44px; max-width: 30ch; opacity: 0.85; }

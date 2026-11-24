@@ -27,6 +27,7 @@ The prototype's `track:` and `.design-hub/project.json` answer this before anyon
 | `website`, platform `webflow` | The Webflow branch. |
 | `website`, platform `payload`, `wordpress` or `emdash` | The codebase branch, on the site's front end (`website.frontend`: Astro or Next; EmDash is always Astro, deployed to Cloudflare). Ask only for the path to the site's repo. |
 | `website` without a platform | Stop and ask where the site is built, then record it: `pnpm tracks set --track <every track> --platform <platform> [--frontend astro|next]`. |
+| `brand` | The export is the hand-off: `pnpm export <slug>` with the Decision's dial state (`miles-brand`). When the client wants the template itself in Figma, Canva or Keynote, the report lists each slot, format and value to rebuild there. Skip both build branches below. |
 | no `track:` (a project made before tracks) | Ask one question: Webflow, or a codebase (the path to its repo)? |
 
 Then walk one branch. Both follow three rules:

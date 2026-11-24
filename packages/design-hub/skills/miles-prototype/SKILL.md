@@ -5,13 +5,13 @@ description: "The rules for writing or changing any prototype code under prototy
 
 # Prototype
 
-A prototype here answers one written question with the least code that can answer it, in the project's real materials, with every state reachable from a dial. This skill holds the ceiling. `AGENTS.md` holds the stack and the layout; the sample of the prototype's track (`prototypes/sample-list/` for product, `prototypes/sample-page/` for website) is the worked example and wins over any description of it here.
+A prototype here answers one written question with the least code that can answer it, in the project's real materials, with every state reachable from a dial. This skill holds the ceiling. `AGENTS.md` holds the stack and the layout; the sample of the prototype's track (`prototypes/sample-list/` for product, `prototypes/sample-page/` for website, `prototypes/sample-social/` for brand, where `miles-brand` adds the collateral rules) is the worked example and wins over any description of it here.
 
 ## Before the first line
 
 1. Read the feature's `README.md`. If it has no Problem, Question and States, stop and write them with `miles-new-feature`. Code written before the question is code that answers a different question.
 2. Decide where it stands: `AppShell` or `SiteShell` when the question is about the feature in context, `Space` when it is about one thing alone. Never both in one prototype.
-3. Read the `index.tsx` of the track's sample once per session (`sample-list` for product, `sample-page` for website, whichever the project kept). It is the reference for every pattern below.
+3. Read the `index.tsx` of the track's sample once per session (`sample-list` for product, `sample-page` for website, `sample-social` for brand, whichever the project kept). It is the reference for every pattern below.
 
 ## The fidelity ceiling
 

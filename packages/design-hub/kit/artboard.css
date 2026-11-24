@@ -1,0 +1,47 @@
+/* The board: artboards side by side on a quiet canvas, each scaled with CSS
+   zoom so its content keeps its real pixel values. Under export, only the
+   artboards, stacked at 1:1, with motion off and one page per artboard. */
+.board { min-height: 100vh; display: flex; flex-direction: column; gap: 32px; padding: 64px 32px 128px; background: var(--bg-secondary); }
+.board-head { display: flex; flex-direction: column; gap: 4px; max-width: 65ch; }
+.board-title { font-size: 18px; line-height: 28px; font-weight: 600; color: var(--text-primary); text-wrap: balance; }
+.board-lede { color: var(--text-tertiary); text-wrap: pretty; }
+.board-grid { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 40px; min-width: 0; }
+.artboard-slot { display: flex; flex-direction: column; gap: 10px; margin: 0; min-width: 0; }
+.artboard { position: relative; flex: none; overflow: hidden; background: var(--bg-primary); box-shadow: 0 0 0 1px rgb(16 24 40 / 0.08), 0 12px 32px -12px rgb(16 24 40 / 0.18); }
+.artboard-label { display: flex; justify-content: space-between; gap: 16px; font-size: 12px; line-height: 18px; color: var(--text-tertiary); }
+.artboard-label > span:first-child { color: var(--text-secondary); font-weight: 500; }
+.artboard-safe { position: absolute; inset-inline: 0; pointer-events: none; background: repeating-linear-gradient(-45deg, rgb(240 68 56 / 0.14) 0 12px, rgb(240 68 56 / 0.06) 12px 24px); outline: 1px dashed rgb(240 68 56 / 0.5); outline-offset: -1px; }
+
+@media (max-width: 720px) {
+  .board { padding: 32px 16px 128px; }
+}
+
+/* Export: the page is the artboards and nothing else. */
+html[data-export] body { margin: 0; background: transparent; }
+.board-export { display: flex; flex-direction: column; align-items: flex-start; width: max-content; }
+.board-export .artboard { box-shadow: none; }
+html[data-export] *, html[data-export] *::before, html[data-export] *::after { animation: none !important; transition: none !important; }
+
+/* PDF: one page per artboard at the format's own size. The exporter prints
+   one format at a time, hiding the rest, because Chrome lays out one PDF at
+   a single width. */
+@media print {
+  .board-export .artboard { break-after: page; }
+  .artboard[data-format="post-square"] { page: post-square; }
+  .artboard[data-format="post-portrait"] { page: post-portrait; }
+  .artboard[data-format="story"] { page: story; }
+  .artboard[data-format="link-preview"] { page: link-preview; }
+  .artboard[data-format="banner"] { page: banner; }
+  .artboard[data-format="slide"] { page: slide; }
+  .artboard[data-format="a4"] { page: a4; }
+  .artboard[data-format="letter"] { page: letter; }
+}
+@page { margin: 0; }
+@page post-square { size: 1080px 1080px; margin: 0; }
+@page post-portrait { size: 1080px 1350px; margin: 0; }
+@page story { size: 1080px 1920px; margin: 0; }
+@page link-preview { size: 1200px 630px; margin: 0; }
+@page banner { size: 1584px 396px; margin: 0; }
+@page slide { size: 1920px 1080px; margin: 0; }
+@page a4 { size: 210mm 297mm; margin: 0; }
+@page letter { size: 8.5in 11in; margin: 0; }

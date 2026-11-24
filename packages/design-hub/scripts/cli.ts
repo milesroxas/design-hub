@@ -13,6 +13,7 @@ import * as commands from './commands.ts';
 import * as comments from './comments.ts';
 import * as dev from './dev.ts';
 import * as elyx from './elyx.ts';
+import * as exportCmd from './export.ts';
 import * as fixturesPull from './fixtures-pull.ts';
 import * as guard from './guard.ts';
 import { HOOKS, runHook } from './hook.ts';
@@ -49,6 +50,7 @@ const COMMANDS: Record<string, Command> = {
   'fixtures-pull': fixturesPull,
   'visual-match': visualMatch,
   elyx,
+  export: exportCmd,
   skills,
   tracks,
   'skill-hint': skillHint,

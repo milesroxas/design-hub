@@ -15,7 +15,7 @@ One feature is one slug used in two places: `docs/sprints/<slug>/` and the `feat
    - Another full take on the same flow, to compare against the primary → `--alternate`. Refused until the primary exists.
    - A side question about one part (a menu's motion, a loading state) → exploration, the default.
 3. **Which track?** Read `.design-hub/project.json` (or `pnpm tracks`). A project with one track uses it. A project with several needs `--track product|website|brand`: product is app screens, website is CMS pages, brand is collateral (social posts, slides, print). `pnpm new` refuses a track the project does not have, because the track decides the shell, the sample to read, and how `miles-port` hands it off.
-4. **Where does it stand?** `--app` when the question is about the feature in context: the track's shell, `AppShell` for product and `SiteShell` for website, as `DESIGN.md`, Shell, describes. Nothing when it is one thing alone in the Space.
+4. **Where does it stand?** `--app` when the question is about the feature in context: the track's shell, `AppShell` for product and `SiteShell` for website, as `DESIGN.md`, Shell, describes. Nothing when it is one thing alone in the Space. Brand is always a `Board` of artboards, whatever the flags; `miles-brand` takes over from step 6.
 5. **Scaffold.** From the project root:
    ```bash
    pnpm new <slug> --app --sprint --feature <feature> --track website --title "Title"

@@ -11,6 +11,10 @@ import { Prototype } from './Prototype';
 import { findEntry, guides } from './registry';
 
 const params = new URLSearchParams(location.search);
+// `design-hub export` opens a prototype with ?export: its artboards alone, no
+// review panel, no dials, no accessibility overlay (kit/Artboard.tsx).
+const exporting = params.has('export');
+if (exporting) document.documentElement.dataset.export = '';
 
 // Lapse patches the clocks, so it lands before any prototype (and Motion) loads.
 // The module is empty unless the project installed @aiforui/lapse (vite/lapse.ts).
@@ -20,7 +24,7 @@ if (import.meta.env.DEV && params.has('lapse')) {
   else console.warn('[design-hub] ?lapse needs Lapse in the project: pnpm add -D @aiforui/lapse');
 }
 
-if (import.meta.env.DEV && params.get('a11y') !== '0') {
+if (import.meta.env.DEV && !exporting && params.get('a11y') !== '0') {
   import('./a11y').then((m) => m.watchA11y());
 }
 
@@ -42,7 +46,7 @@ if (slug === 'guide') {
   const entry = findEntry(slug);
   if (entry?.feature && guides.has(entry.feature)) setGuide(guideHref(entry.feature));
   page = <Prototype slug={slug} entry={entry} />;
-  if (entry) {
+  if (entry && !exporting) {
     const { mountReview } = await import('./review/mount');
     mountReview({ prototype: slug, feature: entry.feature, states: (entry.states ?? []).map((s) => s.name) });
   }

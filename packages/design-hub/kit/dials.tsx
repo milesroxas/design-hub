@@ -35,7 +35,8 @@ export const setGuide = (href: string) => {
 
 // One DialRoot per page, in its own React root, however many panels register.
 export function ensureDialRoot() {
-  if (mounted) return;
+  // `design-hub export` captures the prototype alone; the panel never mounts.
+  if (mounted || document.documentElement.dataset.export !== undefined) return;
   mounted = true;
   const host = document.createElement('div');
   host.dataset.harness = 'dials';

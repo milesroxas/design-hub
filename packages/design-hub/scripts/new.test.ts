@@ -29,5 +29,6 @@ test("--app picks the track's shell; a project without tracks keeps the product 
   assert.equal(templateFor('product', true), 'app');
   assert.equal(templateFor('', true), 'app');
   assert.equal(templateFor('website', false), 'space');
-  assert.throws(() => templateFor('brand', false), /Brand templates/);
+  assert.equal(templateFor('brand', false), 'brand');
+  assert.equal(templateFor('brand', true), 'brand');
 });

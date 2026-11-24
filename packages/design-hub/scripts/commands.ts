@@ -9,6 +9,7 @@ import * as check from './check.ts';
 import * as comments from './comments.ts';
 import * as dev from './dev.ts';
 import * as elyx from './elyx.ts';
+import * as exportCmd from './export.ts';
 import * as fixturesPull from './fixtures-pull.ts';
 import * as guard from './guard.ts';
 import { type CommandSpec, schema } from './lib/cli.ts';
@@ -44,6 +45,7 @@ export const COMMANDS: CommandSpec[] = [
   fixturesPull.spec,
   visualMatch.spec,
   elyx.spec,
+  exportCmd.spec,
   skills.spec,
   tracks.spec,
   skillHint.spec,

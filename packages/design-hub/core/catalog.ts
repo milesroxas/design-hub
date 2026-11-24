@@ -46,6 +46,9 @@ const rank = (status: string) => (status === 'exploring' ? 0 : 1);
 export const byIndexOrder = (a: Meta, b: Meta) =>
   rank(a.status) - rank(b.status) || b.created.localeCompare(a.created) || a.title.localeCompare(b.title);
 
-/** Where a prototype stands, in words: the Space, or the shell its track draws. */
-export const placeLabel = (m: Pick<Meta, 'context' | 'track'>) =>
-  m.context !== 'app' ? 'Space' : m.track === 'website' ? 'Site shell' : 'App shell';
+/** Where a prototype stands, in words: the Space, the shell its track draws, or a board of artboards. */
+export function placeLabel(m: Pick<Meta, 'context' | 'track'>): string {
+  if (m.context === 'board') return 'Artboards';
+  if (m.context !== 'app') return 'Space';
+  return m.track === 'website' ? 'Site shell' : 'App shell';
+}
