@@ -12,7 +12,7 @@ import 'dialkit/styles.css';
 import './dials.css';
 import { type RefObject, useLayoutEffect } from 'react';
 import { createRoot } from 'react-dom/client';
-import { iconMarkup } from './Icon';
+import { type IconName, iconMarkup } from './Icon';
 
 // What the panel calls itself. DialKit hard-codes its own name as the root
 // title; the prototypes say what the thing is instead.
@@ -55,7 +55,7 @@ export function ensureDialRoot() {
   // DialKit portals the panel to <body>; it appears once the first panel registers.
   const settle = (root: HTMLElement) => {
     retitle(root);
-    placeGuide(root);
+    placeLinks(root);
     new MutationObserver((records) => {
       for (const { type, target } of records) {
         // DialKit keeps the panel's scroll offset when it collapses, which pushes the trigger icon off-centre.
@@ -64,7 +64,7 @@ export function ensureDialRoot() {
         }
       }
       retitle(root);
-      placeGuide(root);
+      placeLinks(root);
     }).observe(root, { subtree: true, childList: true, attributeFilter: ['data-collapsed'] });
   };
   const found = document.body.querySelector<HTMLElement>('.dialkit-root');
@@ -92,25 +92,44 @@ function retitle(root: HTMLElement) {
   if (title && title.textContent !== DIALS_TITLE) title.textContent = DIALS_TITLE;
 }
 
-// The walkthrough is the panel's last row, under every group. DialKit remounts
-// the content on open and adds groups as panels register, so the link is put
-// back whenever it is missing and moved down whenever a group lands below it.
-function placeGuide(root: HTMLElement) {
-  if (!guide) return;
+type PanelLink = { key: string; href: string; label: string; icon: IconName; newTab?: boolean };
+
+// The panel's last rows, under every group: the hub's list of every prototype,
+// then the feature's walkthrough when it has one, which stays the very last.
+function panelLinks(): PanelLink[] {
+  const home: PanelLink = { key: 'home', href: '/', label: 'All prototypes', icon: 'grid-01' };
+  if (!guide) return [home];
+  return [
+    home,
+    { key: 'guide', href: guide, label: 'Open the walkthrough', icon: 'arrow-up-right', newTab: true },
+  ];
+}
+
+function makeLink({ key, href, label, icon, newTab }: PanelLink) {
+  const link = document.createElement('a');
+  link.className = 'dial-link';
+  link.dataset.dialLink = key;
+  link.href = href;
+  if (newTab) {
+    link.target = '_blank';
+    link.rel = 'noopener';
+  }
+  link.innerHTML = `<span>${label}</span>${iconMarkup(icon, 16)}`;
+  return link;
+}
+
+// DialKit remounts the content on open and adds groups as panels register, so
+// the rows are put back whenever they are missing and moved down whenever a
+// group lands below them.
+function placeLinks(root: HTMLElement) {
   const content = root.querySelector('.dialkit-folder-root > .dialkit-folder-content');
   if (!content) return;
-  const placed = content.querySelector(':scope > .dial-guide');
-  if (placed) {
-    if (content.lastElementChild !== placed) content.append(placed);
-    return;
-  }
-  const link = document.createElement('a');
-  link.className = 'dial-guide';
-  link.href = guide;
-  link.target = '_blank';
-  link.rel = 'noopener';
-  link.innerHTML = `<span>Open the walkthrough</span>${iconMarkup('arrow-up-right', 16)}`;
-  content.append(link);
+  const rows = panelLinks().map(
+    (l) => content.querySelector<HTMLAnchorElement>(`:scope > [data-dial-link="${l.key}"]`) ?? makeLink(l),
+  );
+  const tail = Array.from(content.children).slice(-rows.length);
+  if (rows.every((row, i) => tail[i] === row)) return;
+  content.append(...rows);
 }
 
 // Hints: what each dial does, shown on hover or focus.
