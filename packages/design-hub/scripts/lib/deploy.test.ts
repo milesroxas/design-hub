@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   deviceLink,
+  GATE_REQUEST,
   gateVerdict,
   gitConnected,
   nextStep,
@@ -87,6 +88,17 @@ test('a missing gate env, an open site, or a missing noindex each fail', () => {
     /got 200/,
   );
   assert.match((gateVerdict({ ...page, robots: null }) as { problem: string }).problem, /noindex/);
+});
+
+test('the check asks as a browser, since the gate answers anything else in plain text', () => {
+  assert.equal(GATE_REQUEST.redirect, 'manual');
+  assert.match(GATE_REQUEST.headers.accept, /text\/html/);
+});
+
+test('a 401 without the password form says the body was wrong, not the status', () => {
+  const v = gateVerdict({ ...page, body: 'Password required.' }) as { problem: string };
+  assert.match(v.problem, /401, but the body was not the password page: "Password required\."/);
+  assert.doesNotMatch(v.problem, /got 401/);
 });
 
 test('a pushed commit is followed until its deployment is ready or fails', () => {

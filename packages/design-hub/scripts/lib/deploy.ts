@@ -55,6 +55,16 @@ export function plan(repo: Repo, forceCli: boolean): Plan {
   return { via: 'git', branch: repo.productionBranch };
 }
 
+/**
+ * How `design-hub share` asks for the home page: as a browser does. The gate
+ * answers a client that does not accept HTML with a plain-text 401, which has
+ * no password form to find.
+ */
+export const GATE_REQUEST = {
+  redirect: 'manual',
+  headers: { accept: 'text/html,application/xhtml+xml' },
+} as const satisfies RequestInit;
+
 export type Answer = { status: number; location: string | null; robots: string | null; body: string };
 export type Verdict = { ok: true } | { ok: false; problem: string; fix: string };
 
@@ -72,11 +82,17 @@ export function gateVerdict(answer: Answer): Verdict {
       problem: 'The gate answers 503: GATE_PASSWORD or GATE_SECRET is missing on the deployment.',
       fix: 'design-hub bootstrap --vercel <project>, then deploy again so the env reaches the site.',
     };
-  if (answer.status !== 401 || !/name="password"/.test(answer.body))
+  if (answer.status !== 401)
     return {
       ok: false,
       problem: `Expected the password page (401), got ${answer.status}.`,
       fix: 'Check that proxy.ts and vercel.json are the template’s, then deploy again.',
+    };
+  if (!/name="password"/.test(answer.body))
+    return {
+      ok: false,
+      problem: `The site answered 401, but the body was not the password page: ${JSON.stringify(answer.body.replace(/\s+/g, ' ').trim().slice(0, 80))}.`,
+      fix: 'Something other than the hub’s gate answered. Check that Vercel’s Password Protection is off and that proxy.ts and vercel.json are the template’s, then deploy again.',
     };
   if (!/noindex/.test(answer.robots ?? ''))
     return {

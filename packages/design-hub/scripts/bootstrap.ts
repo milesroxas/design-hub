@@ -209,12 +209,25 @@ function link(project: string, team: string | undefined, warnings: string[]): 'r
   if (current) warnings.push(`.vercel/project.json pointed at ${current}; relinked to ${project}.`);
   // A new project is created in the scope given; without one the CLI's current team wins, which
   // is whichever team the user last switched to, not necessarily where this project belongs.
-  const gitignore = join(ROOT, '.gitignore');
-  const before = existsSync(gitignore) ? readFileSync(gitignore, 'utf8') : '';
   cli(['link', '--yes', '--project', project, ...(team ? ['--scope', team] : [])]);
-  const kept = restoreGitignore(before, existsSync(gitignore) ? readFileSync(gitignore, 'utf8') : '');
-  if (kept !== null) writeFileSync(gitignore, kept);
   return 'ran';
+}
+
+/**
+ * Runs `steps` and then puts .gitignore back as `restoreGitignore` says, even
+ * when a step throws: `vercel link` appends to it, and a later failure (the
+ * Upstash terms, most often) would otherwise leave the tree dirty.
+ */
+export function keepingGitignore<T>(dir: string, steps: () => T): T {
+  const file = join(dir, '.gitignore');
+  const read = () => (existsSync(file) ? readFileSync(file, 'utf8') : '');
+  const before = read();
+  try {
+    return steps();
+  } finally {
+    const kept = restoreGitignore(before, read());
+    if (kept !== null) writeFileSync(file, kept);
+  }
 }
 
 /** The `origin` remote, or null when the project has none. */
@@ -441,7 +454,12 @@ export function main({ flags }: Args<typeof spec>) {
     typesafe: typesafeKey ? 'on' : 'off',
   };
   if (flags.conductor) result.conductor = writeConductor(flags.branch, warnings);
-  if (flags.vercel) Object.assign(result, setUpVercel(flags.vercel, flags, env, typesafeKey, warnings));
+  const project = flags.vercel;
+  if (project)
+    Object.assign(
+      result,
+      keepingGitignore(ROOT, () => setUpVercel(project, flags, env, typesafeKey, warnings)),
+    );
   envIgnored(warnings);
   return { ...result, warnings };
 }

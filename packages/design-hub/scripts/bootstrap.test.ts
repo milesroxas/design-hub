@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { gateValues } from './bootstrap.ts';
+import { gateValues, keepingGitignore } from './bootstrap.ts';
 
 // ROOT is fixed when paths.ts loads, so each run is a child process on a
 // throwaway project and a throwaway registry; the machine's is never touched.
@@ -81,6 +81,68 @@ test('a new password given rotates it and keeps the secret', () => {
     rotated: true,
   });
 });
+
+const TEMPLATE_GITIGNORE = 'node_modules/\n.vercel/\n.env\n!.env.example\n';
+
+test('.gitignore goes back as it was when a step after vercel link throws', () => {
+  const dir = project();
+  const file = join(dir, '.gitignore');
+  writeFileSync(file, TEMPLATE_GITIGNORE);
+  assert.throws(
+    () =>
+      keepingGitignore(dir, () => {
+        appendFileSync(file, '.vercel\n.env*\n');
+        throw new Error('Could not add the Upstash for Redis store');
+      }),
+    /Upstash/,
+  );
+  assert.equal(readFileSync(file, 'utf8'), TEMPLATE_GITIGNORE);
+  assert.equal(
+    keepingGitignore(dir, () => 'linked'),
+    'linked',
+  );
+});
+
+// A stand-in for the Vercel CLI: link appends to .gitignore as the real one
+// does, and the Upstash integration fails as it does before the terms are
+// accepted. FAIL=link makes link fail after it has written.
+const FAKE_VERCEL = `#!/bin/sh
+case "$1" in
+  whoami) echo tester ;;
+  link) printf '.vercel\\n.env*\\n' >> .gitignore; [ "$FAIL" = link ] && exit 1 ;;
+  integration) echo 'Error: accept the terms' >&2; exit 1 ;;
+esac
+exit 0
+`;
+
+for (const [fail, error] of [
+  ['link', /vercel link/],
+  ['integration', /Upstash/],
+] as const)
+  test(`bootstrap --review puts .gitignore back when vercel ${fail} fails`, () => {
+    const dir = project();
+    const bin = project();
+    writeFileSync(join(dir, '.gitignore'), TEMPLATE_GITIGNORE);
+    writeFileSync(join(bin, 'vercel'), FAKE_VERCEL, { mode: 0o755 });
+    const script = `import { main } from ${JSON.stringify(join(import.meta.dirname, 'bootstrap.ts'))};
+try { main({ flags: { vercel: 'acme', review: true, 'no-install': true, branch: 'main' }, positionals: [] }); }
+catch (error) { process.stdout.write(error.message); }`;
+    const out = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
+      env: {
+        ...process.env,
+        PATH: `${bin}:${process.env.PATH}`,
+        FAIL: fail,
+        DESIGN_HUB_ROOT: dir,
+        DESIGN_HUB_PORTS: join(project(), 'ports.json'),
+        DESIGN_HUB_PORT: undefined,
+        CONDUCTOR_PORT: undefined,
+      },
+      encoding: 'utf8',
+    });
+    assert.equal(out.status, 0, out.stderr);
+    assert.match(out.stdout, error);
+    assert.equal(readFileSync(join(dir, '.gitignore'), 'utf8'), TEMPLATE_GITIGNORE);
+  });
 
 test('makes a readable 12-character password and a 32-byte secret when none exist', () => {
   const { password, secret } = gateValues(undefined, {});

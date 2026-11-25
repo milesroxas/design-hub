@@ -13,6 +13,7 @@ import { DOCS, ROOT } from '../server/paths.ts';
 import { prototypes } from './lib/catalog.ts';
 import { type Args, CliError, type CommandSpec } from './lib/cli.ts';
 import {
+  GATE_REQUEST,
   gateVerdict,
   gitConnected,
   nextStep,
@@ -100,7 +101,7 @@ function viaCli(): string {
 /** A signed-out request for the home page, the way a reviewer first meets the link. */
 async function smoke(url: string) {
   try {
-    const res = await fetch(`${url}/`, { redirect: 'manual' });
+    const res = await fetch(`${url}/`, GATE_REQUEST);
     return gateVerdict({
       status: res.status,
       location: res.headers.get('location'),
