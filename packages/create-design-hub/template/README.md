@@ -17,6 +17,8 @@ Not a developer? The [guide](https://github.com/milesroxas/design-hub/tree/main/
 | `kit/` | The project's materials: `tokens.css`, `shell.ts` (brand and navigation), `icons.ts`, the disposable `AppShell` and `SiteShell`. |
 | `docs/sprints/<feature>/` | A feature's design doc, walkthrough, pulled comments and port report. |
 | `DESIGN.md`, `PRODUCT.md` | The recorded design system and who the product is for. |
-| `.claude/` | Claude Code hooks and the `miles-*` skills (`pnpm skills` refreshes them from the package). |
+| `.claude/` | Claude Code hooks and the `miles-*` skills (`pnpm skills` refreshes them from the package and adds any script they need). |
 
-The rules for people and agents are in [AGENTS.md](AGENTS.md). Deploying, the password gate and review comments: the `miles-deploy` and `miles-review` skills, or `pnpm commands` for every command.
+The rules for people and agents are in [AGENTS.md](AGENTS.md). Sharing a link, the password gate and review comments: ask Claude to share or turn on comments (the `miles-deploy` and `miles-review` skills run every command), or `pnpm commands` for every command.
+
+Upgrade Design Hub: `pnpm add @milesroxas/design-hub@latest && pnpm skills`, or ask Claude to upgrade it.

@@ -126,7 +126,7 @@ Say what you could not verify. Do not commit unless asked.
 
 ## Skills
 
-The `miles-*` skills in `.claude/skills/` come from the `@milesroxas/design-hub` package (`pnpm skills` refreshes them; never edit the copies). Load one when its trigger matches.
+The `miles-*` skills in `.claude/skills/` come from the `@milesroxas/design-hub` package (`pnpm skills` refreshes them and adds any `package.json` script they call; never edit the copies). To upgrade the package: `pnpm add @milesroxas/design-hub@latest && pnpm skills`. Load one when its trigger matches.
 
 | Skill | Load when |
 | --- | --- |
