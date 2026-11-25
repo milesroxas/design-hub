@@ -71,7 +71,7 @@ api/review.ts  proxy.ts  vercel.json   one line each
 - **Guardrails.** The fidelity guard on every write, axe in dev, `check` (TypeScript, Biome), `preflight` before sharing.
 - **CLI and skills.** `design-hub <command>`: flags only, one JSON object out, `--help` for the schema. The `miles-*` skills ship with it.
 
-Upgrading a project is `pnpm add @milesroxas/design-hub@latest && pnpm skills`: it brings all of this and the newest skills, and the only project file it touches is `package.json`, where `skills` adds any script the skills call that the project lacks. Inspect tools for the port to production will arrive the same way.
+Projects upgrade themselves. Each new Claude Code session in a project checks npm (cached for an hour) and, when a newer version is out, runs `pnpm add @milesroxas/design-hub@latest && pnpm skills` before the session loads, so the skills are current; Claude says so in one line and commits the change with the next commit. The upgrade touches only `package.json`, the lockfile, `.claude/skills/` and `.claude/settings.json` (where `skills` adds any script or hook a newer version needs). Offline or failed, the session starts as it was. `DESIGN_HUB_AUTO_UPDATE=0` in a project's `.env` turns it off; `design-hub upgrade` runs it by hand. A project made before 0.5.0 needs that command once to get the hook. Inspect tools for the port to production will arrive the same way.
 
 ## Deploy and review
 
