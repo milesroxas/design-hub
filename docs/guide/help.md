@@ -10,7 +10,7 @@
 | The share link shows a Vercel sign-in page instead of the password page | Vercel's own protection is on. Tell Claude: "Run the Vercel setup again." It turns that off. |
 | "Review is not set up on this site" | Comments are not on yet. Tell Claude: "Turn on comments." |
 | The password is rejected | It was changed. Ask Claude: "What is the share password?" |
-| "This invite link has expired or was revoked" | Ask an editor for a new link, or tell Claude: "Reissue Dana's link." |
+| "This invite link has expired or was revoked" | Ask someone on the Studio side for a new link, or tell Claude: "Reissue Dana's link." |
 | Claude sends a Vercel sign-in link | Open it and choose **Allow**. If the link has expired, tell Claude: "Send a new sign-in link." |
 | You want the newest Design Hub | Nothing to do: each time you start Claude in your project, it upgrades itself and says so. Your prototypes and docs stay as they are. If Claude says the upgrade failed, tell it: "Try the Design Hub upgrade again." |
 | Claude asks you to accept the Upstash terms | Open the link Claude gives and accept for your team. If Vercel lists several Upstash products, choose **Install** on **Upstash for Redis**. Don't create a database there; close that step and tell Claude it's done. |
