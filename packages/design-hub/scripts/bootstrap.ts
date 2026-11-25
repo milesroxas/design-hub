@@ -11,7 +11,7 @@ import { join } from 'node:path';
 import { harnessPort, readEnv, writeEnv } from '../server/env.ts';
 import { ROOT, TEMPLATES } from '../server/paths.ts';
 import { type Args, CliError, type CommandSpec } from './lib/cli.ts';
-import { gitConnected } from './lib/deploy.ts';
+import { gitConnected, restoreGitignore, upstashTerms } from './lib/deploy.ts';
 import { holderOf, pickPort, readClaims, writeClaim } from './lib/ports.ts';
 import {
   ENVIRONMENTS,
@@ -209,7 +209,11 @@ function link(project: string, team: string | undefined, warnings: string[]): 'r
   if (current) warnings.push(`.vercel/project.json pointed at ${current}; relinked to ${project}.`);
   // A new project is created in the scope given; without one the CLI's current team wins, which
   // is whichever team the user last switched to, not necessarily where this project belongs.
+  const gitignore = join(ROOT, '.gitignore');
+  const before = existsSync(gitignore) ? readFileSync(gitignore, 'utf8') : '';
   cli(['link', '--yes', '--project', project, ...(team ? ['--scope', team] : [])]);
+  const kept = restoreGitignore(before, existsSync(gitignore) ? readFileSync(gitignore, 'utf8') : '');
+  if (kept !== null) writeFileSync(gitignore, kept);
   return 'ran';
 }
 
@@ -325,11 +329,17 @@ function provisionReview(project: string, team: string | undefined, warnings: st
       // Unlike env and deploy, this command ignores the project link and takes the CLI's current team.
       ...scopeArgs(team),
     ]);
-    if (out?.status !== 0)
-      throw new CliError('Could not add the Upstash for Redis store.', {
-        stderr: out?.stderr.trim().slice(-600),
-        fix: `The Marketplace terms need accepting once per team: send the user https://vercel.com/marketplace/upstash to choose Install and accept for this team, then run this again.`,
-      });
+    if (out?.status !== 0) {
+      const terms = upstashTerms(out?.stderr ?? '', team);
+      throw new CliError(
+        'Could not add the Upstash for Redis store; most often the team has not accepted the Upstash terms yet.',
+        {
+          stderr: out?.stderr.trim().slice(-600),
+          terms: terms.url,
+          fix: `Tell the user, word for word: "${terms.say}" Then run this again.`,
+        },
+      );
+    }
     store = 'created';
   }
   // The local commands (design-hub people, design-hub comments) read the same store.

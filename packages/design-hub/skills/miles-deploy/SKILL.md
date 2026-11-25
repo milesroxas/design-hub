@@ -56,7 +56,7 @@ Signed in, it prints `signedIn: true` and the account. Signed out, it starts the
 
 ## Comments
 
-Ask the user once whether reviewers should comment on the link; ask before the first deploy, so one `bootstrap` carries `--review`. If yes, `--review [--typesafe-key <key>]` adds Upstash Redis to the project through the Vercel Marketplace and copies the store's credentials into `.env`. The first time on a team it can stop on the Marketplace terms: send the user the link in its `fix` to accept, then rerun. With TypeSafe on, comments are sorted by kind and state as they arrive. `pnpm share` after it, so the env reaches the site, then invite the first editor:
+Ask the user once whether reviewers should comment on the link; ask before the first deploy, so one `bootstrap` carries `--review`. If yes, `--review [--typesafe-key <key>]` adds Upstash Redis to the project through the Vercel Marketplace and copies the store's credentials into `.env`. The first time on a team it can stop on the Marketplace terms. Send the user the message in its `fix` as written: it links that team's terms page, names the one product to pick (**Upstash for Redis**, Redis Compatible Database) when Vercel lists several, and tells them not to create a database there, since the rerun creates the store and connects it. Rerun when they say it is done; if `stderr` shows another cause, show it to them instead. With TypeSafe on, comments are sorted by kind and state as they arrive. `pnpm share` after it, so the env reaches the site, then invite the first editor:
 
 ```bash
 pnpm people invite --name "<user>" --team "<studio>" --role editor --site <share.url>

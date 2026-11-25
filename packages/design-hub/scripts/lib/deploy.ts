@@ -116,3 +116,36 @@ export function nextStep(seen: Seen, sha: string, waitedMs: number): Next {
     };
   return { wait: true };
 }
+
+/**
+ * Where the user accepts the Upstash Marketplace terms for one team: the link the
+ * CLI printed when it has one, else that team's accept-terms page, else the
+ * product page. The page can list several Upstash products; the store is the one
+ * named here, and the rerun creates it, so nothing is created in the browser.
+ */
+export function upstashTerms(stderr: string, team: string | undefined): { url: string; say: string } {
+  const printed = stderr.match(/https:\/\/vercel\.com\/\S*accept-terms\S*/)?.[0];
+  const url =
+    printed ??
+    (team
+      ? `https://vercel.com/${team}/~/integrations/accept-terms/upstash?source=cli`
+      : 'https://vercel.com/marketplace/upstash');
+  return {
+    url,
+    say:
+      `Open ${url}${team ? ` for the ${team} team` : ''} and accept the Upstash terms. ` +
+      'If it lists Upstash products, choose Install on Upstash for Redis (Redis Compatible Database), the only one Design Hub uses. ' +
+      'Stop once the terms are accepted: close any step that offers to create a database, because the rerun creates the store and connects it to this project.',
+  };
+}
+
+/**
+ * `vercel link` appends `.vercel` and `.env*` to .gitignore. The template already
+ * ignores both, and `.env*` would hide `.env.example` and leave the tree dirty, so
+ * the file goes back as it was, adding only `.vercel/` when it was missing.
+ */
+export function restoreGitignore(before: string, after: string): string | null {
+  if (after === before) return null;
+  if (/^\/?\.vercel\/?$/m.test(before)) return before;
+  return `${before}${before.endsWith('\n') || !before ? '' : '\n'}.vercel/\n`;
+}

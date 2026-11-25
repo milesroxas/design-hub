@@ -1,6 +1,15 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { deviceLink, gateVerdict, gitConnected, nextStep, plan, productionUrl } from './deploy.ts';
+import {
+  deviceLink,
+  gateVerdict,
+  gitConnected,
+  nextStep,
+  plan,
+  productionUrl,
+  restoreGitignore,
+  upstashTerms,
+} from './deploy.ts';
 
 test('the device link is read out of the login log', () => {
   const log =
@@ -96,4 +105,29 @@ test('a pushed commit is followed until its deployment is ready or fails', () =>
     (nextStep({ url: 'a.vercel.app', state: 'BUILDING' }, sha, 11 * 60_000) as { error: string }).error,
     /10 minutes/,
   );
+});
+
+test('the Upstash terms link is the one the CLI printed, else the team page, and names the product', () => {
+  const printed = upstashTerms(
+    'Error: accept at https://vercel.com/sas/~/integrations/accept-terms/upstash?source=cli now',
+    'x',
+  );
+  assert.equal(printed.url, 'https://vercel.com/sas/~/integrations/accept-terms/upstash?source=cli');
+  assert.equal(
+    upstashTerms('', 'roxas').url,
+    'https://vercel.com/roxas/~/integrations/accept-terms/upstash?source=cli',
+  );
+  assert.equal(upstashTerms('', undefined).url, 'https://vercel.com/marketplace/upstash');
+  const { say } = upstashTerms('', 'roxas');
+  assert.match(say, /Upstash for Redis/);
+  assert.match(say, /roxas team/);
+  assert.match(say, /create a database/);
+});
+
+test('vercel link leaves .gitignore as it was, adding only .vercel/ when missing', () => {
+  const ours = 'node_modules/\n.vercel/\n.env\n!.env.example\n';
+  assert.equal(restoreGitignore(ours, `${ours}.vercel\n.env*\n`), ours);
+  assert.equal(restoreGitignore(ours, ours), null);
+  assert.equal(restoreGitignore('dist/', 'dist/\n.vercel\n.env*\n'), 'dist/\n.vercel/\n');
+  assert.equal(restoreGitignore('', '.vercel\n'), '.vercel/\n');
 });
