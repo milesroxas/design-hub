@@ -71,7 +71,7 @@ api/review.ts  proxy.ts  vercel.json   one line each
 - **Guardrails.** The fidelity guard on every write, axe in dev, `check` (TypeScript, Biome), `preflight` before sharing.
 - **CLI and skills.** `design-hub <command>`: flags only, one JSON object out, `--help` for the schema. The `miles-*` skills ship with it.
 
-A version bump brings all of this to a project without touching its files. Inspect tools for the port to production will arrive the same way.
+Upgrading a project is `pnpm add @milesroxas/design-hub@latest && pnpm skills`: it brings all of this and the newest skills, and the only project file it touches is `package.json`, where `skills` adds any script the skills call that the project lacks. Inspect tools for the port to production will arrive the same way.
 
 ## Deploy and review
 

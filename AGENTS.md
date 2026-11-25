@@ -30,6 +30,6 @@ pnpm template --path /abs/new-project --visibility none --link "$PWD/packages/de
 - A project never edits the package and never reads it to do prototype work. Anything an agent in a project needs is in the project's `AGENTS.md` and skills; if a rule is missing there, add it there, not in prose a project cannot see.
 - `@kit/<name>` resolves to the project's `kit/<name>` first and the package's `kit/<name>` second (`vite/kit.ts`). A file added to the package's kit is public API: a project may shadow it. Never rename one without a version note.
 - Commands keep the contract in `scripts/lib/cli.ts`: flags only, no prompts, one JSON object on stdout, `--help` for the schema.
-- The skills ship in the package and are copied into projects by `design-hub skills`. Edit them here only.
+- The skills ship in the package and are copied into projects by `design-hub skills`. Edit them here only. A script a skill calls (`pnpm share`) goes in both the template's `package.json` and `SCRIPTS` in `scripts/skills.ts`, which adds it to older projects on upgrade; a test holds the two equal. Never name a script after a pnpm built-in (`deploy`, `login`, `publish`): pnpm runs its own command instead.
 - `@milesroxas/design-hub` and `@milesroxas/create-design-hub` publish in lockstep at the same version: the scaffolder pins the hub to its own version.
 - Before publishing a copy of this repo, `pnpm release-check --term <client name>` must be clean.

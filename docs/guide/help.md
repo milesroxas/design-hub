@@ -12,6 +12,7 @@
 | The password is rejected | It was changed. Ask Claude: "What is the share password?" |
 | "This invite link has expired or was revoked" | Ask an editor for a new link, or tell Claude: "Reissue Dana's link." |
 | Claude sends a Vercel sign-in link | Open it and choose **Allow**. If the link has expired, tell Claude: "Send a new sign-in link." |
+| You want the newest Design Hub | Tell Claude: "Upgrade Design Hub to the latest version." Your prototypes and docs stay as they are. |
 | Claude asks you to accept the Marketplace terms | Open the link Claude gives, accept, then tell Claude to run it again. |
 
 ## Where is my work?
