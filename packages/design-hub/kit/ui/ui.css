@@ -60,9 +60,13 @@ body.has-overlay { overflow: hidden; }
 .search { position: relative; }
 .search .icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--fg-quaternary); }
 .search .input { padding-left: 32px; }
-.select { display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; text-align: left; }
+/* The value starts where an input's text does. The right padding puts the chevron's ink over the check in the list below. */
+.select { display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; padding-right: 10px; cursor: pointer; text-align: left; }
 .select-value { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .select-value.is-placeholder { color: var(--text-placeholder); }
+/* A picked value settles in from just below: the control answers the choice the menu took away. */
+.select-value.is-picked { animation: select-pick var(--dur-menu) var(--ease-out); }
+@keyframes select-pick { from { opacity: 0; transform: translateY(3px); } }
 .select { transition: border-color var(--dur-hover) var(--ease-hover), background-color var(--dur-hover) var(--ease-hover); }
 .select-chevron { color: var(--fg-quaternary); transition: transform var(--dur-menu) var(--ease-out); }
 @media (hover: hover) and (pointer: fine) { .select:hover:not([aria-expanded="true"]) { background: var(--button-secondary-bg_hover); } }
@@ -155,8 +159,12 @@ body.has-overlay { overflow: hidden; }
 .menu-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--radius-sm); border: 0; background: transparent; text-align: left; cursor: pointer; width: 100%; color: var(--text-primary); position: relative; --press-dur: var(--dur-press-out); transition: transform var(--press-dur) var(--ease-out), background-color var(--dur-hover) var(--ease-hover); }
 .menu-item:focus-visible, .menu-item.has-open, .menu-item.is-pressed { background: var(--bg-primary_hover); box-shadow: none; }
 @media (hover: hover) and (pointer: fine) { .menu-item:hover { background: var(--bg-primary_hover); box-shadow: none; } .menu-item:hover .menu-glyph { color: var(--fg-secondary); } }
+/* The highlight lands at once and fades behind the pointer: a row answers before the hand settles. */
+.menu-item:is(:hover, :focus-visible) { transition-duration: var(--press-dur), 0ms; }
 .menu-item.is-pressed { --press-dur: var(--dur-press-in); transform: scale(0.995); }
 .menu-item[disabled] { color: var(--text-disabled); cursor: not-allowed; }
+/* A select's list sits under its control: 1px less padding puts each label under the value. */
+.menu[role="listbox"] .menu-item { padding-inline: 9px; }
 /* A menu row is a finger's target where the pointer is one. */
 @media (pointer: coarse) { .menu-item { min-height: 44px; } }
 .menu-glyph { color: var(--fg-quaternary); display: grid; place-items: center; }
@@ -164,9 +172,13 @@ body.has-overlay { overflow: hidden; }
 .menu-item.is-danger { color: var(--text-error-primary); }
 .menu-item.is-danger .menu-glyph { color: var(--fg-error-primary); }
 .menu-text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+/* One weight in every state, so choosing a row never reflows it: the check says which is chosen. */
 .menu-label { font-weight: 500; }
-.menu-item.is-selected .menu-label { font-weight: 600; }
-.menu-desc { color: var(--text-tertiary); font-size: 12px; line-height: 18px; }
+.menu-desc { color: var(--text-tertiary); font-size: 12px; line-height: 16px; text-wrap: pretty; }
+/* A row with a second line: its glyph and check sit on the label's line, not between the two. */
+.menu-item:has(.menu-desc) { align-items: flex-start; }
+.menu-item:has(.menu-desc) .menu-text { gap: 2px; }
+.menu-item:has(.menu-desc) :is(.menu-glyph, .menu-check, .menu-chevron) { height: 1lh; }
 .menu-keys { display: flex; gap: 4px; margin-left: auto; flex: none; }
 .kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; border: 1px solid var(--border-secondary); border-radius: var(--radius-xs); font: 500 12px/18px var(--font); color: var(--text-tertiary); }
 .kbd:has(.icon) { padding: 0; color: var(--fg-quaternary); }
@@ -230,6 +242,7 @@ body.has-overlay { overflow: hidden; }
 /* ---------- motion gates ---------- */
 :root[data-motion="reduce"] :is(.btn, .btn .icon, .select, .select-chevron, .menu-item) { transition-duration: 0ms; }
 :root[data-motion="reduce"] .menu-item.is-pressed { transform: none; }
+:root[data-motion="reduce"] .select-value.is-picked { animation: none; }
 :root[data-motion="reduce"] :is(.menu, .menu[data-side], .menu.is-open, .dialog, .overlay.is-open .dialog) { transform: none; transition: opacity 160ms var(--ease-hover); }
 :root[data-motion="reduce"] :is(.sheet, .overlay.is-open .sheet) { transform: none; transition: opacity 160ms var(--ease-hover); }
 :root[data-motion="reduce"] .overlay-sheet:not(.is-open) .sheet { opacity: 0; }

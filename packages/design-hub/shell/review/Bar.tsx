@@ -16,7 +16,8 @@ type Props = {
   onScope: (scope: Scope) => void;
   resolved: boolean;
   resolvedCount: number;
-  editor: boolean;
+  /** Studio only: the People entry in ⋯. */
+  canManagePeople: boolean;
   error: string | null;
   onStep: (by: number) => void;
   onResolved: () => void;
@@ -26,7 +27,7 @@ type Props = {
   onDismissError: () => void;
 };
 
-function moreItems(resolved: boolean, resolvedCount: number, editor: boolean): MenuEntry[] {
+function moreItems(resolved: boolean, resolvedCount: number, canManagePeople: boolean): MenuEntry[] {
   return [
     {
       label: resolved ? 'Hide resolved' : 'Show resolved',
@@ -35,7 +36,7 @@ function moreItems(resolved: boolean, resolvedCount: number, editor: boolean): M
       icon: 'check-circle',
       disabled: !resolvedCount && !resolved,
     },
-    ...(editor
+    ...(canManagePeople
       ? [{ label: 'People', desc: 'Who can comment', value: 'people', icon: 'users-01' as const }]
       : []),
     { label: 'Hide comments', desc: 'Tuck the button into the edge', value: 'hide', icon: 'chevron-right' },
@@ -119,7 +120,7 @@ export function Bar(p: Props) {
     label: 'Comment options',
     width: 264,
     align: 'end',
-    items: moreItems(p.resolved, p.resolvedCount, p.editor),
+    items: moreItems(p.resolved, p.resolvedCount, p.canManagePeople),
     onSelect: (v) => actions[v ?? '']?.(),
   });
   return (

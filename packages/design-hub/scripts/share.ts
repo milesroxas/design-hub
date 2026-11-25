@@ -178,7 +178,7 @@ function handover(url: string) {
     review,
     next:
       review === 'on'
-        ? `Send the handover (miles-deploy). First share with comments: design-hub people invite --name "<user>" --role editor --site ${url}.`
+        ? `Send the handover (miles-deploy). First share with comments: design-hub people invite --name "<user>" --kind studio --site ${url}.`
         : 'Send the handover (miles-deploy). Never send GATE_SECRET.',
   };
 }

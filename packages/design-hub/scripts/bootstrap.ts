@@ -418,7 +418,7 @@ function setUpVercel(
   };
   if (!flags.review) return result;
   warnings.push(
-    'Run design-hub share so the new env reaches the site; then design-hub people invite --name "<you>" --role editor --site <url>.',
+    'Run design-hub share so the new env reaches the site; then design-hub people invite --name "<you>" --kind studio --site <url>.',
   );
   return { ...result, review: provisionReview(project, flags.team, warnings) };
 }

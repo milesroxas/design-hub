@@ -327,6 +327,8 @@ function MenuRow({
       disabled={item.disabled}
       data-label={item.label}
       onClick={() => onPick(item)}
+      // The pointer takes the highlight from the keyboard, so one row is lit, never two.
+      onPointerMove={(e) => e.currentTarget.focus({ preventScroll: true })}
     >
       {item.icon ? (
         <span className="menu-glyph">
@@ -347,7 +349,11 @@ function MenuRow({
   );
 }
 
-export type SelectOption = { value: string; label: string };
+/** `desc` is a second, quieter line in the list; the closed control shows the label alone. */
+const selectValueClass = (set: boolean, picked: boolean) =>
+  ['select-value', !set && 'is-placeholder', picked && 'is-picked'].filter(Boolean).join(' ');
+
+export type SelectOption = { value: string; label: string; desc?: string };
 
 export function Select({
   value,
@@ -371,17 +377,21 @@ export function Select({
   'aria-label'?: string;
 }) {
   const valueId = useId();
+  // Set on the first pick, so the value settles in when it changes and not when the control mounts.
+  const picked = useRef(false);
   const current = options.find((o) => o.value === value);
   const menu = useMenu({
     role: 'listbox',
     align: 'start',
-    items: options.map((o) => ({ label: o.label, value: o.value })),
+    items: options.map((o) => ({ label: o.label, value: o.value, desc: o.desc })),
     selected: value ?? undefined,
     label: ariaLabel,
     className: menuClassName,
     width: (trigger) => Math.max(trigger.offsetWidth, width || 0),
     onSelect: (v) => {
-      if (v != null && v !== value) onChange(v);
+      if (v == null || v === value) return;
+      picked.current = true;
+      onChange(v);
     },
   });
   return (
@@ -399,7 +409,7 @@ export function Select({
           if (!menu.isOpen) menu.open();
         }}
       >
-        <span id={valueId} className={current ? 'select-value' : 'select-value is-placeholder'}>
+        <span key={value} id={valueId} className={selectValueClass(!!current, picked.current)}>
           {current ? current.label : placeholder}
         </span>
         <Icon name="chevron-down" size={20} className="select-chevron" />

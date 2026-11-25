@@ -19,7 +19,7 @@ const root = {
   id: 'cli',
   name: 'CLI',
   team: 'Studio',
-  role: 'editor',
+  kind: 'studio',
   createdAt: '',
   revokedAt: null,
   epoch: 0,

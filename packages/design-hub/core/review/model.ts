@@ -6,14 +6,15 @@
 
 import { SLUG } from '../feature.ts';
 
-export const ROLES = ['editor', 'reviewer'] as const;
-export type Role = (typeof ROLES)[number];
+/** Which side a person is on: the studio that makes the work, or the client it is for. */
+export const PERSON_KINDS = ['studio', 'client'] as const;
+export type PersonKind = (typeof PERSON_KINDS)[number];
 
 /** How a comment is triaged: something broken, a design opinion, or the words. */
 export const KINDS = ['bug', 'taste', 'copy'] as const;
 export type Kind = (typeof KINDS)[number];
 
-/** How long an invite link signs its person in before an editor must issue a new one. */
+/** How long an invite link signs its person in before Studio must issue a new one. */
 export const INVITE_DAYS = 14;
 
 export const LIMITS = {
@@ -32,7 +33,7 @@ export type Person = {
   name: string;
   /** The group a person belongs to, shown beside their name: the studio, or the client's company. */
   team: string;
-  role: Role;
+  kind: PersonKind;
   createdAt: string;
   revokedAt: string | null;
   /** Bumped on revoke and on a new invite, which signs out every session signed with the old one. */
@@ -99,14 +100,17 @@ const text = (v: unknown, path: string, max: number, problems: string[]): string
 const fraction = (v: unknown) => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 1;
 const size = (v: unknown) => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v < 100_000;
 
-export function checkPersonInput(input: unknown): Checked<Pick<Person, 'name' | 'team' | 'role'>> {
+export function checkPersonInput(input: unknown): Checked<Pick<Person, 'name' | 'team' | 'kind'>> {
   const i = (input ?? {}) as Record<string, unknown>;
   const problems: string[] = [];
   const name = text(i.name, 'name', LIMITS.name, problems);
   const team = text(i.team, 'team', LIMITS.team, problems);
-  const role = i.role ?? 'reviewer';
-  if (!ROLES.includes(role as Role)) problems.push(`role: one of ${ROLES.join(', ')}`);
-  return problems.length ? { ok: false, problems } : { ok: true, value: { name, team, role: role as Role } };
+  // Most people invited are on the client's side; Studio is the deliberate choice.
+  const kind = i.kind ?? 'client';
+  if (!PERSON_KINDS.includes(kind as PersonKind)) problems.push(`kind: one of ${PERSON_KINDS.join(', ')}`);
+  return problems.length
+    ? { ok: false, problems }
+    : { ok: true, value: { name, team, kind: kind as PersonKind } };
 }
 
 export function checkBody(body: unknown): Checked<string> {

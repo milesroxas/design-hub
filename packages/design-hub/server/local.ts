@@ -1,6 +1,6 @@
 /// <reference types="node" />
 // The review store and identity on this machine, shared by the dev server
-// and the CLI: .design-hub/review.json, and a local editor named from git.
+// and the CLI: .design-hub/review.json, and a local Studio person named from git.
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import type { Person } from '../core/review/model.ts';
@@ -16,12 +16,12 @@ function gitName(): string {
   }
 }
 
-/** Whoever runs this machine's dev server or CLI: an editor, because they hold the store itself. */
-export const localEditor = (id = 'local', team = 'Local'): Person => ({
+/** Whoever runs this machine's dev server or CLI: Studio, because they hold the store itself. */
+export const localStudio = (id = 'local', team = 'Local'): Person => ({
   id,
   name: gitName() || 'You',
   team,
-  role: 'editor',
+  kind: 'studio',
   createdAt: new Date(0).toISOString(),
   revokedAt: null,
   epoch: 0,

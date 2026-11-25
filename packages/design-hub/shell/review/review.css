@@ -89,6 +89,9 @@
 .rv .btn-label { line-height: 18px; }
 .rv .input,
 .rv .select { height: 32px; padding: 0 10px; }
+/* A 32px control carries a 16px chevron, the check's size and stroke, with its ink over the check in the list below. */
+.rv .select { padding-right: 9px; }
+.rv .select-chevron { width: 16px; height: 16px; }
 .rv .field-label { color: var(--harness-fg-muted); font-weight: 400; }
 /* A 32px control reaches 44px for a finger. */
 @media (pointer: coarse) {
@@ -96,7 +99,10 @@
   .rv .btn::before { content: ''; position: absolute; inset: -6px -2px; }
 }
 
-.menu.rv-menu { z-index: calc(var(--rv-z) + 2); }
+/* On the dark material the raised shadow already draws the edge as one ring: a border beside it doubles the line. */
+.menu.rv-menu { z-index: calc(var(--rv-z) + 2); border: 0; }
+.rv-menu .menu-item:has(.menu-desc) { padding: 8px; }
+.rv-menu[role="listbox"] .menu-item { padding-inline: 7px; }
 .rv-menu .menu-item { padding: 6px 8px; min-height: 32px; }
 .rv-menu .menu-header { padding: 8px 8px 2px; }
 .rv-menu .menu-header:not(:first-child) { margin-top: 4px; }

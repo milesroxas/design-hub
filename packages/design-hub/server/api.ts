@@ -82,7 +82,7 @@ async function command(
     case 'comment.triage':
       return { comment: await review.retriage(actor, { ...at(), triage: b.triage, states: b.states }) };
     case 'people.invite':
-      return link(await review.invite(actor, { name: b.name, team: b.team, role: b.role }));
+      return link(await review.invite(actor, { name: b.name, team: b.team, kind: b.kind }));
     case 'people.reissue':
       return link(await review.reissue(actor, str(b.id)));
     case 'people.revoke':

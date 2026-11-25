@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /// <reference types="node" />
-// The people who comment on the deployed prototypes. The first editor is
-// invited from here; after that, editors invite from the People tab.
-import { ROLES } from '../core/review/model.ts';
+// The people who comment on the deployed prototypes. The first Studio person
+// is invited from here; after that, Studio invites from the People tab.
+import { PERSON_KINDS } from '../core/review/model.ts';
 import { type Args, CliError, type CommandSpec } from './lib/cli.ts';
 import { cliActor, cliReview } from './lib/review.ts';
 
@@ -20,11 +20,12 @@ export const spec = {
   flags: {
     name: { type: 'string', description: 'For invite: their name as it shows on comments.' },
     team: { type: 'string', description: "For invite: the studio, or the client's company." },
-    role: {
+    kind: {
       type: 'string',
-      default: 'reviewer',
-      choices: ROLES,
-      description: 'reviewer comments; editor also resolves, sorts and invites.',
+      default: 'client',
+      choices: PERSON_KINDS,
+      description:
+        'client comments, replies and resolves any thread; studio also deletes any comment, sorts and invites.',
     },
     site: { type: 'string', description: 'The deployed URL, so the invite link prints whole.' },
     local: {
@@ -56,7 +57,7 @@ export async function main({ positionals: [action = 'list', id], flags }: Args<t
       const { person, token } = await review.invite(actor, {
         name: flags.name,
         team: flags.team,
-        role: flags.role,
+        kind: flags.kind,
       });
       return { store, person: strip(person), ...linkFor(token, flags.site) };
     }

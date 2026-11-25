@@ -90,7 +90,7 @@ The user does nothing in a terminal here; each step that needs them is one link 
 2. `vercel teams ls`; with more than one team, ask which with the question tool (personal account first when it is listed).
 3. `pnpm --dir <path> bootstrap --vercel <name> --team <team-slug>`, plus `--review` for comments. It links the project, connects the GitHub repo, sets the password and turns Vercel's own login off. A first `--review` on a team can stop on the Marketplace terms: send the user the message in `fix` as written (it names **Upstash for Redis** as the product to pick), then rerun.
 4. `pnpm --dir <path> share --cli`. `--cli` uploads the folder, since the setup may have left files uncommitted; later deploys push `main`. On `ok: false`, follow `stage` and `fix` (the pre-flight steps are in `miles-deploy`).
-5. With comments: `pnpm --dir <path> people invite --name "<user>" --role editor --site <share.url>`.
+5. With comments: `pnpm --dir <path> people invite --name "<user>" --kind studio --site <share.url>`.
 
 Give the user `share.url`, `share.password` and the invite link in the closing message, and say the link shows the samples until the first feature replaces them.
 

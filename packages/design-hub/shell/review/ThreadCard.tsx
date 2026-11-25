@@ -7,6 +7,7 @@ import { Icon } from '@kit/Icon';
 import { Button, type MenuEntry, useMenu } from '@kit/ui';
 import { type KeyboardEvent, useEffect, useState } from 'react';
 import { type Comment, KINDS, type Kind, LIMITS } from '../../core/review/model';
+import { can } from '../../core/review/policy';
 import { Action, Card } from './Card';
 import { act, type Me, type ReviewStore } from './client';
 import { Field, useTextBox } from './Field';
@@ -172,7 +173,7 @@ function Entry({
       <div className="rv-msg-main">
         <EntryHead
           comment={comment}
-          canEdit={me?.id === comment.author.id && !editing}
+          canEdit={can(me, 'edit', comment) && !editing}
           onEdit={() => setEditing(true)}
         />
         {editing ? (
@@ -203,19 +204,19 @@ function tagsOf(root: Comment): string[] {
 
 type TriageChange = { kind: string | null; state: string | null };
 
-/** Kind and state as checked choices, for editors; then the thread's rarer actions. */
+/** Kind and state as checked choices, for Studio; then the thread's rarer actions. */
 function menuItems(
   root: Comment,
   states: string[],
-  editor: boolean,
-  canClose: boolean,
+  canTriage: boolean,
+  canDelete: boolean,
   show: boolean,
 ): MenuEntry[] {
   const { kind = null, state = null } = root.triage ?? {};
   const stateItems: MenuEntry[] = states.length
     ? [{ heading: 'State' }, ...states.map((s) => ({ label: s, value: `state:${s}`, checked: state === s }))]
     : [];
-  const triage: MenuEntry[] = editor
+  const triage: MenuEntry[] = canTriage
     ? [
         { heading: 'Kind' },
         ...KINDS.map((k) => ({ label: KIND_LABEL[k], value: `kind:${k}`, checked: kind === k })),
@@ -226,7 +227,7 @@ function menuItems(
   return [
     ...triage,
     ...(show ? [{ label: 'Show its state', value: 'show', icon: 'clock-rewind' as const }] : []),
-    ...(canClose
+    ...(canDelete
       ? [{ label: 'Delete thread', value: 'delete', icon: 'trash-01' as const, danger: true }]
       : []),
   ];
@@ -246,20 +247,20 @@ function ThreadMenu({
   store,
   root,
   states,
-  editor,
-  canClose,
+  canTriage,
+  canDelete,
   onShow,
   onDelete,
 }: {
   store: ReviewStore;
   root: Comment;
   states: string[];
-  editor: boolean;
-  canClose: boolean;
+  canTriage: boolean;
+  canDelete: boolean;
   onShow?: () => void;
   onDelete: () => void;
 }) {
-  const items = menuItems(root, states, editor, canClose, !!onShow);
+  const items = menuItems(root, states, canTriage, canDelete, !!onShow);
   const menu = useMenu({
     className: 'rv-menu',
     label: 'Thread options',
@@ -382,8 +383,9 @@ type HeadProps = {
   index: number;
   total: number;
   states: string[];
-  editor: boolean;
-  canClose: boolean;
+  canResolve: boolean;
+  canTriage: boolean;
+  canDelete: boolean;
   onStep: (by: number) => void;
   onClose: () => void;
   onShow?: () => void;
@@ -398,8 +400,9 @@ function ThreadHead({
   index,
   total,
   states,
-  editor,
-  canClose,
+  canResolve,
+  canTriage,
+  canDelete,
   onStep,
   onClose,
   onShow,
@@ -412,13 +415,13 @@ function ThreadHead({
       </span>
       <span className="rv-about rv-ellipsis">{about(root)}</span>
       <Stepper index={index} total={total} onStep={onStep} />
-      {canClose && <ResolveButton store={store} root={root} />}
+      {canResolve && <ResolveButton store={store} root={root} />}
       <ThreadMenu
         store={store}
         root={root}
         states={states}
-        editor={editor}
-        canClose={canClose}
+        canTriage={canTriage}
+        canDelete={canDelete}
         onShow={onShow}
         onDelete={onDelete}
       />
@@ -462,7 +465,6 @@ export function ThreadCard({
   onShow?: () => void;
 }) {
   const [confirming, setConfirming] = useState(false);
-  const editor = me?.role === 'editor';
   const resolved = root.status === 'resolved';
   return (
     <Card
@@ -478,8 +480,9 @@ export function ThreadCard({
         index={index}
         total={total}
         states={states}
-        editor={editor}
-        canClose={editor || me?.id === root.author.id}
+        canResolve={can(me, 'resolve', root)}
+        canTriage={can(me, 'triage')}
+        canDelete={can(me, 'delete', root)}
         onStep={onStep}
         onClose={onClose}
         onShow={onShow}

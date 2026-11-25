@@ -9,7 +9,7 @@ import { issuePersonToken, PERSON_COOKIE } from './session.ts';
 const origin = 'https://hub.example';
 const gate = { password: 'pw-123456', secret: 's'.repeat(32) };
 let review: Review;
-let editor: Person;
+let studio: Person;
 
 const get = (op: string, extra = '') => new Request(`${origin}/api/review?op=${op}${extra}`);
 const post = (body: unknown, headers: Record<string, string> = {}) =>
@@ -24,7 +24,7 @@ const post = (body: unknown, headers: Record<string, string> = {}) =>
     },
     body: JSON.stringify(body),
   });
-const call = async (r: Request, actor: Person | null = editor) => {
+const call = async (r: Request, actor: Person | null = studio) => {
   const res = await handleReview(r, { review, actor });
   return { status: res.status, body: (await res.json()) as Record<string, any> };
 };
@@ -35,12 +35,12 @@ beforeEach(async () => {
     id: 'cli',
     name: 'CLI',
     team: 'Studio',
-    role: 'editor',
+    kind: 'studio',
     createdAt: '',
     revokedAt: null,
     epoch: 0,
   } as Person;
-  editor = (await review.invite(root, { name: 'Ed', team: 'Studio', role: 'editor' })).person;
+  studio = (await review.invite(root, { name: 'Ed', team: 'Studio', kind: 'studio' })).person;
 });
 
 test('me says who is signed in, without the epoch', async () => {
@@ -53,6 +53,9 @@ test('me says who is signed in, without the epoch', async () => {
 test('an invite returns a link, and the link signs that person in', async () => {
   const { body } = await call(post({ op: 'people.invite', name: 'Rae', team: 'Acme' }));
   assert.match(body.link, /^\/invite\/[\w-]+$/);
+  assert.equal(body.person.kind, 'client');
+  const named = await call(post({ op: 'people.invite', name: 'Sam', team: 'Studio', kind: 'studio' }));
+  assert.equal(named.body.person.kind, 'studio');
   const person = await review.acceptInvite(body.link.split('/').pop());
   assert.equal(person?.name, 'Rae');
 });
@@ -77,11 +80,11 @@ test('refuses a cross-site POST and a non-JSON body', async () => {
 });
 
 test('the cookie names the actor until a reissue bumps the epoch', async () => {
-  const token = await issuePersonToken(gate, { id: editor.id, epoch: editor.epoch });
+  const token = await issuePersonToken(gate, { id: studio.id, epoch: studio.epoch });
   const withCookie = new Request(`${origin}/`, { headers: { cookie: `${PERSON_COOKIE}=${token}` } });
-  assert.equal((await actorFrom(withCookie, review, gate))?.id, editor.id);
-  const root = { ...editor, id: 'cli' };
-  await review.reissue(root, editor.id);
+  assert.equal((await actorFrom(withCookie, review, gate))?.id, studio.id);
+  const root = { ...studio, id: 'cli' };
+  await review.reissue(root, studio.id);
   assert.equal(await actorFrom(withCookie, review, gate), null);
 });
 

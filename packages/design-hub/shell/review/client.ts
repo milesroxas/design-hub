@@ -1,9 +1,9 @@
 // The review UI's one store: who is signed in, this prototype's comments and,
-// for editors, the people. Components read it with useSyncExternalStore and
+// for Studio, the people. Components read it with useSyncExternalStore and
 // call its actions; every call goes to /api/review (server/api.ts), and each
 // answer is merged in place, so a write never refetches the list.
 import { useSyncExternalStore } from 'react';
-import type { Anchor, Comment, Person, Role } from '../../core/review/model';
+import type { Anchor, Comment, Person, PersonKind } from '../../core/review/model';
 
 export type Me = Omit<Person, 'epoch'>;
 /** off: this site has no review store, so the UI stays out of the way. */
@@ -144,9 +144,9 @@ export function createReviewStore(prototype: string) {
       }),
 
     loadPeople: () => attempt(async () => set({ people: (await call<{ people: Me[] }>('people')).people })),
-    invite: (name: string, team: string, role: Role) =>
+    invite: (name: string, team: string, kind: PersonKind) =>
       attempt(async () => {
-        const r = await call<{ person: Me; link: string }>('people.invite', { name, team, role });
+        const r = await call<{ person: Me; link: string }>('people.invite', { name, team, kind });
         mergePerson(r.person);
         return new URL(r.link, location.origin).href;
       }),

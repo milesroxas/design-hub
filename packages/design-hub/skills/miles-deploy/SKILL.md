@@ -56,17 +56,17 @@ Signed in, it prints `signedIn: true` and the account. Signed out, it starts the
 
 ## Comments
 
-Ask the user once whether reviewers should comment on the link; ask before the first deploy, so one `bootstrap` carries `--review`. If yes, `--review [--typesafe-key <key>]` adds Upstash Redis to the project through the Vercel Marketplace and copies the store's credentials into `.env`. The first time on a team it can stop on the Marketplace terms. Send the user the message in its `fix` as written: it links that team's terms page, names the one product to pick (**Upstash for Redis**, Redis Compatible Database) when Vercel lists several, and tells them not to create a database there, since the rerun creates the store and connects it. Rerun when they say it is done; if `stderr` shows another cause, show it to them instead. With TypeSafe on, comments are sorted by kind and state as they arrive. `pnpm share` after it, so the env reaches the site, then invite the first editor:
+Ask the user once whether reviewers should comment on the link; ask before the first deploy, so one `bootstrap` carries `--review`. If yes, `--review [--typesafe-key <key>]` adds Upstash Redis to the project through the Vercel Marketplace and copies the store's credentials into `.env`. The first time on a team it can stop on the Marketplace terms. Send the user the message in its `fix` as written: it links that team's terms page, names the one product to pick (**Upstash for Redis**, Redis Compatible Database) when Vercel lists several, and tells them not to create a database there, since the rerun creates the store and connects it. Rerun when they say it is done; if `stderr` shows another cause, show it to them instead. With TypeSafe on, comments are sorted by kind and state as they arrive. `pnpm share` after it, so the env reaches the site, then invite the first Studio person:
 
 ```bash
-pnpm people invite --name "<user>" --team "<studio>" --role editor --site <share.url>
+pnpm people invite --name "<user>" --team "<studio>" --kind studio --site <share.url>
 ```
 
-Send them the link; from then on, editors invite reviewers from the People tab. `miles-review` owns working from the comments.
+Send them the link; from then on, Studio invites everyone else from the People tab. `miles-review` owns working from the comments.
 
 ## Rotating access
 
-- **A reviewer leaves:** revoke them in the People tab, or `pnpm people revoke <id>`. Their sessions end on their next page load.
+- **Someone leaves:** revoke them in the People tab, or `pnpm people revoke <id>`. Their sessions end on their next page load.
 - **The shared password leaked:** `pnpm bootstrap --vercel <project> --gate-password <new>`, then `pnpm share`. Every password visitor signs in again; invited people are not affected.
 
 ## Security, never weakened for a prototype

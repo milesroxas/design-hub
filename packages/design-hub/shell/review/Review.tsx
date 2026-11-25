@@ -8,6 +8,7 @@ import { areCommentsHidden, setCommentsHidden } from '@kit/prefs';
 import { Button } from '@kit/ui';
 import { type Dispatch, useEffect, useMemo, useReducer, useState } from 'react';
 import { type Anchor, type Comment, isRoot } from '../../core/review/model';
+import { can } from '../../core/review/policy';
 import { captureAnchor, currentUrl, openAnchor, pinPoint, resumeAnchor } from './anchor';
 import { Bar } from './Bar';
 import { Card } from './Card';
@@ -264,7 +265,7 @@ function ModeBar({
       }}
       resolved={v.resolved}
       resolvedCount={roots.filter((c) => c.status === 'resolved').length}
-      editor={s.me?.role === 'editor'}
+      canManagePeople={can(s.me, 'people')}
       error={s.error}
       onResolved={() => dispatch({ type: 'resolved' })}
       onPeople={() => {

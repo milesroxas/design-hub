@@ -28,9 +28,9 @@ Each comment is pinned to a prototype, its state (the URL and every dial value) 
 
 ## People
 
-- **Editors** resolve any thread, sort comments and invite people. **Reviewers** comment, reply, and resolve or delete their own. Give a client's stakeholders the reviewer role; editors are the studio.
+- Every person is **Studio** or **Client**. Both comment, reply, edit their own words, and resolve or reopen any thread. Studio also deletes any comment, sorts comments and invites people; a Client deletes only their own. The studio's team are Studio; everyone on the client's side is Client, the default.
 - **Team** is the company: `Studio`, or the client's name. It shows beside every name, so a reviewer reads who said what.
-- The first editor comes from `pnpm people invite --name <n> --team <t> --role editor --site <url>`; after that, editors invite from the People tab.
+- The first Studio person comes from `pnpm people invite --name <n> --team <t> --kind studio --site <url>`; after that, Studio invites from the People tab.
 - A link works for 14 days. `pnpm people reissue <id>` replaces it and signs that person out everywhere; `revoke` ends their access on their next page load.
 - Never paste an invite link into a commit, a document, a ticket or a comment. Why: anyone holding it signs in as that person.
 

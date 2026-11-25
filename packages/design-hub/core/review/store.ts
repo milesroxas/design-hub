@@ -12,12 +12,18 @@ export interface KV {
   smembers(key: string): Promise<string[]>;
 }
 
-/** Every key the hub writes starts here, so a shared Redis never mixes it with another app's data. */
+/**
+ * Every key the hub writes starts here, so a shared Redis never mixes it with
+ * another app's data. Bumped when the stored shapes change without a
+ * migration: records under an older prefix are simply never read.
+ */
+const PREFIX = 'hub2:';
+
 export const KEY = {
-  people: 'hub:people',
-  invites: 'hub:invites',
-  prototypes: 'hub:prototypes',
-  comments: (prototype: string) => `hub:comments:${prototype}`,
+  people: `${PREFIX}people`,
+  invites: `${PREFIX}invites`,
+  prototypes: `${PREFIX}prototypes`,
+  comments: (prototype: string) => `${PREFIX}comments:${prototype}`,
 } as const;
 
 export type Snapshot = { hashes: Record<string, Record<string, string>>; sets: Record<string, string[]> };

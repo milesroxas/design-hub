@@ -1,7 +1,7 @@
 /// <reference types="node" />
 // The review API in `design-hub dev`: the same handler as on Vercel, over a local
 // store at .design-hub/review.json, with no gate. Whoever runs the dev
-// server is a local editor (named from git config), so the whole review UI,
+// server is a local Studio person (named from git config), so the whole review UI,
 // people panel included, works offline and needs no account.
 import type { ServerResponse } from 'node:http';
 import type { Connect, Plugin } from 'vite';
@@ -12,7 +12,7 @@ import { API_PATH, handleReview } from './api.ts';
 import { checks } from './checks.ts';
 import { readEnv } from './env.ts';
 import { fileKV } from './file-kv.ts';
-import { LOCAL_STORE, localEditor } from './local.ts';
+import { LOCAL_STORE, localStudio } from './local.ts';
 import { ROOT } from './paths.ts';
 
 // Connect strips the mount path from req.url; originalUrl keeps the query the handler reads.
@@ -47,8 +47,8 @@ export function devReview(): Plugin {
       const review = createReview(kv, {
         triage: jevTriager(readEnv(ROOT).TYPESAFE_API_KEY ?? '', checks),
       });
-      const actor = localEditor();
-      // The local editor is in the people list like anyone else, so the people panel shows them.
+      const actor = localStudio();
+      // The local Studio person is in the people list like anyone else, so the people panel shows them.
       void kv.hset(KEY.people, actor.id, JSON.stringify(actor));
       server.middlewares.use(API_PATH, (req, res, nextMiddleware) => {
         toRequest(req)

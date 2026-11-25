@@ -1,22 +1,28 @@
-// The People card, for editors: invite someone, hand over their link, and see
+// The People card, for Studio: invite someone, hand over their link, and see
 // who can comment.
 import { Button, Select } from '@kit/ui';
 import { type FormEvent, useId, useRef, useState } from 'react';
-import { INVITE_DAYS, LIMITS, type Role } from '../../core/review/model';
+import { INVITE_DAYS, LIMITS, type PersonKind } from '../../core/review/model';
 import { Action } from './Card';
 import { act, type Me, type ReviewStore } from './client';
 
 type Link = { name: string; href: string };
 
-const ROLES: { value: Role; label: string }[] = [
-  { value: 'reviewer', label: 'Reviewer: comments and replies' },
-  { value: 'editor', label: 'Editor: also resolves, sorts and invites' },
+const KIND_NAMES: Record<PersonKind, string> = { studio: 'Studio', client: 'Client' };
+
+const KIND_OPTIONS: { value: PersonKind; label: string; desc: string }[] = [
+  { value: 'client', label: KIND_NAMES.client, desc: 'Comments, replies and resolves any thread' },
+  {
+    value: 'studio',
+    label: KIND_NAMES.studio,
+    desc: 'Also sorts, deletes any comment and invites',
+  },
 ];
 
 function InviteForm({ store, onLink }: { store: ReviewStore; onLink: (link: Link) => void }) {
-  const [role, setRole] = useState<Role>('reviewer');
+  const [kind, setKind] = useState<PersonKind>('client');
   const [busy, setBusy] = useState(false);
-  const roleLabel = useId();
+  const kindLabel = useId();
   const invite = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
@@ -25,7 +31,7 @@ function InviteForm({ store, onLink }: { store: ReviewStore; onLink: (link: Link
     setBusy(true);
     act(
       store
-        .invite(name, String(f.get('team') ?? ''), role)
+        .invite(name, String(f.get('team') ?? ''), kind)
         .then((href) => {
           onLink({ name, href });
           form.reset();
@@ -58,15 +64,15 @@ function InviteForm({ store, onLink }: { store: ReviewStore; onLink: (link: Link
         />
       </label>
       <div className="field">
-        <span id={roleLabel} className="field-label">
-          Role
+        <span id={kindLabel} className="field-label">
+          Kind
         </span>
         <Select
-          labelId={roleLabel}
+          labelId={kindLabel}
           menuClassName="rv-menu"
-          value={role}
-          options={ROLES}
-          onChange={(next) => setRole(next as Role)}
+          value={kind}
+          options={KIND_OPTIONS}
+          onChange={(next) => setKind(next as PersonKind)}
         />
       </div>
       <Button type="submit" kind="primary" size={null} label="Create invite link" busy={busy} />
@@ -154,7 +160,7 @@ export function People({ store, me, people }: { store: ReviewStore; me: Me | nul
               <div className="rv-person">
                 <strong>{p.name}</strong>
                 <span className="rv-muted">
-                  {p.team} · {p.role}
+                  {p.team} · {KIND_NAMES[p.kind]}
                   {p.revokedAt && ' · revoked'}
                 </span>
               </div>
