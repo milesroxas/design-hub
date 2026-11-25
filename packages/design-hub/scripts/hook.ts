@@ -8,6 +8,7 @@ import { readFileSync } from 'node:fs';
 import { basename } from 'node:path';
 import { guardHook } from './guard.ts';
 import { skillHintHook } from './skill-hint.ts';
+import { upgradeHook } from './upgrade.ts';
 
 const MD = /\.md$/i;
 
@@ -27,7 +28,7 @@ export function mdWriting(input: {
   };
 }
 
-export const HOOKS = ['fidelity-guard', 'md-writing', 'skill-hint'] as const;
+export const HOOKS = ['fidelity-guard', 'md-writing', 'skill-hint', 'update'] as const;
 
 export async function runHook(name: string): Promise<void> {
   try {
@@ -36,6 +37,8 @@ export async function runHook(name: string): Promise<void> {
         return await guardHook();
       case 'skill-hint':
         return await skillHintHook();
+      case 'update':
+        return await upgradeHook();
       case 'md-writing': {
         const output = mdWriting(JSON.parse(readFileSync(0, 'utf8')));
         if (output) console.log(JSON.stringify(output));

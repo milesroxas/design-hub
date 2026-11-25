@@ -22,6 +22,7 @@ import * as signin from './signin.ts';
 import * as skillHint from './skill-hint.ts';
 import * as skills from './skills.ts';
 import * as tracks from './tracks.ts';
+import * as upgrade from './upgrade.ts';
 import * as visualMatch from './visual-match.ts';
 
 export const spec = {
@@ -52,6 +53,7 @@ export const COMMANDS: CommandSpec[] = [
   exportCmd.spec,
   skills.spec,
   tracks.spec,
+  upgrade.spec,
   skillHint.spec,
   releaseCheck.spec,
   spec,

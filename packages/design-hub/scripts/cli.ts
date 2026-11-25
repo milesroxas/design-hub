@@ -27,6 +27,7 @@ import * as signin from './signin.ts';
 import * as skillHint from './skill-hint.ts';
 import * as skills from './skills.ts';
 import * as tracks from './tracks.ts';
+import * as upgrade from './upgrade.ts';
 import * as visualMatch from './visual-match.ts';
 
 type Command = { spec: CommandSpec; main: (args: any) => Result | Promise<Result> };
@@ -57,6 +58,7 @@ const COMMANDS: Record<string, Command> = {
   export: exportCmd,
   skills,
   tracks,
+  upgrade,
   'skill-hint': skillHint,
   'release-check': releaseCheck,
   commands,

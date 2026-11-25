@@ -16,7 +16,7 @@ From the inside out, enforced by `pnpm quality` (`.fallowrc.jsonc`, boundaries):
 | `vite/` | The plugin: the registry module, the `@kit` resolver, the Markdown compiler, the gate's font. | `core`, `server`, `vercel` |
 | `scripts/` | The `design-hub` CLI, one file per command. | `core`, `server`, `vite` |
 
-`templates/` is copied by `design-hub new`; `skills/` by `design-hub skills`, which also adds the template's scripts a project lacks (`SCRIPTS` in `scripts/skills.ts`); `configs/` holds what a project's tsconfig and Biome run extend.
+`templates/` is copied by `design-hub new`; `skills/` by `design-hub skills`, which also adds the template's scripts a project lacks (`SCRIPTS` in `scripts/skills.ts`) and the SessionStart upgrade hook (`SESSION_HOOK` in `scripts/lib/update.ts`); `configs/` holds what a project's tsconfig and Biome run extend.
 
 ## Rules
 

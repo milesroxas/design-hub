@@ -11,13 +11,15 @@ import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, write
 import { join } from 'node:path';
 import { PACKAGE_SKILLS, ROOT, SKILLS } from '../server/paths.ts';
 import type { Args, CommandSpec } from './lib/cli.ts';
+import { withSessionHook } from './lib/update.ts';
 
 export const spec = {
   name: 'skills',
   summary:
-    "Install or update the project's miles-* skills from this package into .claude/skills/, and add any package.json script they call that the project lacks.",
+    "Install or update the project's miles-* skills from this package into .claude/skills/, add any package.json script they call that the project lacks, and the session-start upgrade hook.",
   flags: {},
-  output: '{ ok, installed: [name], into, scripts: { added: [name] } }',
+  output:
+    '{ ok, installed: [name], into, scripts: { added: [name] }, hooks: { sessionStart: added | kept } }',
 } as const satisfies CommandSpec;
 
 const GLOBAL_ONLY = new Set(['miles-design-hub']);
@@ -78,6 +80,21 @@ export function addScripts(file = join(ROOT, 'package.json')): string[] {
   return added;
 }
 
+/** Adds the SessionStart upgrade hook to .claude/settings.json when it is missing; other hooks are never changed. */
+export function addSessionHook(file = join(ROOT, '.claude', 'settings.json')): 'added' | 'kept' {
+  const settings = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : {};
+  const next = withSessionHook(settings);
+  if (!next) return 'kept';
+  mkdirSync(join(file, '..'), { recursive: true });
+  writeFileSync(file, `${JSON.stringify(next, null, 2)}\n`);
+  return 'added';
+}
+
 export function main(_args: Args<typeof spec>) {
-  return { installed: installSkills(), into: SKILLS, scripts: { added: addScripts() } };
+  return {
+    installed: installSkills(),
+    into: SKILLS,
+    scripts: { added: addScripts() },
+    hooks: { sessionStart: addSessionHook() },
+  };
 }
