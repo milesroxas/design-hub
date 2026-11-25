@@ -1,6 +1,6 @@
 # Collaboration: people, access and what clients see
 
-Status: plan, not started. Sections 3 to 7 are a proposed design for the decisions in section 2. Two points stay open (section 8); both are answered by the exploration in slice 6 and block nothing before it.
+Status: slice 1 shipped in 0.6.0 (section 9 records what was decided in review); slices 2 to 7 are planned. Sections 3 to 7 are a proposed design for the decisions in section 2. Two points stay open (section 8); both are answered by the exploration in slice 6 and block nothing before it.
 
 ## 1. Problem and success
 
@@ -177,3 +177,25 @@ No extra-high effort: it costs two to four times as much with no reliable gain i
 | --- | --- | --- |
 | Q1 | Does Studio mark a dial client-facing in the hub, in code, or both? | Decide from the slice 6 exploration. Leaning hub, to match prototypes (D13). |
 | Q2 | Is the variant picker client-facing, and can Studio limit which variants a Client sees? | Decide from the slice 6 exploration. Leaning the same rule as dials. |
+
+## 9. Slice 1: decided in review
+
+Chosen from four directions on a live picker (Current, Quiet, Spatial, Conversation), with hostile fixtures: Spatial.
+
+- **No panel.** One round button (40px) turns comment mode on. Off, the page carries only the button and its open count.
+- **Comment mode.** Pins appear; a click anywhere starts a comment in a card beside the click, and a click on or near a pin (16px) opens its thread. A bar at the bottom is one quiet pill in three groups with hairline rules between, nothing filled: a Pin / Page toggle (the chosen half is the bar's one fill; Page opens a comment on the whole page, Pin or a click on the page goes back), a stepper (‹ 2 open ›, then ‹ 1 of 2 ›) that steps straight through the threads, and ⋯ (Show resolved, People for editors, Hide comments) with × to stop. Esc steps back: the card, then the mode.
+- **One thread at a time** in a 320px card beside its pin, flipped and clamped on screen, stepped with the bar's arrows (the phone sheet carries its own, since the bar steps aside for it); a thread with no pin on this view sits beside the button. Reply box and Resolve in the foot; kind and state as two small selects for editors.
+- **Open and resolved differ at a glance.** Open pin: 24px, solid, numbered. Resolved pin: 20px, pale, a check. Resolved card: check badge, a band naming who resolved it, muted text, Reopen in place of the reply box. The check is the layer's one hue.
+- **The button moves.** Drag it and it glides (380ms, `--ease-drawer`) to the nearest of six spots: four corners and the middle of each side, projected 120ms along the release velocity. Alt and an arrow move it by keyboard. The spot and the hidden state are remembered per browser.
+- **Text box.** Grows with its words; Enter sends, Shift Enter breaks a line.
+- **Nothing over the page.** Comment mode catches a click or tap at the document before the page sees it, instead of laying a surface over it, so the page and its own panels still scroll by wheel and finger. A keyboard comments on the focused element with Enter.
+- **On a phone** (560px and under): the card is a bottom sheet with a grab handle, dragged down by its head to dismiss (past 96px, or a flick over 0.5px per ms), lifted over the iOS keyboard through `visualViewport`, padded for the home indicator. The bar docks to the bottom edge as a toolbar and the button steps aside while comment mode is on. A pin the sheet would cover scrolls up into view.
+
+Rejected:
+
+- **Quiet** (one-line rows that open in place, in a panel): least to read per thread, but still a panel over the page, and two clicks to a reply.
+- **Conversation** (a docked text box, drill-in threads): easiest first comment, but it hides where a comment points and the kind and state.
+- **Current** (cards with every control shown): six controls per thread, two full-width controls before the first comment, and a full-height panel for one comment.
+
+Left for later slices: an audience mark on the card header and a third pin face for internal threads (slice 4).
+

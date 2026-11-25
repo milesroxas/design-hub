@@ -14,7 +14,7 @@ A **reviewer** comments. An **editor** also resolves comments, sorts them and in
 
 ## Invite someone
 
-On the site, open **Review**, then **People**. Enter their name, their team (your studio, or the client's company) and their role. Copy the link and send it to them. Each link is for one person. When they open it, the page says who they are invited as; they press the button and they are in.
+On the site, press the round comments button, then **⋯** and **People**. Enter their name, their team (your studio, or the client's company) and their role. Copy the link and send it to them. Each link is for one person. When they open it, the page says who they are invited as; they press the button and they are in.
 
 Or say it:
 
@@ -22,9 +22,15 @@ Or say it:
 
 ## Leave a comment
 
-Open **Review**. Choose what to comment on: click the part of the page you mean, or **The whole page**. Write the comment, set its **Kind** and **State** if you like, and **Post**.
+Press the round comments button at the edge of the screen. It turns light: you are commenting. Click the part of the page you mean, write the comment and press Enter. The toggle on the bar switches between **Pin** (a comment on one part of the page) and **Page** (a comment on the page as a whole). Press the button again, **×** on the bar or Esc to stop.
 
-A comment remembers exactly what you were looking at, including every Controls setting. Later, **Open** on a comment brings that view back. Anyone can **Reply**. Editors **Resolve** a comment, and **Reopen** it if needed.
+While you are commenting, each comment is a numbered pin on the page. A pin opens its thread in a card beside it; the arrows on the bar step from one thread to the next. Anyone can reply. Editors and the person who wrote it can **Resolve** a thread, and **Reopen** it. A resolved pin turns pale and shows a check; **⋯** and **Show resolved** bring them back on the page.
+
+On a phone, tap instead of click. The bar sits along the bottom edge in place of the button, and a thread opens as a sheet from the bottom: drag it down to close it.
+
+A comment remembers exactly what you were looking at, including every Controls setting. **⋯** and **Show its state** on a thread bring that view back.
+
+The button can sit anywhere along the edge: drag it and it settles in the nearest corner or side, or move it with Alt and an arrow key. **⋯** and **Hide comments** tuck it away; the small tab left at the edge brings it back. Both are remembered in that browser.
 
 ## Work from the comments
 
