@@ -10,8 +10,9 @@ const RESTORE_WAIT_MS = 3000;
 // React's useId values (:r1:, «r1») change between renders of different trees; never anchor on them.
 const STABLE_ID = /^[A-Za-z][\w-]*$/;
 
+/** The hub's own parts and the popups they portal to <body>: never what a comment is about. */
 export const isHarness = (el: Element | null) =>
-  !!el?.closest('[data-harness], .dialkit-root, .proto-picker');
+  !!el?.closest('[data-harness], .dialkit-root, .proto-picker, [data-lapse-panel], .rv-menu');
 
 /** The element's own id when it is stable and unique on the page, so a path can stop there. */
 function stableId(node: Element): string | null {

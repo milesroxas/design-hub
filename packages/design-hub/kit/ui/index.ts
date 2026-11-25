@@ -1,6 +1,14 @@
 export { Badge, Button, Checkbox, Chevron, Segmented } from './Button';
 export { installPressFeedback } from './layer';
-export { type MenuConfig, type MenuEntry, type MenuItem, Select, type SelectOption, useMenu } from './Menu';
+export {
+  type MenuConfig,
+  type MenuEntry,
+  type MenuHeading,
+  type MenuItem,
+  Select,
+  type SelectOption,
+  useMenu,
+} from './Menu';
 export {
   confirmDialog,
   OverlayHost,

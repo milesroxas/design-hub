@@ -21,10 +21,15 @@ export type MenuItem = {
   keys?: (string | { icon: IconName; label: string })[];
   danger?: boolean;
   disabled?: boolean;
+  /** One of a set of choices: drawn with a check when true. Several groups can share a menu, unlike `selected`. */
+  checked?: boolean;
   onClick?: () => void;
 };
 
-export type MenuEntry = MenuItem | '-';
+/** A label over the items that follow it, for a menu that holds more than one group. */
+export type MenuHeading = { heading: string };
+
+export type MenuEntry = MenuItem | MenuHeading | '-';
 
 export type MenuConfig = {
   items: MenuEntry[];
@@ -35,6 +40,8 @@ export type MenuConfig = {
   selected?: string;
   checkable?: boolean;
   role?: 'menu' | 'listbox';
+  /** Added to the popup, which portals to <body>: the way a layer with its own material and stacking dresses its menus. */
+  className?: string;
   onSelect?: (value: string | undefined, item: MenuItem) => void;
 };
 
@@ -202,7 +209,12 @@ function MenuPopup({
     onSelect?.(item.value, item);
   };
 
-  const cls = ['menu', shown && phase === 'open' ? 'is-open' : '', phase === 'closing' ? 'is-closing' : '']
+  const cls = [
+    'menu',
+    config.className,
+    shown && phase === 'open' ? 'is-open' : '',
+    phase === 'closing' ? 'is-closing' : '',
+  ]
     .filter(Boolean)
     .join(' ');
 
@@ -226,12 +238,18 @@ function MenuPopup({
         // biome-ignore lint/a11y/useSemanticElements: an <hr> brings borders the menu rule does not want
         // biome-ignore lint/suspicious/noArrayIndexKey: separators have no identity; the list is fixed while open
         if (item === '-') return <div key={`sep-${n}`} className="menu-sep" role="separator" />;
+        if ('heading' in item)
+          return (
+            <div key={`head-${item.heading}`} className="menu-header" role="presentation">
+              {item.heading}
+            </div>
+          );
         return (
           <MenuRow
             key={`${item.label}-${item.value ?? n}`}
             item={item}
-            role={role === 'listbox' ? 'option' : checkable ? 'menuitemradio' : 'menuitem'}
-            selected={selected != null && selected === item.value}
+            role={rowRole(role, checkable || item.checked !== undefined)}
+            selected={item.checked ?? (selected != null && selected === item.value)}
             onPick={pick}
           />
         );
@@ -277,6 +295,9 @@ function MenuKeys({ keys }: { keys: NonNullable<MenuItem['keys']> }) {
     </span>
   );
 }
+
+const rowRole = (role: 'menu' | 'listbox', checkable: boolean | undefined) =>
+  role === 'listbox' ? 'option' : checkable ? 'menuitemradio' : 'menuitem';
 
 const rowClass = (item: MenuItem, selected: boolean) =>
   ['menu-item', item.danger && 'is-danger', item.disabled && 'is-disabled', selected && 'is-selected']
@@ -334,6 +355,7 @@ export function Select({
   onChange,
   width,
   className,
+  menuClassName,
   placeholder = 'Select',
   labelId,
   'aria-label': ariaLabel,
@@ -343,6 +365,7 @@ export function Select({
   onChange: (value: string) => void;
   width?: number;
   className?: string;
+  menuClassName?: string;
   placeholder?: string;
   labelId?: string;
   'aria-label'?: string;
@@ -355,6 +378,7 @@ export function Select({
     items: options.map((o) => ({ label: o.label, value: o.value })),
     selected: value ?? undefined,
     label: ariaLabel,
+    className: menuClassName,
     width: (trigger) => Math.max(trigger.offsetWidth, width || 0),
     onSelect: (v) => {
       if (v != null && v !== value) onChange(v);

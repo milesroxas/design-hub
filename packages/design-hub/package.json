@@ -58,7 +58,7 @@
     "prepare": "pnpm run build",
     "check": "tsc --noEmit && biome check .",
     "fix": "biome check --write .",
-    "test": "node --test \"core/**/*.test.ts\" \"server/**/*.test.ts\" \"scripts/**/*.test.ts\" \"vite/**/*.test.ts\" \"vercel/**/*.test.ts\"",
+    "test": "node --test \"core/**/*.test.ts\" \"shell/**/*.test.ts\" \"server/**/*.test.ts\" \"scripts/**/*.test.ts\" \"vite/**/*.test.ts\" \"vercel/**/*.test.ts\"",
     "quality": "rm -rf .coverage && NODE_V8_COVERAGE=.coverage pnpm run --silent test > /dev/null && npx -y fallow@3.38.0 --coverage .coverage"
   },
   "peerDependencies": {

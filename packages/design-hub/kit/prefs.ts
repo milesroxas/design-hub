@@ -2,6 +2,8 @@ import { useSyncExternalStore } from 'react';
 
 // Theme, reduced motion and speed for the page, mirrored onto <html>
 // (.dark-mode, [data-motion="reduce"]) so CSS and JS read one source.
+// Also whether the comments button and pins are hidden: a choice about the
+// page a person is looking at, kept the same way as their theme.
 
 export type Appearance = 'system' | 'light' | 'dark';
 
@@ -15,7 +17,10 @@ const params = new URLSearchParams(location.search);
 const urlReduce = params.get('motion') === 'reduce';
 const listeners = new Set<() => void>();
 
+const COMMENTS_KEY = 'proto:comments';
+
 let appearance: Appearance = readAppearance();
+let commentsHidden = readStored(COMMENTS_KEY) === 'hidden';
 let forceReduce = false;
 let speed = 1;
 let lapse: LapseHandle | null = null;
@@ -23,11 +28,24 @@ let lapse: LapseHandle | null = null;
 function readAppearance(): Appearance {
   const fromUrl = params.get('theme');
   if (fromUrl === 'light' || fromUrl === 'dark' || fromUrl === 'system') return fromUrl;
-  try {
-    const saved = localStorage.getItem('proto:appearance');
-    if (saved === 'light' || saved === 'dark' || saved === 'system') return saved;
-  } catch {}
+  const saved = readStored('proto:appearance');
+  if (saved === 'light' || saved === 'dark' || saved === 'system') return saved;
   return 'light';
+}
+
+// Storage throws in a private window or with site data blocked: the page then runs on its defaults.
+function readStored(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function store(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {}
 }
 
 function emit() {
@@ -58,9 +76,7 @@ function applyMotion() {
 export function setAppearance(next: Appearance) {
   if (next === appearance) return;
   appearance = next;
-  try {
-    localStorage.setItem('proto:appearance', next);
-  } catch {}
+  store('proto:appearance', next);
   applyTheme();
   emit();
 }
@@ -68,6 +84,16 @@ export function setAppearance(next: Appearance) {
 export function setForceReduce(on: boolean) {
   forceReduce = on;
   applyMotion();
+  emit();
+}
+
+/** Whether the comments button and pins are off the page. Remembered per browser. */
+export const areCommentsHidden = () => commentsHidden;
+
+export function setCommentsHidden(hidden: boolean) {
+  if (hidden === commentsHidden) return;
+  commentsHidden = hidden;
+  store(COMMENTS_KEY, hidden ? 'hidden' : 'shown');
   emit();
 }
 
