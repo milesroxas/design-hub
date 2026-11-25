@@ -21,4 +21,4 @@ Not a developer? The [guide](https://github.com/milesroxas/design-hub/tree/main/
 
 The rules for people and agents are in [AGENTS.md](AGENTS.md). Sharing a link, the password gate and review comments: ask Claude to share or turn on comments (the `miles-deploy` and `miles-review` skills run every command), or `pnpm commands` for every command.
 
-Upgrade Design Hub: `pnpm add @milesroxas/design-hub@latest && pnpm skills`, or ask Claude to upgrade it.
+Design Hub upgrades itself when a Claude Code session starts here. To upgrade by hand: `pnpm exec design-hub upgrade`. To turn the automatic upgrade off: `DESIGN_HUB_AUTO_UPDATE=0` in `.env`.

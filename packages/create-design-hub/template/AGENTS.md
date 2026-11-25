@@ -126,7 +126,7 @@ Say what you could not verify. Do not commit unless asked.
 
 ## Skills
 
-The `miles-*` skills in `.claude/skills/` come from the `@milesroxas/design-hub` package (`pnpm skills` refreshes them and adds any `package.json` script they call; never edit the copies). To upgrade the package: `pnpm add @milesroxas/design-hub@latest && pnpm skills`. Load one when its trigger matches.
+The `miles-*` skills in `.claude/skills/` come from the `@milesroxas/design-hub` package (`pnpm skills` refreshes them and adds any `package.json` script they call; never edit the copies). The package upgrades itself: a SessionStart hook runs `design-hub upgrade` on every new session. When it reports an upgrade, tell the user in one line and commit `package.json`, the lockfile and `.claude/` as their own commit ("Upgrade Design Hub to <version>") with the next commit the user asks for. When it reports a failure, say so and offer `pnpm exec design-hub upgrade` once the cause is fixed. Load one when its trigger matches.
 
 | Skill | Load when |
 | --- | --- |
