@@ -6,7 +6,7 @@ Two ways into a shared site. The password lets anyone look. An invite link lets 
 
 > Turn on comments.
 
-The first time, Vercel asks you to accept the comment store's terms in your browser; Claude gives you the link. Claude then updates the site and gives you your own invite link. You are the first editor.
+The first time, Vercel asks you to accept the comment store's terms in your browser; Claude gives you the link. If it lists several Upstash products, choose **Install** on **Upstash for Redis**, accept, and close any step that offers to create a database: Claude creates it. Claude then updates the site and gives you your own invite link. You are the first editor.
 
 ## Roles
 

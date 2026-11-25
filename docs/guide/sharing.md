@@ -9,7 +9,7 @@ Claude checks the work, puts the prototypes on the web behind a password, and wr
 Claude needs two things from you, once per project.
 
 1. **A Vercel account.** Sign up free at [vercel.com](https://vercel.com). Claude then gives you a sign-in link. Open it, choose **Allow**, and Claude carries on by itself. No Terminal.
-2. **Comments, if you want them.** Vercel asks you to accept the terms for the comment store in your browser, once. Claude gives you the link. See [Comments](comments.md).
+2. **Comments, if you want them.** Vercel asks you to accept the terms for the comment store in your browser, once per team. Claude gives you the link; if Vercel lists several Upstash products, pick **Upstash for Redis**. See [Comments](comments.md).
 
 ## What reviewers see
 
