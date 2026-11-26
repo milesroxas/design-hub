@@ -21,6 +21,8 @@ const root = (id: string, body: string, triage: Comment['triage']): Comment => (
   body,
   anchor,
   triage,
+  audience: 'client',
+  number: Number(id),
 });
 
 test('groups by README state in table order, then by kind, with replies under their thread', () => {
@@ -38,6 +40,8 @@ test('groups by README state in table order, then by kind, with replies under th
         anchor: null,
         triage: null,
         author: { ...author, name: 'Ed' },
+        audience: 'client',
+        number: 2,
       },
     ],
     ['Real list', 'Empty'],
@@ -52,19 +56,40 @@ test('groups by README state in table order, then by kind, with replies under th
     '## No state',
     '### Unsorted',
   ]);
-  assert.match(md, /- Rae \(Acme\): Typo in title\. On `\/sample-list\/`, element `main`\. id `1`/);
+  assert.match(
+    md,
+    /- #1 \(client-facing\) Rae \(Acme\): Typo in title\. On `\/sample-list\/`, element `main`\. id `1`/,
+  );
   assert.match(md, /\n {2}- Ed \(Acme\): Fixed\.\n/);
 });
 
-test('summary counts open and resolved threads per prototype', async () => {
+test('each thread line carries its number and audience; a thread stored before numbers has none', () => {
+  const md = renderComments(
+    'sample',
+    [
+      { ...root('7', 'Token is off', null), audience: 'internal' },
+      root('8', 'Header heavy', null),
+      { ...root('9', 'Old one', null), number: 0, audience: 'internal' },
+    ],
+    [],
+  );
+  assert.match(md, /\n- #7 \(internal\) Rae \(Acme\): Token is off\./);
+  assert.match(md, /\n- #8 \(client-facing\) Rae \(Acme\): Header heavy\./);
+  assert.match(md, /\n- \(internal\) Rae \(Acme\): Old one\./);
+});
+
+test('summary counts open and resolved, internal and client-facing threads per prototype', async () => {
   const { summary } = await import('./comments.ts');
   const roots = [
     root('1', 'a', null),
-    { ...root('2', 'b', null), status: 'resolved' as const },
+    { ...root('2', 'b', null), status: 'resolved' as const, audience: 'internal' as const },
     { ...root('3', 'c', null), anchor: { ...anchor, prototype: 'other' } },
   ];
   assert.deepEqual(summary({ store: 'local', roots }), {
     store: 'local',
-    prototypes: { 'sample-list': { open: 1, resolved: 1 }, other: { open: 1, resolved: 0 } },
+    prototypes: {
+      'sample-list': { open: 1, resolved: 1, internal: 1, client: 1 },
+      other: { open: 1, resolved: 0, internal: 0, client: 1 },
+    },
   });
 });

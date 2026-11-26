@@ -3,12 +3,14 @@
 // thread in a card beside it. Off, the page carries only the button. It is
 // harness, not product: it wears the harness material and never borrows the
 // prototype's chrome. One file per part; this one holds the state and wires them.
+// What a person sees is what the server sent them: Client view asks the server
+// for a Client's list, and the audience filter only narrows Studio's own.
 import { useStoredState } from '@kit/hooks';
-import { areCommentsHidden, setCommentsHidden } from '@kit/prefs';
+import { areCommentsHidden, isClientView, setClientView, setCommentsHidden } from '@kit/prefs';
 import { Button } from '@kit/ui';
 import { type Dispatch, useEffect, useMemo, useReducer, useState } from 'react';
-import { type Anchor, type Comment, isRoot } from '../../core/review/model';
-import { can } from '../../core/review/policy';
+import { type Anchor, type Audience, type Comment, isRoot } from '../../core/review/model';
+import { can, viewOf } from '../../core/review/policy';
 import { captureAnchor, currentUrl, openAnchor, pinPoint, resumeAnchor } from './anchor';
 import { Bar } from './Bar';
 import { Card } from './Card';
@@ -23,7 +25,10 @@ import { ThreadCard } from './ThreadCard';
 import {
   type Draft,
   draftOf,
+  filtered,
+  filterNote,
   initialView,
+  lensOf,
   roundOf,
   scopeOf,
   stepTarget,
@@ -37,6 +42,10 @@ import './review.css';
 type Props = { prototype: string; feature: string; states: string[] };
 type State = ReturnType<ReviewStore['get']>;
 type Where = { prototype: string; feature: string };
+type Lens = ReturnType<typeof lensOf>;
+
+/** Studio in Client view: the same person, judged by the rules as a Client, so Studio's controls step aside. */
+const asClient = (s: State): State => (s.me ? { ...s, me: { ...s.me, kind: 'client' } } : s);
 
 /** The page's path, query and hash, kept current as hash routes change. */
 function useCurrentUrl(): string {
@@ -80,19 +89,31 @@ function useSpot(): [Spot, (s: Spot) => void] {
   return [isSpot(stored) ? stored : DEFAULT_SPOT, setStored];
 }
 
+/**
+ * The view, its remembered parts kept in kit/prefs, and the list loaded for
+ * it: Client view asks the server for a Client's list, which for a Client
+ * changes nothing.
+ */
+function useView(store: ReviewStore): [View, Dispatch<ViewAction>] {
+  const [v, dispatch] = useReducer(view, undefined, () => initialView(areCommentsHidden(), isClientView()));
+  useEffect(() => {
+    resumeAnchor((id) => dispatch({ type: 'open', id }));
+  }, []);
+  useEffect(() => {
+    void store.load(v.clientView ? 'client' : undefined);
+  }, [store, v.clientView]);
+  useEffect(() => setCommentsHidden(v.hidden), [v.hidden]);
+  useEffect(() => setClientView(v.clientView), [v.clientView]);
+  useEscape(v.commenting, dispatch);
+  return [v, dispatch];
+}
+
 export function Review({ prototype, feature, states }: Props) {
   const store = useMemo(() => createReviewStore(prototype), [prototype]);
   const s = useReviewState(store);
-  const [v, dispatch] = useReducer(view, undefined, () => initialView(areCommentsHidden()));
+  const [v, dispatch] = useView(store);
   const [spot, setSpot] = useSpot();
   const url = useCurrentUrl();
-
-  useEffect(() => {
-    void store.load();
-    resumeAnchor((id) => dispatch({ type: 'open', id }));
-  }, [store]);
-  useEffect(() => setCommentsHidden(v.hidden), [v.hidden]);
-  useEscape(v.commenting, dispatch);
 
   const shown = s.status === 'ready' || s.status === 'guest';
   useToastLift(shown && !v.hidden && spot === 'bottom-right');
@@ -119,6 +140,7 @@ export function Review({ prototype, feature, states }: Props) {
       <Launcher
         hidden={v.hidden}
         commenting={v.commenting}
+        // Every open thread the person was sent, never the filtered list: a narrowed filter cannot hide one.
         openCount={roots.filter((c) => c.status === 'open').length}
         spot={spot}
         onSpot={setSpot}
@@ -156,11 +178,13 @@ type ModeProps = {
 };
 
 /** Everything comment mode puts on the page: the surface, the pins, the bar and the one card. */
-function Commenting({ store, s, v, dispatch, url, where, states, roots }: ModeProps) {
-  const number = new Map(roots.map((c, i) => [c.id, i + 1]));
+function Commenting({ store, s: real, v, dispatch, url, where, states, roots }: ModeProps) {
+  const lens = lensOf(viewOf(real.me) === 'studio', v);
+  const s = lens.clientView ? asClient(real) : real;
   const currentId = threadOf(v.card);
   const current = roots.find((c) => c.id === currentId);
-  const round = roundOf(roots, v.resolved, currentId);
+  const shown = filtered(roots, v);
+  const round = roundOf(shown, v.resolved, currentId);
   const draft = draftOf(v.card);
   const open = (id: string) => dispatch({ type: 'open', id });
   // Opening a thread from the arrows brings its element into view; its card follows the pin.
@@ -177,7 +201,6 @@ function Commenting({ store, s, v, dispatch, url, where, states, roots }: ModePr
       <PickLayer onPick={(d) => dispatch({ type: 'draft', draft: d })} onOpen={open} />
       <Pins
         comments={round.filter((c) => c.anchor?.url === url)}
-        number={number}
         active={currentId}
         draft={draft}
         onOpen={open}
@@ -185,10 +208,11 @@ function Commenting({ store, s, v, dispatch, url, where, states, roots }: ModePr
       <ModeBar
         store={store}
         s={s}
+        lens={lens}
         v={v}
         dispatch={dispatch}
         round={round}
-        roots={roots}
+        roots={shown}
         index={current ? round.indexOf(current) : -1}
         onStep={step}
       />
@@ -199,7 +223,7 @@ function Commenting({ store, s, v, dispatch, url, where, states, roots }: ModePr
           s={s}
           root={current}
           round={round}
-          number={number}
+          mark={lens.asStudio}
           url={url}
           states={states}
           open={open}
@@ -207,7 +231,16 @@ function Commenting({ store, s, v, dispatch, url, where, states, roots }: ModePr
           onClose={() => dispatch({ type: 'close' })}
         />
       )}
-      {draft && <DraftCard store={store} draft={draft} where={where} states={states} dispatch={dispatch} />}
+      {draft && (
+        <DraftCard
+          store={store}
+          draft={draft}
+          where={where}
+          states={states}
+          audience={draftAudience(lens)}
+          dispatch={dispatch}
+        />
+      )}
       {v.card?.type === 'people' && (
         <PeopleCard store={store} s={s} onClose={() => dispatch({ type: 'close' })} />
       )}
@@ -239,6 +272,7 @@ function PeopleCard({ store, s, onClose }: { store: ReviewStore; s: State; onClo
 function ModeBar({
   store,
   s,
+  lens,
   v,
   dispatch,
   round,
@@ -246,6 +280,7 @@ function ModeBar({
   index,
   onStep,
 }: Pick<ModeProps, 'store' | 's' | 'v' | 'dispatch' | 'roots'> & {
+  lens: Lens;
   round: Comment[];
   index: number;
   onStep: (by: number) => void;
@@ -266,6 +301,13 @@ function ModeBar({
       resolved={v.resolved}
       resolvedCount={roots.filter((c) => c.status === 'resolved').length}
       canManagePeople={can(s.me, 'people')}
+      canFilter={lens.asStudio}
+      filter={v.filter}
+      filterNote={filterNote(v)}
+      onFilter={(filter) => dispatch({ type: 'filter', filter })}
+      canClientView={lens.asStudio || lens.clientView}
+      clientView={lens.clientView}
+      onClientView={(on) => dispatch({ type: 'clientView', on })}
       error={s.error}
       onResolved={() => dispatch({ type: 'resolved' })}
       onPeople={() => {
@@ -285,7 +327,7 @@ function OpenThread({
   s,
   root,
   round,
-  number,
+  mark,
   url,
   states,
   open,
@@ -296,7 +338,7 @@ function OpenThread({
   s: State;
   root: Comment;
   round: Comment[];
-  number: Map<string, number>;
+  mark: boolean;
   url: string;
   states: string[];
   open: (id: string) => void;
@@ -311,7 +353,7 @@ function OpenThread({
       me={s.me}
       root={root}
       replies={s.comments.filter((c) => c.thread === root.id && c.id !== root.id)}
-      n={number.get(root.id) ?? 0}
+      mark={mark}
       index={round.indexOf(root)}
       total={round.length}
       states={states}
@@ -324,19 +366,59 @@ function OpenThread({
   );
 }
 
+/**
+ * Who a new thread is for. Studio chooses, internal first. In Client view it
+ * is client-facing, as a Client's would be. A Client sends none: the server
+ * makes theirs client-facing.
+ */
+type DraftAudience = 'choose' | 'client' | null;
+const draftAudience = (lens: Lens): DraftAudience => {
+  if (lens.asStudio) return 'choose';
+  return lens.clientView ? 'client' : null;
+};
+
+const AUDIENCES: { value: Audience; label: string; title: string }[] = [
+  { value: 'internal', label: 'Internal', title: 'Only Studio sees it' },
+  { value: 'client', label: 'Client-facing', title: 'Everyone sees it, the client included' },
+];
+
+/** Studio's choice on a new thread. Fixed once posted: to tell the client later, write a new one. */
+function AudienceChoice({ value, onChange }: { value: Audience; onChange: (a: Audience) => void }) {
+  return (
+    // biome-ignore lint/a11y/useSemanticElements: a fieldset brings a border and a legend the card does not want
+    <div className="rv-toggle rv-audience" role="group" aria-label="Who sees it">
+      {AUDIENCES.map((a) => (
+        <button
+          key={a.value}
+          type="button"
+          aria-pressed={value === a.value}
+          title={a.title}
+          onClick={() => onChange(a.value)}
+        >
+          {a.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function DraftCard({
   store,
   draft,
   where,
   states,
+  audience,
   dispatch,
 }: {
   store: ReviewStore;
   draft: Draft;
   where: Where;
   states: string[];
+  audience: DraftAudience;
   dispatch: Dispatch<ViewAction>;
 }) {
+  const [chosen, setChosen] = useState<Audience>('internal');
+  const sent = audience === 'choose' ? chosen : audience;
   return (
     <Card at={draftPoint(draft)} label="New comment" onDismiss={() => dispatch({ type: 'close' })}>
       <header className="rv-card-head">
@@ -352,6 +434,7 @@ function DraftCard({
           onClick={() => dispatch({ type: 'close' })}
         />
       </header>
+      {audience === 'choose' && <AudienceChoice value={chosen} onChange={setChosen} />}
       <div className="rv-card-foot">
         <Field
           label="New comment"
@@ -359,7 +442,8 @@ function DraftCard({
           send="Post"
           autoFocus
           onSend={async (body) => {
-            const c = await store.add(body, captureAnchor(where, draft.target, draftPoint(draft)), states);
+            const anchor = captureAnchor(where, draft.target, draftPoint(draft));
+            const c = await store.add(body, anchor, states, sent);
             dispatch({ type: 'open', id: c.id });
           }}
           onCancel={() => dispatch({ type: 'close' })}

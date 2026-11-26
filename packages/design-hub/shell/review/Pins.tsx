@@ -2,8 +2,10 @@
 // written. In comment mode they are the way into a thread, so each is a real
 // button in the tab order. The button is the hit area and never changes size;
 // the face inside it is what presses and lifts, so a press near the edge
-// still ends on the pin. An open thread's pin is solid and numbered; a
-// resolved one is pale and carries a check.
+// still ends on the pin. An open thread's pin is solid and numbered; an
+// open internal one is numbered too, on a lighter face with a dashed edge; a
+// resolved one is pale and carries a check. The number is the thread's own,
+// never its place in the list.
 import { Icon } from '@kit/Icon';
 import { useEffect, useRef } from 'react';
 import type { Comment } from '../../core/review/model';
@@ -16,15 +18,45 @@ const moveTo = (el: HTMLElement, at: { x: number; y: number } | null) => {
   if (at) el.style.transform = `translate(${at.x}px, ${at.y}px)`;
 };
 
+/** "Comment 3, internal, resolved, by Rae": the number when it has one, then what the face shows. */
+function pinLabel(c: Comment): string {
+  const words = [
+    c.number ? `Comment ${c.number}` : 'Comment',
+    c.audience === 'internal' && 'internal',
+    c.status === 'resolved' && 'resolved',
+  ];
+  return `${words.filter(Boolean).join(', ')}, by ${c.author.name}`;
+}
+
+function Pin({ c, active, onOpen }: { c: Comment; active: boolean; onOpen: (id: string) => void }) {
+  const resolved = c.status === 'resolved';
+  // A Client is never sent an internal thread, so only Studio ever sees this face.
+  const internal = c.audience === 'internal';
+  return (
+    <button
+      type="button"
+      className="rv-pin"
+      data-pin={c.id}
+      data-resolved={resolved ? '' : undefined}
+      data-internal={internal ? '' : undefined}
+      data-active={active ? '' : undefined}
+      aria-label={pinLabel(c)}
+      aria-pressed={active}
+      hidden
+      onClick={() => onOpen(c.id)}
+    >
+      <span className="rv-pin-face">{resolved ? <Icon name="check" size={12} /> : c.number || null}</span>
+    </button>
+  );
+}
+
 export function Pins({
   comments,
-  number,
   active,
   draft,
   onOpen,
 }: {
   comments: Comment[];
-  number: Map<string, number>;
   active: string | null;
   draft: Draft | null;
   onOpen: (id: string) => void;
@@ -67,26 +99,9 @@ export function Pins({
 
   return (
     <div ref={layer} className="rv-pins">
-      {comments.map((c) => {
-        const n = number.get(c.id);
-        const resolved = c.status === 'resolved';
-        return (
-          <button
-            key={c.id}
-            type="button"
-            className="rv-pin"
-            data-pin={c.id}
-            data-resolved={resolved ? '' : undefined}
-            data-active={active === c.id ? '' : undefined}
-            aria-label={`Comment ${n}${resolved ? ', resolved,' : ''} by ${c.author.name}`}
-            aria-pressed={active === c.id}
-            hidden
-            onClick={() => onOpen(c.id)}
-          >
-            <span className="rv-pin-face">{resolved ? <Icon name="check" size={12} /> : n}</span>
-          </button>
-        );
-      })}
+      {comments.map((c) => (
+        <Pin key={c.id} c={c} active={active === c.id} onOpen={onOpen} />
+      ))}
       {draft?.offset && (
         <span className="rv-pin" data-draft="" data-new="" aria-hidden="true" hidden>
           <span className="rv-pin-face" />

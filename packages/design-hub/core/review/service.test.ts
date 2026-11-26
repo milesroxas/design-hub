@@ -459,8 +459,8 @@ test('a new person is a Client unless named Studio, and any other kind is invali
   await rejects(review.addPerson(studio, { name: 'X', team: 'Acme', kind: 'editor' }), 'invalid');
 });
 
-test('a Client resolves and reopens anyone’s thread, but deletes only their own', async () => {
-  const c = await review.add(studio, { body: 'Spacing off', anchor });
+test('a Client resolves and reopens anyone’s client-facing thread, but deletes only their own', async () => {
+  const c = await review.add(studio, { body: 'Spacing off', anchor, audience: 'client' });
   const other = (await review.addPerson(studio, { name: 'Oz', team: 'Acme' })).person;
   const done = await review.resolve(other, { prototype: 'sample-list', id: c.id, resolved: true });
   assert.equal(done.resolvedBy?.id, other.id);
@@ -498,8 +498,8 @@ test('records under an older key prefix are never read, 0.6 links included', asy
   assert.equal(await fresh.sessionPerson('old', 0), null);
   assert.equal(await fresh.peekLink(token), null);
   assert.equal(await fresh.useLink(token), null);
-  assert.deepEqual(await fresh.allComments(), []);
-  assert.equal(await fresh.locate('x'), null);
+  assert.deepEqual(await fresh.allComments(studio), []);
+  assert.equal(await fresh.locate(studio, 'x'), null);
 });
 
 test('people edit only their own words; Studio triages anything', async () => {
@@ -568,6 +568,172 @@ test('triage runs on add, and a failing triager never loses the comment', async 
 
 test('locate finds a comment by id alone', async () => {
   const c = await review.add(client, { body: 'Here', anchor });
-  assert.equal((await review.locate(c.id))?.prototype, 'sample-list');
-  assert.equal(await review.locate('nope'), null);
+  assert.equal((await review.locate(studio, c.id))?.prototype, 'sample-list');
+  assert.equal((await review.locate(client, c.id))?.prototype, 'sample-list');
+  assert.equal(await review.locate(studio, 'nope'), null);
+  await rejects(review.locate(null, c.id), 'unauthorized');
+});
+
+// Slice 4: internal comments. One internal thread with a Studio reply, one
+// client-facing thread with replies from both kinds.
+async function twoThreads() {
+  const at = { prototype: 'sample-list' };
+  const internal = await review.add(studio, { body: 'Spacing token is wrong', anchor });
+  const internalReply = await review.reply(studio, { ...at, thread: internal.id, body: 'Fix before Friday' });
+  const shared = await review.add(client, { body: 'Header feels heavy', anchor });
+  const studioReply = await review.reply(studio, { ...at, thread: shared.id, body: 'Trying a lighter one' });
+  const clientReply = await review.reply(client, { ...at, thread: shared.id, body: 'Thanks' });
+  return { internal, internalReply, shared, studioReply, clientReply };
+}
+
+test('audience: Studio’s thread is internal, a Client’s client-facing, and replies follow the thread', async () => {
+  const t = await twoThreads();
+  assert.deepEqual(
+    [t.internal, t.internalReply, t.shared, t.studioReply, t.clientReply].map((c) => c.audience),
+    ['internal', 'internal', 'client', 'client', 'client'],
+  );
+  const asked = await review.add(studio, { body: 'For the client', anchor, audience: 'client' });
+  assert.equal(asked.audience, 'client');
+  assert.equal(
+    (await review.add(studio, { body: 'Ours', anchor, audience: 'internal' })).audience,
+    'internal',
+  );
+  await rejects(review.add(studio, { body: 'x', anchor, audience: 'everyone' }), 'invalid');
+});
+
+test('a Client cannot make an internal thread by asking for one', async () => {
+  const c = await review.add(client, { body: 'Mine', anchor, audience: 'internal' });
+  assert.equal(c.audience, 'client');
+  assert.ok((await review.listComments(client, 'sample-list')).some((x) => x.id === c.id));
+});
+
+test('a Client’s list holds no internal thread or reply; Studio’s holds all', async () => {
+  const t = await twoThreads();
+  const ids = (cs: { id: string }[]) => cs.map((c) => c.id);
+  assert.deepEqual(ids(await review.listComments(client, 'sample-list')), [
+    t.shared.id,
+    t.studioReply.id,
+    t.clientReply.id,
+  ]);
+  assert.equal((await review.listComments(studio, 'sample-list')).length, 5);
+  assert.deepEqual(ids(await review.allComments(client)), [t.shared.id, t.studioReply.id, t.clientReply.id]);
+  assert.equal((await review.allComments(studio)).length, 5);
+});
+
+test('Client view gives Studio exactly a Client’s list, and never widens a Client’s', async () => {
+  await twoThreads();
+  const asClient = await review.listComments(client, 'sample-list');
+  assert.deepEqual(await review.listComments(studio, 'sample-list', 'client'), asClient);
+  assert.deepEqual(await review.listComments(client, 'sample-list', 'studio'), asClient);
+  assert.equal((await review.listComments(studio, 'sample-list', 'studio')).length, 5);
+  await rejects(review.listComments(studio, 'sample-list', 'editor'), 'invalid');
+});
+
+test('a Client acting on an internal id is told it does not exist, by every op', async () => {
+  const t = await twoThreads();
+  const at = { prototype: 'sample-list' };
+  for (const id of [t.internal.id, t.internalReply.id]) {
+    await rejects(review.reply(client, { ...at, thread: id, body: 'x' }), 'not_found');
+    await rejects(review.edit(client, { ...at, id, body: 'x' }), 'not_found');
+    await rejects(review.remove(client, { ...at, id }), 'not_found');
+    await rejects(review.resolve(client, { ...at, id, resolved: true }), 'not_found');
+    await rejects(review.resolve(client, { ...at, id, resolved: false }), 'not_found');
+    // Triage is Studio's whatever the id, so a Client is refused before any lookup.
+    await rejects(review.retriage(client, { ...at, id, triage: { kind: 'bug' } }), 'forbidden');
+    assert.equal(await review.locate(client, id), null);
+    assert.ok(await review.locate(studio, id));
+  }
+  // The same answer as an id that is not there at all.
+  await rejects(review.edit(client, { ...at, id: 'nope', body: 'x' }), 'not_found');
+  // Nothing changed.
+  const after = await review.listComments(studio, 'sample-list');
+  assert.equal(after.length, 5);
+  assert.equal(after.find((c) => c.id === t.internal.id)?.status, 'open');
+  assert.equal(after.find((c) => c.id === t.internalReply.id)?.body, 'Fix before Friday');
+});
+
+test('a signed-out caller is refused before any comment is looked up', async () => {
+  const t = await twoThreads();
+  const at = { prototype: 'sample-list' };
+  for (const id of [t.internal.id, 'nope']) {
+    await rejects(review.edit(null, { ...at, id, body: 'x' }), 'unauthorized');
+    await rejects(review.remove(null, { ...at, id }), 'unauthorized');
+    await rejects(review.resolve(null, { ...at, id, resolved: true }), 'unauthorized');
+    await rejects(review.reply(null, { ...at, thread: id, body: 'x' }), 'unauthorized');
+  }
+  await rejects(review.listComments(null, 'sample-list'), 'unauthorized');
+  await rejects(review.allComments(null), 'unauthorized');
+});
+
+test('a Client still works on client-facing threads, Studio’s replies included', async () => {
+  const t = await twoThreads();
+  const at = { prototype: 'sample-list' };
+  assert.equal((await review.resolve(client, { ...at, id: t.shared.id, resolved: true })).status, 'resolved');
+  assert.equal(
+    (await review.edit(client, { ...at, id: t.clientReply.id, body: 'Thank you' })).body,
+    'Thank you',
+  );
+  await rejects(review.edit(client, { ...at, id: t.studioReply.id, body: 'x' }), 'forbidden');
+  await rejects(review.remove(client, { ...at, id: t.studioReply.id }), 'forbidden');
+  assert.deepEqual(await review.remove(client, { ...at, id: t.clientReply.id }), [t.clientReply.id]);
+});
+
+test('numbers are fixed: a delete or a hidden thread moves no other number, and none is reused', async () => {
+  const t = await twoThreads();
+  const third = await review.add(client, { body: 'Third', anchor });
+  assert.deepEqual([t.internal.number, t.shared.number, third.number], [1, 2, 3]);
+  // Replies carry their thread's number.
+  assert.deepEqual([t.internalReply.number, t.studioReply.number], [1, 2]);
+  // A Client sees 2 and 3: the internal thread is hidden and leaves a gap.
+  const roots = (cs: { id: string; thread: string; number: number }[]) =>
+    cs.filter((c) => c.id === c.thread).map((c) => c.number);
+  assert.deepEqual(roots(await review.listComments(client, 'sample-list')), [2, 3]);
+  await review.remove(studio, { prototype: 'sample-list', id: t.shared.id });
+  assert.deepEqual(roots(await review.listComments(studio, 'sample-list')), [1, 3]);
+  assert.deepEqual(roots(await review.listComments(client, 'sample-list')), [3]);
+  assert.equal((await review.add(client, { body: 'Fourth', anchor })).number, 4);
+});
+
+test('numbers count per prototype', async () => {
+  const a = await review.add(client, { body: 'A1', anchor });
+  const b = await review.add(client, { body: 'B1', anchor: { ...anchor, prototype: 'other' } });
+  const a2 = await review.add(studio, { body: 'A2', anchor });
+  assert.deepEqual([a.number, b.number, a2.number], [1, 1, 2]);
+});
+
+test('a stored comment without an audience is internal, and one without a number has none', async () => {
+  const kv = memoryKV();
+  const r = createReview(kv);
+  const root = { ...studio, id: 'cli' };
+  const rae = (await r.addPerson(root, { name: 'Rae', team: 'Acme' })).person;
+  const legacy = {
+    id: 'old',
+    thread: 'old',
+    author: { id: rae.id, name: 'Rae', team: 'Acme' },
+    body: 'From before audiences',
+    createdAt: '2030-01-01T00:00:00Z',
+    editedAt: null,
+    anchor,
+    status: 'open',
+    resolvedBy: null,
+    triage: null,
+  };
+  await kv.sadd(KEY.prototypes, 'sample-list');
+  await kv.hset(KEY.comments('sample-list'), 'old', JSON.stringify(legacy));
+  await kv.hset(
+    KEY.comments('sample-list'),
+    'odd',
+    JSON.stringify({ ...legacy, id: 'odd', thread: 'odd', audience: 'everyone' }),
+  );
+  const seen = await r.listComments(root, 'sample-list');
+  assert.deepEqual(
+    seen.map((c) => [c.id, c.audience, c.number]),
+    [
+      ['odd', 'internal', 0],
+      ['old', 'internal', 0],
+    ],
+  );
+  assert.deepEqual(await r.listComments(rae, 'sample-list'), []);
+  assert.equal(await r.locate(rae, 'old'), null);
+  await rejects(r.edit(rae, { prototype: 'sample-list', id: 'old', body: 'x' }), 'not_found');
 });

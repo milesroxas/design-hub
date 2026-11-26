@@ -2,8 +2,9 @@ import { useSyncExternalStore } from 'react';
 
 // Theme, reduced motion and speed for the page, mirrored onto <html>
 // (.dark-mode, [data-motion="reduce"]) so CSS and JS read one source.
-// Also whether the comments button and pins are hidden: a choice about the
-// page a person is looking at, kept the same way as their theme.
+// Also whether the comments button and pins are hidden, and whether Studio
+// is in Client view: choices about the page a person is looking at, kept the
+// same way as their theme.
 
 export type Appearance = 'system' | 'light' | 'dark';
 
@@ -18,9 +19,11 @@ const urlReduce = params.get('motion') === 'reduce';
 const listeners = new Set<() => void>();
 
 const COMMENTS_KEY = 'proto:comments';
+const CLIENT_VIEW_KEY = 'proto:client-view';
 
 let appearance: Appearance = readAppearance();
 let commentsHidden = readStored(COMMENTS_KEY) === 'hidden';
+let clientView = readStored(CLIENT_VIEW_KEY) === 'on';
 let forceReduce = false;
 let speed = 1;
 let lapse: LapseHandle | null = null;
@@ -94,6 +97,20 @@ export function setCommentsHidden(hidden: boolean) {
   if (hidden === commentsHidden) return;
   commentsHidden = hidden;
   store(COMMENTS_KEY, hidden ? 'hidden' : 'shown');
+  emit();
+}
+
+/**
+ * Whether Studio is looking as a Client does. Remembered per browser. Only a
+ * view: the server decides what each person receives, so for a Client it
+ * changes nothing.
+ */
+export const isClientView = () => clientView;
+
+export function setClientView(on: boolean) {
+  if (on === clientView) return;
+  clientView = on;
+  store(CLIENT_VIEW_KEY, on ? 'on' : 'off');
   emit();
 }
 

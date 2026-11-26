@@ -45,7 +45,14 @@ async function query(op: string, params: URLSearchParams, { review, actor }: Api
     case 'me':
       return { person: actor ? visible(actor) : null };
     case 'comments':
-      return { comments: await review.listComments(actor, prototypeOf(params.get('prototype'))) };
+      // viewAs=client is Studio's Client view; the service checks the value and never widens a Client's view.
+      return {
+        comments: await review.listComments(
+          actor,
+          prototypeOf(params.get('prototype')),
+          params.get('viewAs') ?? undefined,
+        ),
+      };
     case 'people':
       return { people: (await review.listPeople(actor)).map(visible) };
     case 'access':
@@ -91,7 +98,14 @@ async function command(op: string, b: Record<string, unknown>, ctx: ApiContext):
   const at = () => ({ prototype: prototypeOf(b.prototype), id: str(b.id) });
   switch (op) {
     case 'comment.add':
-      return { comment: await review.add(actor, { body: b.body, anchor: b.anchor, states: b.states }) };
+      return {
+        comment: await review.add(actor, {
+          body: b.body,
+          anchor: b.anchor,
+          states: b.states,
+          audience: b.audience,
+        }),
+      };
     case 'comment.reply':
       return {
         comment: await review.reply(actor, {

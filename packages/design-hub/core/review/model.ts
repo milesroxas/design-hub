@@ -10,6 +10,13 @@ import { SLUG } from '../feature.ts';
 export const PERSON_KINDS = ['studio', 'client'] as const;
 export type PersonKind = (typeof PERSON_KINDS)[number];
 
+/**
+ * Who a thread is for. Internal stays inside the studio; client-facing is
+ * read by everyone. Fixed when the thread is made: no op changes it.
+ */
+const AUDIENCES = ['internal', 'client'] as const;
+export type Audience = (typeof AUDIENCES)[number];
+
 /** How a comment is triaged: something broken, a design opinion, or the words. */
 export const KINDS = ['bug', 'taste', 'copy'] as const;
 export type Kind = (typeof KINDS)[number];
@@ -109,7 +116,26 @@ export type Comment = {
   status: 'open' | 'resolved';
   resolvedBy: Author | null;
   triage: Triage | null;
+  /** The thread's audience. Set on the root when it is made and copied onto every reply; never changed. */
+  audience: Audience;
+  /**
+   * The thread's number on its prototype, from 1, copied onto every reply. Never reused, so a
+   * deleted or hidden thread moves no other number. 0 for a thread stored before numbers existed.
+   */
+  number: number;
 };
+
+/**
+ * A stored comment as the rules read it. A record with no audience, or one
+ * that is not a known value, is internal: a missing field never shows a
+ * Client anything. A missing or broken number reads as 0, no number.
+ */
+export function readComment(json: string): Comment {
+  const c = JSON.parse(json) as Comment;
+  const audience: Audience = c.audience === 'client' ? 'client' : 'internal';
+  const number = Number.isInteger(c.number) && c.number > 0 ? c.number : 0;
+  return { ...c, audience, number };
+}
 
 const isText = (v: unknown) => typeof v === 'string';
 const isTextOrNull = (v: unknown) => v === null || typeof v === 'string';
@@ -187,6 +213,22 @@ export function checkPersonInput(input: unknown): Checked<PersonInput> {
   return problems.length
     ? { ok: false, problems }
     : { ok: true, value: { name, team, kind: kind as PersonKind, access: access as Access | null } };
+}
+
+/** A new thread's audience as asked: one of AUDIENCES, or null when none is given. */
+export function checkAudience(input: unknown): Checked<Audience | null> {
+  if (input === undefined || input === null) return { ok: true, value: null };
+  return AUDIENCES.includes(input as Audience)
+    ? { ok: true, value: input as Audience }
+    : { ok: false, problems: [`audience: one of ${AUDIENCES.join(', ')}`] };
+}
+
+/** Whose view of the comments is asked for: a person kind, or null for the caller's own. */
+export function checkViewAs(input: unknown): Checked<PersonKind | null> {
+  if (input === undefined || input === null) return { ok: true, value: null };
+  return PERSON_KINDS.includes(input as PersonKind)
+    ? { ok: true, value: input as PersonKind }
+    : { ok: false, problems: [`viewAs: one of ${PERSON_KINDS.join(', ')}`] };
 }
 
 export function checkBody(body: unknown): Checked<string> {

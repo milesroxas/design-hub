@@ -7,16 +7,20 @@
 import { base64url, hex, sha256 } from '../bytes.ts';
 import {
   type Access,
+  type Anchor,
+  type Audience,
   accessEnd,
   authorOf,
   type Checked,
   type Comment,
   checkAccess,
   checkAnchor,
+  checkAudience,
   checkBody,
   checkPersonInput,
   checkStates,
   checkTriage,
+  checkViewAs,
   DEFAULT_ACCESS,
   hasAccess,
   isProfile,
@@ -24,9 +28,10 @@ import {
   LINK_DAYS,
   type Link,
   type Person,
+  readComment,
   type Triage,
 } from './model.ts';
-import { type Action, can } from './policy.ts';
+import { type Action, audienceFor, can, viewOf, visibleTo } from './policy.ts';
 import { KEY, type KV } from './store.ts';
 
 export type ErrorCode = 'unauthorized' | 'forbidden' | 'not_found' | 'invalid';
@@ -79,9 +84,14 @@ export function createReview(kv: KV, overrides: Partial<Deps> = {}) {
     }
   };
 
-  function allow(actor: Person | null, action: Action, subject?: Comment): asserts actor is Person {
+  function allow(
+    actor: Person | null,
+    action: Action,
+    root?: Comment,
+    subject?: Comment,
+  ): asserts actor is Person {
     if (!actor) throw new ReviewError('unauthorized', 'Sign in with your link to do that.');
-    if (!can(actor, action, subject)) throw new ReviewError('forbidden', 'You cannot do that.');
+    if (!can(actor, action, root, subject)) throw new ReviewError('forbidden', 'You cannot do that.');
   }
 
   function valid<T>(checked: Checked<T>): T {
@@ -90,10 +100,10 @@ export function createReview(kv: KV, overrides: Partial<Deps> = {}) {
   }
 
   // Every field checked before any throws, so one save names every problem.
-  function validAll<A, B>(a: Checked<A>, b: Checked<B>): [A, B] {
-    const problems = [...(a.ok ? [] : a.problems), ...(b.ok ? [] : b.problems)];
-    if (!a.ok || !b.ok) throw new ReviewError('invalid', 'Some fields are not valid.', problems);
-    return [a.value, b.value];
+  function validAll<T extends unknown[]>(...checks: { [K in keyof T]: Checked<T[K]> }): T {
+    const problems = checks.flatMap((c) => (c.ok ? [] : c.problems));
+    if (problems.length) throw new ReviewError('invalid', 'Some fields are not valid.', problems);
+    return checks.map((c) => (c as { value: unknown }).value) as T;
   }
 
   // A person is three records. The profile (KEY.people) is read-modify-write, so
@@ -176,24 +186,56 @@ export function createReview(kv: KV, overrides: Partial<Deps> = {}) {
     return p;
   }
 
+  // Every comment read goes through readComment, so a record with no audience reads as internal.
+  // Unfiltered: nothing below hands these out without visibleTo or seen.
   const commentsOf = async (prototype: string) =>
     Object.values(await kv.hgetall(KEY.comments(prototype)))
-      .map((json) => JSON.parse(json) as Comment)
+      .map(readComment)
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
+
+  const commentAt = async (prototype: string, id: string): Promise<Comment | null> => {
+    const json = await kv.hget(KEY.comments(prototype), id);
+    return json === null ? null : readComment(json);
+  };
 
   const saveComment = (prototype: string, c: Comment) =>
     kv.hset(KEY.comments(prototype), c.id, JSON.stringify(c));
 
-  async function needComment(prototype: string, id: string): Promise<Comment> {
-    const c = parse<Comment>(await kv.hget(KEY.comments(prototype), id));
-    if (!c) throw new ReviewError('not_found', 'No such comment.');
-    return c;
+  /**
+   * A comment and its thread's root, if `actor` may see both; else null. A
+   * reply whose root is gone is not there either.
+   */
+  async function seen(
+    actor: Person,
+    prototype: string,
+    id: string,
+  ): Promise<{ comment: Comment; root: Comment } | null> {
+    const comment = await commentAt(prototype, id);
+    if (!comment) return null;
+    const root = isRoot(comment) ? comment : await commentAt(prototype, comment.thread);
+    return root && can(actor, 'read', root, comment) ? { comment, root } : null;
   }
 
-  async function needRoot(prototype: string, id: string): Promise<Comment> {
-    const c = await needComment(prototype, id);
-    if (!isRoot(c)) throw new ReviewError('invalid', 'That is a reply; act on its thread.');
-    return c;
+  /**
+   * The comment an op names, and its root. One that `actor` may not see gets
+   * the same answer as one that does not exist, so an id never tells a Client
+   * an internal thread is there.
+   */
+  async function needThread(
+    actor: Person | null,
+    prototype: string,
+    id: string,
+  ): Promise<{ comment: Comment; root: Comment }> {
+    allow(actor, 'read');
+    const found = await seen(actor, prototype, id);
+    if (!found) throw new ReviewError('not_found', 'No such comment.');
+    return found;
+  }
+
+  async function needRoot(actor: Person | null, prototype: string, id: string): Promise<Comment> {
+    const { comment } = await needThread(actor, prototype, id);
+    if (!isRoot(comment)) throw new ReviewError('invalid', 'That is a reply; act on its thread.');
+    return comment;
   }
 
   return {
@@ -315,23 +357,38 @@ export function createReview(kv: KV, overrides: Partial<Deps> = {}) {
       return active(after) && after.epoch === p.epoch ? after : null;
     },
 
-    async listComments(actor: Person | null, prototype: string): Promise<Comment[]> {
+    /**
+     * A prototype's comments as the actor's view sees them. `viewAs: 'client'`
+     * is Studio's Client view; it never widens a Client's.
+     */
+    async listComments(actor: Person | null, prototype: string, viewAs?: unknown): Promise<Comment[]> {
       allow(actor, 'read');
-      return commentsOf(prototype);
+      const view = viewOf(actor, valid(checkViewAs(viewAs)));
+      return visibleTo(view, await commentsOf(prototype));
     },
 
-    /** Every comment on every prototype, for the CLI, which holds the store's own credentials. */
-    async allComments(): Promise<Comment[]> {
+    /** Every comment on every prototype the actor may see, for the CLI (which acts as Studio). */
+    async allComments(actor: Person | null): Promise<Comment[]> {
+      allow(actor, 'read');
       const prototypes = await kv.smembers(KEY.prototypes);
-      return (await Promise.all(prototypes.map(commentsOf))).flat();
+      return visibleTo(viewOf(actor), (await Promise.all(prototypes.map(commentsOf))).flat());
     },
 
+    /**
+     * A new thread. A Client's is client-facing whatever the input says;
+     * Studio's is internal unless `audience` is 'client'. Its number is the
+     * prototype's next, never one used before.
+     */
     async add(
       actor: Person | null,
-      input: { body?: unknown; anchor?: unknown; states?: unknown },
+      input: { body?: unknown; anchor?: unknown; states?: unknown; audience?: unknown },
     ): Promise<Comment> {
       allow(actor, 'comment');
-      const [body, anchor] = validAll(checkBody(input.body), checkAnchor(input.anchor));
+      const [body, anchor, asked] = validAll<[string, Anchor, Audience | null]>(
+        checkBody(input.body),
+        checkAnchor(input.anchor),
+        checkAudience(input.audience),
+      );
       const id = newId();
       const triage = deps.triage
         ? await deps
@@ -350,6 +407,9 @@ export function createReview(kv: KV, overrides: Partial<Deps> = {}) {
         status: 'open',
         resolvedBy: null,
         triage,
+        audience: audienceFor(actor, asked),
+        // Atomic and only raised: two threads at once get two numbers, and a failed save skips one.
+        number: await kv.hincrby(KEY.counters, anchor.prototype, 1),
       };
       await kv.sadd(KEY.prototypes, anchor.prototype);
       await saveComment(anchor.prototype, c);
@@ -360,8 +420,8 @@ export function createReview(kv: KV, overrides: Partial<Deps> = {}) {
       actor: Person | null,
       input: { prototype: string; thread: string; body?: unknown },
     ): Promise<Comment> {
-      allow(actor, 'comment');
-      const root = await needRoot(input.prototype, input.thread);
+      const root = await needRoot(actor, input.prototype, input.thread);
+      allow(actor, 'comment', root);
       const id = newId();
       const c: Comment = {
         id,
@@ -374,6 +434,9 @@ export function createReview(kv: KV, overrides: Partial<Deps> = {}) {
         status: 'open',
         resolvedBy: null,
         triage: null,
+        // A reply follows its thread; nobody sets it.
+        audience: root.audience,
+        number: root.number,
       };
       await saveComment(input.prototype, c);
       return c;
@@ -383,8 +446,8 @@ export function createReview(kv: KV, overrides: Partial<Deps> = {}) {
       actor: Person | null,
       input: { prototype: string; id: string; body?: unknown },
     ): Promise<Comment> {
-      const c = await needComment(input.prototype, input.id);
-      allow(actor, 'edit', c);
+      const { comment: c, root } = await needThread(actor, input.prototype, input.id);
+      allow(actor, 'edit', root, c);
       const next = { ...c, body: valid(checkBody(input.body)), editedAt: now() };
       await saveComment(input.prototype, next);
       return next;
@@ -392,20 +455,20 @@ export function createReview(kv: KV, overrides: Partial<Deps> = {}) {
 
     /** Deletes a comment; deleting a thread's root deletes its replies with it. */
     async remove(actor: Person | null, input: { prototype: string; id: string }): Promise<string[]> {
-      const c = await needComment(input.prototype, input.id);
-      allow(actor, 'delete', c);
-      const gone = isRoot(c)
-        ? (await commentsOf(input.prototype)).filter((x) => x.thread === c.id).map((x) => x.id)
-        : [c.id];
-      for (const id of gone) await kv.hdel(KEY.comments(input.prototype), id);
-      return gone;
+      const { comment: c, root } = await needThread(actor, input.prototype, input.id);
+      allow(actor, 'delete', root, c);
+      const gone = isRoot(c) ? (await commentsOf(input.prototype)).filter((x) => x.thread === c.id) : [c];
+      for (const x of gone) await kv.hdel(KEY.comments(input.prototype), x.id);
+      // The answer names only what the actor may see, judged with the thread's root beside it.
+      const shown = new Set(visibleTo(viewOf(actor), [root, ...gone]).map((x) => x.id));
+      return gone.filter((x) => shown.has(x.id)).map((x) => x.id);
     },
 
     async resolve(
       actor: Person | null,
       input: { prototype: string; id: string; resolved: boolean },
     ): Promise<Comment> {
-      const c = await needRoot(input.prototype, input.id);
+      const c = await needRoot(actor, input.prototype, input.id);
       allow(actor, 'resolve', c);
       const next: Comment = input.resolved
         ? { ...c, status: 'resolved', resolvedBy: authorOf(actor) }
@@ -419,7 +482,7 @@ export function createReview(kv: KV, overrides: Partial<Deps> = {}) {
       input: { prototype: string; id: string; triage?: unknown; states?: unknown },
     ): Promise<Comment> {
       allow(actor, 'triage');
-      const c = await needRoot(input.prototype, input.id);
+      const c = await needRoot(actor, input.prototype, input.id);
       const states = checkStates(input.states);
       const { kind, state } = valid(checkTriage(input.triage, states.length ? states : null));
       const next: Comment = { ...c, triage: { kind, state, by: 'person', confidence: null } };
@@ -427,11 +490,12 @@ export function createReview(kv: KV, overrides: Partial<Deps> = {}) {
       return next;
     },
 
-    /** Where a comment lives, for the CLI, which has an id and no prototype. */
-    async locate(id: string): Promise<{ prototype: string; comment: Comment } | null> {
+    /** Where a comment lives, for the CLI, which has an id and no prototype; null when the actor may not see it. */
+    async locate(actor: Person | null, id: string): Promise<{ prototype: string; comment: Comment } | null> {
+      allow(actor, 'read');
       for (const prototype of await kv.smembers(KEY.prototypes)) {
-        const c = parse<Comment>(await kv.hget(KEY.comments(prototype), id));
-        if (c) return { prototype, comment: c };
+        const found = await seen(actor, prototype, id);
+        if (found) return { prototype, comment: found.comment };
       }
       return null;
     },

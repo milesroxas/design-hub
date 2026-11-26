@@ -1,9 +1,10 @@
 // The review UI's one store: who is signed in, this prototype's comments and,
 // for Studio, the people. Components read it with useSyncExternalStore and
 // call its actions; every call goes to /api/review (server/api.ts), and each
-// answer is merged in place, so a write never refetches the list.
+// answer is merged in place, so a write never refetches the list. The list is
+// what the server sent for this person: nothing here filters it.
 import { useSyncExternalStore } from 'react';
-import type { Access, Anchor, Comment, Person, PersonKind } from '../../core/review/model';
+import type { Access, Anchor, Audience, Comment, Person, PersonKind } from '../../core/review/model';
 
 export type Me = Omit<Person, 'epoch'>;
 /** off: this site has no review store, so the UI stays out of the way. guest: the session ended since the page loaded. */
@@ -62,9 +63,18 @@ async function call<T>(
   return json;
 }
 
+/**
+ * 503 is a site without a review store; 404 is a static preview with no API at all. A 503 with
+ * Retry-After is a store that did not answer: review stays on and shows the error.
+ */
+const isOff = (error: unknown) =>
+  error instanceof ApiError && !error.retry && (error.status === 503 || error.status === 404);
+
 export function createReviewStore(prototype: string) {
   let state: State = { status: 'loading', me: null, comments: [], people: null, access: null, error: null };
   const listeners = new Set<() => void>();
+  /** Counts loads, so an answer to an older one (Client view turned on and off fast) is dropped. */
+  let loads = 0;
   const set = (patch: Partial<State>) => {
     state = { ...state, ...patch };
     for (const l of listeners) l();
@@ -115,24 +125,36 @@ export function createReviewStore(prototype: string) {
     },
     get: () => state,
 
-    async load() {
+    /** Who is signed in and the comments; `viewAs: 'client'` is Studio's Client view, which the server applies. */
+    async load(viewAs?: PersonKind) {
+      const n = ++loads;
       try {
         const { person } = await call<{ person: Me | null }>('me');
+        if (n !== loads) return;
         if (!person) return set({ status: 'guest', me: null });
-        const { comments } = await call<{ comments: Comment[] }>('comments', undefined, { prototype });
+        const params = { prototype, ...(viewAs ? { viewAs } : {}) };
+        const { comments } = await call<{ comments: Comment[] }>('comments', undefined, params);
+        if (n !== loads) return;
         set({ status: 'ready', me: person, comments, error: null });
       } catch (error) {
-        // 503 is a site without a review store; 404 is a static preview with no API at all. A 503 with
-        // Retry-After is a store that did not answer: review stays on and shows the error.
-        if (error instanceof ApiError && !error.retry && (error.status === 503 || error.status === 404))
-          set({ status: 'off' });
+        if (isOff(error)) set({ status: 'off' });
         else set({ status: 'ready', error: String((error as Error).message) });
       }
     },
 
-    add: (body: string, anchor: Anchor, states: string[]) =>
+    /** A new thread; `audience` is Studio's choice, and the server sets a Client's whatever is sent. */
+    add: (body: string, anchor: Anchor, states: string[], audience: Audience | null) =>
       attempt(async () =>
-        merge((await call<{ comment: Comment }>('comment.add', { body, anchor, states })).comment),
+        merge(
+          (
+            await call<{ comment: Comment }>('comment.add', {
+              body,
+              anchor,
+              states,
+              ...(audience ? { audience } : {}),
+            })
+          ).comment,
+        ),
       ),
     reply: (thread: string, body: string) =>
       attempt(async () =>

@@ -296,10 +296,15 @@
   box-shadow: var(--rv-raised);
   color: oklch(0.92 0.04 23);
 }
+/* Client view on: the same pill in the layer's own material, never the error's red. */
+.rv-alert.rv-viewing { background: var(--harness-bg); color: var(--rv-fg-strong); }
+.rv-alert.rv-viewing .icon { flex: none; color: var(--harness-fg-muted); }
 
 /* ---------- pins ---------- */
-/* Open: solid and numbered. Resolved: smaller, pale, a check where the number
-   was. The open card's pin turns to its other face, so it reads as selected. */
+/* Open: solid and numbered. Internal (Studio only): numbered, on a lighter
+   grey with a dashed edge, so it reads apart without a hue. Resolved: smaller,
+   pale, a check where the number was. The open card's pin turns to its other
+   face, so it reads as selected. */
 .rv-pins { position: fixed; inset: 0; z-index: var(--rv-z-page); pointer-events: none; }
 .rv-pin {
   position: absolute;
@@ -342,6 +347,8 @@
 .rv-pin[data-resolved] { width: 20px; height: 20px; top: -20px; }
 .rv-pin[data-resolved] .rv-pin-face { border-color: oklch(1 0 0 / 0.9); background: oklch(0.88 0 0); color: oklch(0.42 0 0); box-shadow: 0 1px 4px oklch(0 0 0 / 0.25); }
 .rv-pin[data-resolved][data-active] .rv-pin-face { background: var(--rv-pin); color: var(--rv-done); border-color: oklch(1 0 0); }
+.rv-pin[data-internal]:not([data-resolved]) .rv-pin-face { background: oklch(0.44 0 0); border-style: dashed; }
+.rv-pin[data-internal][data-active]:not([data-resolved]) .rv-pin-face { background: oklch(1 0 0); color: var(--rv-pin); border-color: var(--rv-pin); }
 .rv-pin[data-new] { pointer-events: none; }
 .rv-pin[data-new] .rv-pin-face { background: oklch(1 0 0); border-color: var(--rv-pin); }
 
@@ -374,6 +381,11 @@
 .rv-card-head .rv-title + .rv-muted { margin-left: 6px; }
 .rv-about { flex: 1; min-width: 0; margin-left: 4px; color: var(--harness-fg-muted); font-size: 12px; }
 .rv-step { margin: 0 2px; font-size: 12px; }
+/* Who the thread is for, Studio only: a hairline tag, quieter than kind and state. */
+.rv-aud { flex: none; display: inline-flex; align-items: center; height: 18px; padding: 0 6px; border-radius: 6px; box-shadow: inset 0 0 0 1px oklch(1 0 0 / 0.14); color: var(--harness-fg-muted); font-size: 11px; font-weight: 500; white-space: nowrap; }
+/* Studio's choice on a new thread: the bar's toggle, small, under the head. */
+.rv-toggle.rv-audience { align-self: flex-start; height: 28px; margin: 8px 10px 0 14px; }
+.rv-toggle.rv-audience button { width: auto; height: 24px; padding: 0 10px; border-radius: 12px; font-size: 12px; }
 .rv-no {
   display: inline-grid;
   flex: none;

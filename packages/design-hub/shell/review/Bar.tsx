@@ -1,10 +1,13 @@
 // Comment mode's bar: one quiet pill in three groups. What a new comment is
 // about (Pin or Page), the threads to step through, and the way out.
-// Everything rarer sits behind ⋯. Only the chosen half of the toggle is
-// filled: the page under the bar is the work.
+// Everything rarer sits behind ⋯: for Studio, that includes which threads
+// to list (all, internal, client-facing) and Client view. Client view, and a
+// filter other than All, each put a plain note over the bar with the way out,
+// so a narrowed list is never mistaken for the whole one. Only the chosen half of the
+// toggle is filled: the page under the bar is the work.
 import { Icon } from '@kit/Icon';
 import { Button, type MenuEntry, useMenu } from '@kit/ui';
-import type { Scope } from './view';
+import type { Filter, Scope } from './view';
 
 const VERB = matchMedia('(pointer: coarse)').matches ? 'Tap' : 'Click';
 
@@ -18,6 +21,16 @@ type Props = {
   resolvedCount: number;
   /** Studio only: the People entry in ⋯. */
   canManagePeople: boolean;
+  /** Studio, not in Client view: the audience filter in ⋯. */
+  canFilter: boolean;
+  filter: Filter;
+  /** "Internal only" while the filter narrows the list; null with All. */
+  filterNote: string | null;
+  onFilter: (filter: Filter) => void;
+  /** Studio: the Client view entry in ⋯, and the note while it is on. */
+  canClientView: boolean;
+  clientView: boolean;
+  onClientView: (on: boolean) => void;
   error: string | null;
   onStep: (by: number) => void;
   onResolved: () => void;
@@ -26,6 +39,45 @@ type Props = {
   onDone: () => void;
   onDismissError: () => void;
 };
+
+const FILTERS: { value: Filter; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'internal', label: 'Internal' },
+  { value: 'client', label: 'Client-facing' },
+];
+
+/** Studio's: which threads to list, then Client view. A Client gets neither. */
+function audienceItems(p: Pick<Props, 'canFilter' | 'filter' | 'canClientView' | 'clientView'>): MenuEntry[] {
+  const filter: MenuEntry[] = p.canFilter
+    ? [
+        { heading: 'Show' },
+        ...FILTERS.map((f) => ({
+          label: f.label,
+          value: `filter:${f.value}`,
+          checked: p.filter === f.value,
+        })),
+        '-',
+      ]
+    : [];
+  const view: MenuEntry[] = p.canClientView
+    ? [
+        p.clientView
+          ? {
+              label: 'Leave Client view',
+              desc: 'Back to every thread',
+              value: 'clientView',
+              icon: 'log-out-01',
+            }
+          : {
+              label: 'Client view',
+              desc: 'See comments as a client does',
+              value: 'clientView',
+              icon: 'briefcase-01',
+            },
+      ]
+    : [];
+  return [...filter, ...view];
+}
 
 function moreItems(resolved: boolean, resolvedCount: number, canManagePeople: boolean): MenuEntry[] {
   return [
@@ -41,6 +93,27 @@ function moreItems(resolved: boolean, resolvedCount: number, canManagePeople: bo
       : []),
     { label: 'Hide comments', desc: 'Tuck the button into the edge', value: 'hide', icon: 'chevron-right' },
   ];
+}
+
+/** A view that is not the usual one, said plainly over the bar, with the one action back. */
+function ViewNote({
+  icon,
+  text,
+  action,
+  onAction,
+}: {
+  icon: 'briefcase-01' | 'filter-lines';
+  text: string;
+  action: string;
+  onAction: () => void;
+}) {
+  return (
+    <p className="rv-alert rv-viewing">
+      <Icon name={icon} size={14} />
+      <span>{text}</span>
+      <Button kind="tertiary" size={null} className="rv-act" label={action} onClick={onAction} />
+    </p>
+  );
 }
 
 function Alert({ error, onDismiss }: { error: string; onDismiss: () => void }) {
@@ -114,17 +187,37 @@ export function Bar(p: Props) {
     resolved: p.onResolved,
     people: p.onPeople,
     hide: p.onHide,
+    clientView: () => p.onClientView(!p.clientView),
+    'filter:all': () => p.onFilter('all'),
+    'filter:internal': () => p.onFilter('internal'),
+    'filter:client': () => p.onFilter('client'),
   };
   const more = useMenu({
     className: 'rv-menu',
     label: 'Comment options',
     width: 264,
     align: 'end',
-    items: moreItems(p.resolved, p.resolvedCount, p.canManagePeople),
+    items: [...audienceItems(p), ...moreItems(p.resolved, p.resolvedCount, p.canManagePeople)],
     onSelect: (v) => actions[v ?? '']?.(),
   });
   return (
     <div className="rv-bar-stack">
+      {p.clientView && (
+        <ViewNote
+          icon="briefcase-01"
+          text="Client view: comments as a client sees them"
+          action="Leave"
+          onAction={() => p.onClientView(false)}
+        />
+      )}
+      {p.filterNote && (
+        <ViewNote
+          icon="filter-lines"
+          text={p.filterNote}
+          action="Show all"
+          onAction={() => p.onFilter('all')}
+        />
+      )}
       {p.error && <Alert error={p.error} onDismiss={p.onDismissError} />}
       <section className="rv-bar" aria-label="Comment mode">
         <Toggle scope={p.scope} onScope={p.onScope} />

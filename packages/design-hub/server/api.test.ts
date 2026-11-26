@@ -214,3 +214,56 @@ test('a store that fails during an op is a JSON 503 that says to retry', async (
   assert.equal(res.headers.get('retry-after'), '30');
   assert.match((await res.json()).error, /did not answer/);
 });
+
+test('comments: a Client never receives an internal comment, and Studio’s Client view matches theirs', async () => {
+  const anchor = {
+    prototype: 'p',
+    feature: '',
+    url: '/p/',
+    dials: {},
+    target: null,
+    offset: null,
+    viewport: { width: 1, height: 1 },
+  };
+  const client = (await review.addPerson(studio, { name: 'Rae', team: 'Acme' })).person;
+  const internal = (await call(post({ op: 'comment.add', body: 'Ours', anchor }))).body.comment;
+  assert.equal(internal.audience, 'internal');
+  await call(post({ op: 'comment.reply', prototype: 'p', thread: internal.id, body: 'Still ours' }));
+  const shared = (await call(post({ op: 'comment.add', body: 'Theirs', anchor, audience: 'client' }))).body
+    .comment;
+  assert.equal(shared.audience, 'client');
+  // A Client asking for an internal thread gets the client-facing one, and their reply follows the thread.
+  const theirs = (await call(post({ op: 'comment.add', body: 'Mine', anchor, audience: 'internal' }), client))
+    .body.comment;
+  assert.equal(theirs.audience, 'client');
+
+  // Sorted: comments made in one millisecond have no set order.
+  const ids = (r: { body: Record<string, any> }) => r.body.comments.map((c: { id: string }) => c.id).sort();
+  const asClient = await call(get('comments', '&prototype=p'), client);
+  assert.deepEqual(ids(asClient), [shared.id, theirs.id].sort());
+  assert.equal(JSON.stringify(asClient.body).includes('ours'), false);
+  assert.deepEqual(ids(await call(get('comments', '&prototype=p&viewAs=studio'), client)), ids(asClient));
+  assert.deepEqual(ids(await call(get('comments', '&prototype=p&viewAs=client'))), ids(asClient));
+  assert.equal((await call(get('comments', '&prototype=p'))).body.comments.length, 4);
+  assert.equal((await call(get('comments', '&prototype=p&viewAs=studio'))).body.comments.length, 4);
+
+  const bad = await call(get('comments', '&prototype=p&viewAs=editor'));
+  assert.equal(bad.status, 422);
+  assert.deepEqual(bad.body.problems, ['viewAs: one of studio, client']);
+  const badAudience = await call(post({ op: 'comment.add', body: 'x', anchor, audience: 'all' }));
+  assert.equal(badAudience.status, 422);
+  assert.deepEqual(badAudience.body.problems, ['audience: one of internal, client']);
+
+  // An internal id is not there for a Client, whatever the op.
+  const at = { prototype: 'p', id: internal.id };
+  for (const body of [
+    { op: 'comment.reply', prototype: 'p', thread: internal.id, body: 'x' },
+    { op: 'comment.edit', ...at, body: 'x' },
+    { op: 'comment.remove', ...at },
+    { op: 'comment.resolve', ...at, resolved: true },
+  ]) {
+    const res = await call(post(body), client);
+    assert.equal(res.status, 404, body.op);
+    assert.deepEqual(res.body, { error: 'No such comment.', problems: [] });
+  }
+});

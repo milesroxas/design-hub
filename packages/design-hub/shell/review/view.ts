@@ -4,6 +4,9 @@
 /** A new comment being placed: the element it is about and where on it, as fractions of its box, or neither for the whole page. */
 export type Draft = { target: Element | null; offset: { x: number; y: number } | null };
 
+/** Which threads Studio lists: every one, or one audience. Matches core's Audience values. */
+export type Filter = 'all' | 'internal' | 'client';
+
 /** The one card on screen: a thread, a comment being written, or the people. */
 export type Card = { type: 'thread'; id: string } | { type: 'draft'; draft: Draft } | { type: 'people' };
 
@@ -12,13 +15,18 @@ export type Card = { type: 'thread'; id: string } | { type: 'draft'; draft: Draf
  * field it touches at once and no two fields can disagree. `commenting` is
  * comment mode: pins on the page and a click anywhere starts a comment. Off,
  * the page carries only the button. `hidden` tucks even the button into the
- * screen's edge; it is the one field that outlives the page (kit/prefs.ts).
+ * screen's edge. `filter` narrows Studio's list by audience, in memory like
+ * `resolved`. `clientView` is Studio looking as a Client does: the list is
+ * fetched as a Client's and Studio's controls step aside. `hidden` and
+ * `clientView` outlive the page (kit/prefs.ts).
  */
 export type View = {
   hidden: boolean;
   commenting: boolean;
   card: Card | null;
   resolved: boolean;
+  filter: Filter;
+  clientView: boolean;
 };
 
 export type ViewAction =
@@ -31,13 +39,17 @@ export type ViewAction =
   | { type: 'escape' }
   | { type: 'resolved' }
   | { type: 'hide' }
-  | { type: 'show' };
+  | { type: 'show' }
+  | { type: 'filter'; filter: Filter }
+  | { type: 'clientView'; on: boolean };
 
-export const initialView = (hidden: boolean): View => ({
+export const initialView = (hidden: boolean, clientView = false): View => ({
   hidden,
   commenting: false,
   card: null,
   resolved: false,
+  filter: 'all',
+  clientView,
 });
 
 export function view(state: View, action: ViewAction): View {
@@ -64,7 +76,41 @@ export function view(state: View, action: ViewAction): View {
       return { ...state, hidden: true, commenting: false, card: null };
     case 'show':
       return { ...state, hidden: false };
+    case 'filter':
+      return { ...state, filter: action.filter };
+    // The other view holds other threads: the card closes, and the filter goes back to all, as a Client has none.
+    case 'clientView':
+      return { ...state, clientView: action.on, filter: 'all', card: null };
   }
+}
+
+/**
+ * How the layer looks to this person. `studio` is whether the policy gives
+ * them Studio's view. As Studio: audience marks, the filter and the choice on
+ * a new thread. In Client view, Studio sees none of that, as a Client does.
+ */
+export function lensOf(studio: boolean, v: Pick<View, 'clientView'>) {
+  return { asStudio: studio && !v.clientView, clientView: studio && v.clientView };
+}
+
+const FILTER_NOTE = { internal: 'Internal only', client: 'Client-facing only' } as const;
+
+/**
+ * What the bar says while the filter narrows the list, so Studio never
+ * forgets a thread is out of sight; null with All, and in Client view, which
+ * has no filter.
+ */
+export function filterNote(v: Pick<View, 'filter' | 'clientView'>): string | null {
+  return v.clientView || v.filter === 'all' ? null : FILTER_NOTE[v.filter];
+}
+
+/** The threads the filter lets through; in Client view, the list is already a Client's. */
+export function filtered<T extends { audience: string }>(
+  roots: T[],
+  v: Pick<View, 'filter' | 'clientView'>,
+): T[] {
+  if (v.clientView || v.filter === 'all') return roots;
+  return roots.filter((c) => c.audience === v.filter);
 }
 
 type Thread = { id: string; status: 'open' | 'resolved' };

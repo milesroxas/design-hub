@@ -3,7 +3,10 @@ import { test } from 'node:test';
 import {
   type Draft,
   draftOf,
+  filtered,
+  filterNote,
   initialView,
+  lensOf,
   roundOf,
   scopeOf,
   stepFrom,
@@ -18,8 +21,16 @@ const run = (start: View, ...actions: ViewAction[]) => actions.reduce(view, star
 const wholePage: Draft = { target: null, offset: null };
 
 test('the layer starts with comment mode off, hidden or not as it was left', () => {
-  assert.deepEqual(initialView(false), { hidden: false, commenting: false, card: null, resolved: false });
+  assert.deepEqual(initialView(false), {
+    hidden: false,
+    commenting: false,
+    card: null,
+    resolved: false,
+    filter: 'all',
+    clientView: false,
+  });
   assert.equal(initialView(true).hidden, true);
+  assert.equal(initialView(false, true).clientView, true);
 });
 
 test('start turns comment mode on with no card; stop turns it off and drops the card', () => {
@@ -152,4 +163,65 @@ test('the toggle reads Page only while a page comment is being written', () => {
   assert.equal(scopeOf({ type: 'draft', draft: wholePage }), 'page');
   assert.equal(scopeOf({ type: 'draft', draft: { target: {} as Element, offset: { x: 0, y: 0 } } }), 'pin');
   assert.equal(scopeOf({ type: 'thread', id: 'x' }), 'pin');
+});
+
+test('the filter narrows by audience and survives the mode turning off and on', () => {
+  const state = run(
+    initialView(false),
+    { type: 'filter', filter: 'internal' },
+    { type: 'start' },
+    { type: 'open', id: 'c1' },
+    { type: 'stop' },
+  );
+  assert.equal(state.filter, 'internal');
+  assert.equal(view(state, { type: 'filter', filter: 'all' }).filter, 'all');
+});
+
+test('Client view turns on and off, closes the card and sets the filter back to all', () => {
+  const on = run(
+    initialView(false),
+    { type: 'start' },
+    { type: 'filter', filter: 'client' },
+    { type: 'open', id: 'c1' },
+    { type: 'clientView', on: true },
+  );
+  assert.deepEqual([on.clientView, on.card, on.filter, on.commenting], [true, null, 'all', true]);
+  const off = view(on, { type: 'clientView', on: false });
+  assert.deepEqual([off.clientView, off.card], [false, null]);
+  // Hiding comments leaves Client view as it was.
+  assert.equal(run(on, { type: 'hide' }, { type: 'show' }).clientView, true);
+});
+
+test('the lens: Studio sees as Studio until Client view; a Client never does, whatever was stored', () => {
+  assert.deepEqual(lensOf(true, { clientView: false }), { asStudio: true, clientView: false });
+  assert.deepEqual(lensOf(true, { clientView: true }), { asStudio: false, clientView: true });
+  assert.deepEqual(lensOf(false, { clientView: true }), { asStudio: false, clientView: false });
+  assert.deepEqual(lensOf(false, { clientView: false }), { asStudio: false, clientView: false });
+});
+
+test('filtered lets through all, one audience, or everything the server sent in Client view', () => {
+  const threads = [
+    { id: 'i', audience: 'internal' },
+    { id: 'k', audience: 'client' },
+  ];
+  const ids = (cs: { id: string }[]) => cs.map((c) => c.id);
+  assert.deepEqual(ids(filtered(threads, { filter: 'all', clientView: false })), ['i', 'k']);
+  assert.deepEqual(ids(filtered(threads, { filter: 'internal', clientView: false })), ['i']);
+  assert.deepEqual(ids(filtered(threads, { filter: 'client', clientView: false })), ['k']);
+  assert.deepEqual(ids(filtered(threads, { filter: 'internal', clientView: true })), ['i', 'k']);
+});
+
+test('the bar names a narrowing filter, and says nothing with All or in Client view', () => {
+  assert.equal(filterNote({ filter: 'all', clientView: false }), null);
+  assert.equal(filterNote({ filter: 'internal', clientView: false }), 'Internal only');
+  assert.equal(filterNote({ filter: 'client', clientView: false }), 'Client-facing only');
+  assert.equal(filterNote({ filter: 'internal', clientView: true }), null);
+  // Turning Client view on sets the filter back to All, so leaving it shows no stale note.
+  const left = run(
+    initialView(false),
+    { type: 'filter', filter: 'client' },
+    { type: 'clientView', on: true },
+    { type: 'clientView', on: false },
+  );
+  assert.equal(filterNote(left), null);
 });

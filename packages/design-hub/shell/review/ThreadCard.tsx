@@ -2,11 +2,13 @@
 // the reply box owns the foot at full width; the thread's one decision,
 // Resolve, sits in the head beside what the comment is on. Kind and state
 // show as tags once set and are changed from ⋯. A resolved thread wears a
-// check, a band naming who resolved it, and Reopen where Resolve was.
+// check, a band naming who resolved it, and Reopen where Resolve was. Studio
+// also sees who the thread is for, Internal or Client-facing, as a quiet mark
+// in the head; a Client sees no such words.
 import { Icon } from '@kit/Icon';
 import { Button, type MenuEntry, useMenu } from '@kit/ui';
 import { type KeyboardEvent, useEffect, useState } from 'react';
-import { type Comment, KINDS, type Kind, LIMITS } from '../../core/review/model';
+import { type Audience, type Comment, KINDS, type Kind, LIMITS } from '../../core/review/model';
 import { can } from '../../core/review/policy';
 import { Action, Card } from './Card';
 import { act, type Me, type ReviewStore } from './client';
@@ -14,6 +16,7 @@ import { Field, useTextBox } from './Field';
 import { describe } from './PickLayer';
 
 const KIND_LABEL: Record<Kind, string> = { bug: 'Bug', taste: 'Taste', copy: 'Copy' };
+const AUDIENCE_LABEL: Record<Audience, string> = { internal: 'Internal', client: 'Client-facing' };
 const relative = new Intl.RelativeTimeFormat('en', { numeric: 'auto', style: 'short' });
 const STEPS: [Intl.RelativeTimeFormatUnit, number][] = [
   ['year', 31_536_000],
@@ -158,11 +161,13 @@ function Tags({ tags }: { tags: string[] }) {
 function Entry({
   store,
   me,
+  root,
   comment,
   tags = [],
 }: {
   store: ReviewStore;
   me: Me | null;
+  root: Comment;
   comment: Comment;
   tags?: string[];
 }) {
@@ -173,7 +178,7 @@ function Entry({
       <div className="rv-msg-main">
         <EntryHead
           comment={comment}
-          canEdit={can(me, 'edit', comment) && !editing}
+          canEdit={can(me, 'edit', root, comment) && !editing}
           onEdit={() => setEditing(true)}
         />
         {editing ? (
@@ -379,7 +384,8 @@ function ResolvedBand({ root }: { root: Comment }) {
 type HeadProps = {
   store: ReviewStore;
   root: Comment;
-  n: number;
+  /** Show who the thread is for: Studio only, and not in Client view. */
+  mark: boolean;
   index: number;
   total: number;
   states: string[];
@@ -396,7 +402,7 @@ type HeadProps = {
 function ThreadHead({
   store,
   root,
-  n,
+  mark,
   index,
   total,
   states,
@@ -411,9 +417,14 @@ function ThreadHead({
   return (
     <header className="rv-card-head">
       <span className="rv-no" aria-hidden="true">
-        {root.status === 'resolved' ? <Icon name="check" size={12} /> : n}
+        {root.status === 'resolved' ? <Icon name="check" size={12} /> : root.number || null}
       </span>
       <span className="rv-about rv-ellipsis">{about(root)}</span>
+      {mark && (
+        <span className="rv-aud" data-audience={root.audience}>
+          {AUDIENCE_LABEL[root.audience]}
+        </span>
+      )}
       <Stepper index={index} total={total} onStep={onStep} />
       {canResolve && <ResolveButton store={store} root={root} />}
       <ThreadMenu
@@ -442,7 +453,7 @@ export function ThreadCard({
   me,
   root,
   replies,
-  n,
+  mark,
   index,
   total,
   states,
@@ -455,7 +466,7 @@ export function ThreadCard({
   me: Me | null;
   root: Comment;
   replies: Comment[];
-  n: number;
+  mark: boolean;
   index: number;
   total: number;
   states: string[];
@@ -466,22 +477,23 @@ export function ThreadCard({
 }) {
   const [confirming, setConfirming] = useState(false);
   const resolved = root.status === 'resolved';
+  const words = [root.number ? `Comment ${root.number}` : 'Comment', mark && AUDIENCE_LABEL[root.audience]];
   return (
     <Card
       at={at}
-      label={`Comment ${n}${resolved ? ', resolved' : ''}`}
+      label={[...words, resolved && 'resolved'].filter(Boolean).join(', ')}
       resolved={resolved}
       onDismiss={onClose}
     >
       <ThreadHead
         store={store}
         root={root}
-        n={n}
+        mark={mark}
         index={index}
         total={total}
         states={states}
         canResolve={can(me, 'resolve', root)}
-        canTriage={can(me, 'triage')}
+        canTriage={can(me, 'triage', root)}
         canDelete={can(me, 'delete', root)}
         onStep={onStep}
         onClose={onClose}
@@ -490,9 +502,9 @@ export function ThreadCard({
       />
       <ResolvedBand root={root} />
       <div className="rv-card-body">
-        <Entry store={store} me={me} comment={root} tags={tagsOf(root)} />
+        <Entry store={store} me={me} root={root} comment={root} tags={tagsOf(root)} />
         {replies.map((r) => (
-          <Entry key={r.id} store={store} me={me} comment={r} />
+          <Entry key={r.id} store={store} me={me} root={root} comment={r} />
         ))}
       </div>
       <Foot store={store} root={root} confirming={confirming} onKeep={() => setConfirming(false)} />
