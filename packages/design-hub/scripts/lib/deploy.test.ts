@@ -6,9 +6,11 @@ import {
   gateVerdict,
   gitConnected,
   nextStep,
+  PROBE_LINK,
   plan,
   productionUrl,
   restoreGitignore,
+  storeVerdict,
   upstashTerms,
 } from './deploy.ts';
 
@@ -68,26 +70,30 @@ const page = {
   status: 401,
   location: null,
   robots: 'noindex, nofollow',
-  body: '<input id="password" name="password">',
+  body: '<main class="gate" data-gate="sign-in"><h1>Prototypes</h1><p>To sign in, open the link…</p></main>',
 };
+const problem = (v: ReturnType<typeof gateVerdict>) => (v as { problem: string }).problem;
 
-test('the password page passes', () => {
+test('the sign-in page passes', () => {
   assert.deepEqual(gateVerdict(page), { ok: true });
 });
 
 test('a Vercel login in front of the gate fails with the protection fix', () => {
   const v = gateVerdict({ ...page, status: 302, location: 'https://vercel.com/login?next=x', body: '' });
   assert.equal(v.ok, false);
-  assert.match((v as { problem: string }).problem, /Vercel login/);
+  assert.match(problem(v), /Vercel login/);
 });
 
-test('a missing gate env, an open site, or a missing noindex each fail', () => {
-  assert.match((gateVerdict({ ...page, status: 503 }) as { problem: string }).problem, /503/);
-  assert.match(
-    (gateVerdict({ ...page, status: 200, body: '<html>' }) as { problem: string }).problem,
-    /got 200/,
-  );
-  assert.match((gateVerdict({ ...page, robots: null }) as { problem: string }).problem, /noindex/);
+test('a missing secret, an open site, or a missing noindex each fail', () => {
+  assert.match(problem(gateVerdict({ ...page, status: 503 })), /503: GATE_SECRET is missing/);
+  assert.match(problem(gateVerdict({ ...page, status: 200, body: '<html>' })), /got 200/);
+  assert.match(problem(gateVerdict({ ...page, robots: null })), /noindex/);
+});
+
+test('a page with a password form fails, even with the marker', () => {
+  const old = '<form method="post"><input id="password" name="password"></form>';
+  assert.match(problem(gateVerdict({ ...page, body: old })), /still asks for a password/);
+  assert.match(problem(gateVerdict({ ...page, body: `${page.body}${old}` })), /still asks for a password/);
 });
 
 test('the check asks as a browser, since the gate answers anything else in plain text', () => {
@@ -95,10 +101,29 @@ test('the check asks as a browser, since the gate answers anything else in plain
   assert.match(GATE_REQUEST.headers.accept, /text\/html/);
 });
 
-test('a 401 without the password form says the body was wrong, not the status', () => {
-  const v = gateVerdict({ ...page, body: 'Password required.' }) as { problem: string };
-  assert.match(v.problem, /401, but the body was not the password page: "Password required\."/);
-  assert.doesNotMatch(v.problem, /got 401/);
+test('a 401 without the sign-in marker says the body was wrong, not the status', () => {
+  const v = problem(gateVerdict({ ...page, body: 'Sign in with the link the studio sent you.' }));
+  assert.match(v, /401, but the body was not the sign-in page: "Sign in with the link/);
+  assert.doesNotMatch(v, /got 401/);
+  assert.match(problem(gateVerdict({ ...page, body: '<main data-gate="used">' })), /not the sign-in page/);
+});
+
+test('a probe link answering 404 proves the store; 503 or anything else fails with the --review fix', () => {
+  assert.deepEqual(storeVerdict(404), { ok: true });
+  assert.match(PROBE_LINK, /^\/invite\/x{43}$/);
+  const none = storeVerdict(503) as { problem: string; fix: string };
+  assert.match(none.problem, /no review store/);
+  assert.match(none.fix, /bootstrap --vercel <project> --review/);
+  for (const status of [200, 401, 500])
+    assert.match((storeVerdict(status) as { problem: string }).problem, new RegExp(`answered ${status}`));
+});
+
+test('every bootstrap fix names --review', () => {
+  for (const v of [
+    gateVerdict({ ...page, status: 503 }),
+    gateVerdict({ ...page, status: 302, location: 'https://vercel.com/login', body: '' }),
+  ])
+    assert.match((v as { fix: string }).fix, /--vercel <project> --review/);
 });
 
 test('a pushed commit is followed until its deployment is ready or fails', () => {

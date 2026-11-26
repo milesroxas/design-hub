@@ -8,11 +8,13 @@ import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { ACCESS } from '../core/review/model.ts';
 import { harnessPort, readEnv, writeEnv } from '../server/env.ts';
 import { ROOT, TEMPLATES } from '../server/paths.ts';
 import { type Args, CliError, type CommandSpec } from './lib/cli.ts';
 import { gitConnected, restoreGitignore, upstashTerms } from './lib/deploy.ts';
 import { holderOf, pickPort, readClaims, writeClaim } from './lib/ports.ts';
+import { cliActor, cliReview } from './lib/review.ts';
 import {
   ENVIRONMENTS,
   envNames,
@@ -38,23 +40,28 @@ export const spec = {
     'typesafe-key': { type: 'string', description: "Turn TypeSafe's Jev checks on with this API key." },
     conductor: { type: 'boolean', description: 'Write .conductor/settings.toml for Conductor workspaces.' },
     branch: { type: 'string', default: 'main', description: 'The branch Conductor workspaces land on.' },
-    vercel: { type: 'string', description: 'Link this Vercel project and set the password gate env on it.' },
+    vercel: {
+      type: 'string',
+      description: 'Link this Vercel project and set the gate’s signing secret on it.',
+    },
     team: {
       type: 'string',
       description:
         'The Vercel team (its slug) the project lives in or is created in. Absent, the CLI’s current team.',
     },
-    'gate-password': {
-      type: 'string',
-      description: 'The share password (8+ characters). Given again, it rotates.',
-    },
     review: {
       type: 'boolean',
       description: 'Provision the review store (Upstash Redis) on the Vercel project.',
     },
+    access: {
+      type: 'string',
+      choices: ACCESS,
+      description:
+        'With --review: how long a new client keeps access by default, 3m, 6m or open. Absent, the store keeps what it has (3m when unset).',
+    },
   },
   output:
-    '{ ok, node, port, install, typesafe, conductor?, vercel: { project, linked, git, protection, env }?, share?, review?, warnings }',
+    '{ ok, node, port, install, typesafe, conductor?, vercel: { project, linked, git, protection, env }?, review: { store, local, access? }?, warnings }',
 } as const satisfies CommandSpec;
 
 const MIN_NODE = [22, 18] as const;
@@ -218,12 +225,12 @@ function link(project: string, team: string | undefined, warnings: string[]): 'r
  * when a step throws: `vercel link` appends to it, and a later failure (the
  * Upstash terms, most often) would otherwise leave the tree dirty.
  */
-export function keepingGitignore<T>(dir: string, steps: () => T): T {
+export async function keepingGitignore<T>(dir: string, steps: () => T | Promise<T>): Promise<T> {
   const file = join(dir, '.gitignore');
   const read = () => (existsSync(file) ? readFileSync(file, 'utf8') : '');
   const before = read();
   try {
-    return steps();
+    return await steps();
   } finally {
     const kept = restoreGitignore(before, read());
     if (kept !== null) writeFileSync(file, kept);
@@ -259,12 +266,9 @@ function connectGit(
   return 'none';
 }
 
-/** Sets each value where it is missing; `rotate` names the ones given again, which replace what is there. */
-function ensureEnv(
-  values: Record<string, string>,
-  rotate: Set<string>,
-): Record<string, 'set' | 'kept' | 'rotated'> {
-  const state: Record<string, 'set' | 'kept' | 'rotated'> = {};
+/** Sets each value where it is missing, and keeps the ones already there. */
+function ensureEnv(values: Record<string, string>): Record<string, 'set' | 'kept'> {
+  const state: Record<string, 'set' | 'kept'> = {};
   for (const target of ENVIRONMENTS) {
     const names = envNames(ROOT, target);
     if (!names)
@@ -273,24 +277,17 @@ function ensureEnv(
       });
     for (const [name, value] of Object.entries(values)) {
       const key = `${name}:${target}`;
-      const exists = names.has(name);
-      if (exists && !rotate.has(name)) {
+      if (names.has(name)) {
         state[key] = 'kept';
         continue;
       }
-      const out = setEnv(ROOT, name, target, value, exists);
+      const out = setEnv(ROOT, name, target, value);
       if (out?.status !== 0)
         throw new CliError(`vercel env add ${name} ${target} failed.`, { stderr: out?.stderr.trim() });
-      state[key] = exists ? 'rotated' : 'set';
+      state[key] = 'set';
     }
   }
   return state;
-}
-
-// A password a reviewer can type from a message: lowercase letters and digits, no look-alikes.
-function readablePassword(): string {
-  const alphabet = 'abcdefghjkmnpqrstuvwxyz23456789';
-  return Array.from(randomBytes(12), (b) => alphabet[b % alphabet.length]).join('');
 }
 
 /** Reads one environment's values into memory and deletes the file, keeping only `names`. */
@@ -380,15 +377,31 @@ function typesafe(given: string | undefined, current: string | undefined): strin
   return given;
 }
 
-/** The gate's values: the password given, kept, or made, and the secret kept or made. */
-export function gateValues(given: string | undefined, env: Record<string, string>) {
-  const password = given ?? env.GATE_PASSWORD ?? readablePassword();
-  if (password.length < 8) throw new CliError('--gate-password needs 8 characters or more.');
-  const secret = env.GATE_SECRET || randomBytes(32).toString('base64');
-  return { password, secret, rotated: given !== undefined && given !== env.GATE_PASSWORD };
+/**
+ * The gate's env: the signing secret, kept when .env has one and made once
+ * otherwise. Nothing else: people sign in with their own one-time links.
+ */
+export function gateValues(env: Record<string, string>): { GATE_SECRET: string } {
+  return { GATE_SECRET: env.GATE_SECRET || randomBytes(32).toString('base64') };
 }
 
-function setUpVercel(
+/**
+ * Sets the project default access length in the deployed store. When the
+ * store's credentials did not reach .env, the CLI would reach the local
+ * store instead, so it says how to set it later rather than set the wrong one.
+ */
+async function setDefaultAccess(access: string, warnings: string[]): Promise<string | undefined> {
+  const { review, store } = cliReview(false);
+  if (store !== 'deployed') {
+    warnings.push(
+      `Could not set the default access length: the store's credentials are not in .env. Once they are, run design-hub people access --access ${access}.`,
+    );
+    return undefined;
+  }
+  return review.setDefaultAccess(cliActor(), access);
+}
+
+async function setUpVercel(
   project: string,
   flags: Args<typeof spec>['flags'],
   env: Record<string, string>,
@@ -400,27 +413,32 @@ function setUpVercel(
       fix: 'design-hub signin, send the user its url, then run this again.',
     });
   const linked = link(project, flags.team, warnings);
-  const { password, secret, rotated } = gateValues(flags['gate-password'], env);
-  writeEnv(ROOT, { GATE_PASSWORD: password, GATE_SECRET: secret });
-  const values: Record<string, string> = { GATE_PASSWORD: password, GATE_SECRET: secret };
+  const gate = gateValues(env);
+  writeEnv(ROOT, gate);
+  const values: Record<string, string> = { ...gate };
   // Comment triage runs on the server, so with the review store on, the key goes to Vercel too.
   if (flags.review && typesafeKey) values.TYPESAFE_API_KEY = typesafeKey;
-  if (rotated) warnings.push('The password changed: every visitor signs in again.');
   const result: Record<string, unknown> = {
     vercel: {
       project,
       linked,
       git: connectGit(project, flags.team, warnings),
       protection: protection(project, flags.team),
-      env: ensureEnv(values, new Set(rotated ? ['GATE_PASSWORD'] : [])),
+      env: ensureEnv(values),
     },
-    share: { password },
   };
-  if (!flags.review) return result;
+  if (!flags.review) {
+    warnings.push(
+      'Nobody can sign in yet: each person signs in with a one-time link the review store keeps. Run this again with --review.',
+    );
+    return result;
+  }
+  const review = provisionReview(project, flags.team, warnings);
+  const access = flags.access ? await setDefaultAccess(flags.access, warnings) : undefined;
   warnings.push(
-    'Run design-hub share so the new env reaches the site; then design-hub people invite --name "<you>" --kind studio --site <url>.',
+    'Run design-hub share so the new env reaches the site; then design-hub people add --name "<you>" --team "<studio>" --kind studio --site <url>.',
   );
-  return { ...result, review: provisionReview(project, flags.team, warnings) };
+  return { ...result, review: access ? { ...review, access } : review };
 }
 
 function envIgnored(warnings: string[]): void {
@@ -439,8 +457,12 @@ function envIgnored(warnings: string[]): void {
     );
 }
 
-export function main({ flags }: Args<typeof spec>) {
+export async function main({ flags }: Args<typeof spec>) {
   if (flags.review && !flags.vercel) throw new CliError('--review needs --vercel <project>.');
+  if (flags.access && !flags.review)
+    throw new CliError('--access needs --review.', {
+      fix: 'Or set it later: design-hub people access --access <3m|6m|open>.',
+    });
   const warnings: string[] = [];
   const node = checkNode();
   const env = readEnv(ROOT);
@@ -458,7 +480,7 @@ export function main({ flags }: Args<typeof spec>) {
   if (project)
     Object.assign(
       result,
-      keepingGitignore(ROOT, () => setUpVercel(project, flags, env, typesafeKey, warnings)),
+      await keepingGitignore(ROOT, () => setUpVercel(project, flags, env, typesafeKey, warnings)),
     );
   envIgnored(warnings);
   return { ...result, warnings };

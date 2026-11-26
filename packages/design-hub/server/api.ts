@@ -13,6 +13,7 @@ import { storeConfig, upstashKV } from './upstash.ts';
 
 export const API_PATH = '/api/review';
 const MAX_BODY_BYTES = 64 * 1024;
+const STORE_DOWN = 'The review store did not answer. Try again.';
 
 const STATUS: Record<ReviewError['code'], number> = {
   unauthorized: 401,
@@ -21,10 +22,10 @@ const STATUS: Record<ReviewError['code'], number> = {
   invalid: 422,
 };
 
-const json = (status: number, body: unknown) =>
+const json = (status: number, body: unknown, extra: Record<string, string> = {}) =>
   new Response(JSON.stringify(body), {
     status,
-    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
+    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...extra },
   });
 
 /** What the browser may see of a person: everything but the session epoch. */
@@ -47,21 +48,47 @@ async function query(op: string, params: URLSearchParams, { review, actor }: Api
       return { comments: await review.listComments(actor, prototypeOf(params.get('prototype'))) };
     case 'people':
       return { people: (await review.listPeople(actor)).map(visible) };
+    case 'access':
+      return { access: await review.defaultAccess(actor) };
     default:
       return undefined;
   }
 }
 
-async function command(
+const link = (r: { person: Person; token: string }) => ({
+  person: visible(r.person),
+  link: `/invite/${r.token}`,
+});
+
+/** Studio's commands over people, their links and how long they keep access. */
+async function peopleCommand(
   op: string,
   b: Record<string, unknown>,
   { review, actor }: ApiContext,
 ): Promise<unknown> {
+  switch (op) {
+    case 'people.add':
+      return link(
+        await review.addPerson(actor, { name: b.name, team: b.team, kind: b.kind, access: b.access }),
+      );
+    case 'people.link':
+      return link(await review.newLink(actor, str(b.id)));
+    case 'people.signOut':
+      return link(await review.signOutEverywhere(actor, str(b.id)));
+    case 'people.revoke':
+      return { person: visible(await review.revoke(actor, str(b.id))) };
+    case 'people.access':
+      return { person: visible(await review.setAccess(actor, str(b.id), b.access)) };
+    case 'access.set':
+      return { access: await review.setDefaultAccess(actor, b.access) };
+    default:
+      return undefined;
+  }
+}
+
+async function command(op: string, b: Record<string, unknown>, ctx: ApiContext): Promise<unknown> {
+  const { review, actor } = ctx;
   const at = () => ({ prototype: prototypeOf(b.prototype), id: str(b.id) });
-  const link = (r: { person: Person; token: string }) => ({
-    person: visible(r.person),
-    link: `/invite/${r.token}`,
-  });
   switch (op) {
     case 'comment.add':
       return { comment: await review.add(actor, { body: b.body, anchor: b.anchor, states: b.states }) };
@@ -81,14 +108,8 @@ async function command(
       return { comment: await review.resolve(actor, { ...at(), resolved: b.resolved === true }) };
     case 'comment.triage':
       return { comment: await review.retriage(actor, { ...at(), triage: b.triage, states: b.states }) };
-    case 'people.invite':
-      return link(await review.invite(actor, { name: b.name, team: b.team, kind: b.kind }));
-    case 'people.reissue':
-      return link(await review.reissue(actor, str(b.id)));
-    case 'people.revoke':
-      return { person: visible(await review.revoke(actor, str(b.id))) };
     default:
-      return undefined;
+      return peopleCommand(op, b, ctx);
   }
 }
 
@@ -126,7 +147,7 @@ export async function handleReview(request: Request, ctx: ApiContext): Promise<R
     if (error instanceof ReviewError)
       return json(STATUS[error.code], { error: error.message, problems: error.problems });
     console.error('[review]', error);
-    return json(500, { error: 'The review store did not answer. Try again.' });
+    return json(503, { error: STORE_DOWN }, { 'retry-after': '30' });
   }
 }
 
@@ -138,10 +159,15 @@ export async function actorFrom(request: Request, review: Review, gate: Gate): P
 
 export type Deployed = { review: Review; gate: Gate } | { error: string };
 
-/** The review service as deployed: Upstash for the store, Jev for triage when its key is set and `checks` is given. */
+/**
+ * The review service as deployed: Upstash for the store, Jev for triage when
+ * its key is set and `checks` is given. `now` is the clock, so the gate and
+ * the service it asks run on one (the gate's tests move it).
+ */
 export function deployedReview(
   env: Record<string, string | undefined>,
   checks: Checks | null = null,
+  now?: () => Date,
 ): Deployed {
   const gate = readGate(env);
   if (!gate) return { error: 'The prototype gate is not configured.' };
@@ -150,7 +176,10 @@ export function deployedReview(
     return { error: 'Review is not set up on this site: pnpm bootstrap --vercel <project> --review.' };
   return {
     gate,
-    review: createReview(upstashKV(store), { triage: jevTriager(env.TYPESAFE_API_KEY ?? '', checks) }),
+    review: createReview(upstashKV(store), {
+      triage: jevTriager(env.TYPESAFE_API_KEY ?? '', checks),
+      ...(now ? { now } : {}),
+    }),
   };
 }
 
@@ -158,8 +187,14 @@ export function deployedReview(
 export async function deployedHandler(request: Request, checks: Checks | null): Promise<Response> {
   const setup = deployedReview(process.env, checks);
   if ('error' in setup) return json(503, { error: setup.error });
-  return handleReview(request, {
-    review: setup.review,
-    actor: await actorFrom(request, setup.review, setup.gate),
-  });
+  let actor: Person | null;
+  try {
+    actor = await actorFrom(request, setup.review, setup.gate);
+  } catch (error) {
+    // The store is down: say so in JSON, as every other answer here is, so the panel can retry.
+    console.error('[review]', error);
+    // Retry-After tells the panel this passes, unlike a 503 for a site with no store.
+    return json(503, { error: STORE_DOWN }, { 'retry-after': '30' });
+  }
+  return handleReview(request, { review: setup.review, actor });
 }

@@ -52,7 +52,7 @@ The tracks decide everything a shell question used to: product draws `AppShell`,
 
 | Header | Question | Options |
 |---|---|---|
-| Share | Put the prototypes on a password-protected link now? | Yes, with comments (Recommended) · Yes, view only · Later. Why now: everything it needs is answered in one sitting, and the first link proves the deploy works before there is client work on it. |
+| Share | Put the prototypes on a private link now? Each person signs in with their own link. | Yes (Recommended) · Later. Why now: everything it needs is answered in one sitting, and the first link proves the deploy works before there is client work on it. |
 | Front end | Which front end will the site use? | Astro (Recommended) · Next.js |
 
 **Round 4: typed answers, one short chat message each, only for what was chosen.**
@@ -88,11 +88,11 @@ The user does nothing in a terminal here; each step that needs them is one link 
 
 1. `pnpm --dir <path> signin`. Signed out, it prints a `url`: send it to the user to approve, then `pnpm --dir <path> signin --wait 300`.
 2. `vercel teams ls`; with more than one team, ask which with the question tool (personal account first when it is listed).
-3. `pnpm --dir <path> bootstrap --vercel <name> --team <team-slug>`, plus `--review` for comments. It links the project, connects the GitHub repo, sets the password and turns Vercel's own login off. A first `--review` on a team can stop on the Marketplace terms: send the user the message in `fix` as written (it names **Upstash for Redis** as the product to pick), then rerun.
+3. `pnpm --dir <path> bootstrap --vercel <name> --team <team-slug> --review`. It links the project, connects the GitHub repo, sets the gate's secret, turns Vercel's own login off and adds the review store, which keeps the people and their sign-in links. A first `--review` on a team can stop on the Marketplace terms: send the user the message in `fix` as written (it names **Upstash for Redis** as the product to pick), then rerun.
 4. `pnpm --dir <path> share --cli`. `--cli` uploads the folder, since the setup may have left files uncommitted; later deploys push `main`. On `ok: false`, follow `stage` and `fix` (the pre-flight steps are in `miles-deploy`).
-5. With comments: `pnpm --dir <path> people invite --name "<user>" --kind studio --site <share.url>`.
+5. `pnpm --dir <path> people add --name "<user>" --team "<studio>" --kind studio --site <share.url>`.
 
-Give the user `share.url`, `share.password` and the invite link in the closing message, and say the link shows the samples until the first feature replaces them.
+Give the user `share.url` and their own `link` in the closing message, say the link signs in one device and then stops working, and say the link shows the samples until the first feature replaces them.
 
 ## 5. Record what was answered
 
@@ -111,4 +111,4 @@ Write the shell of each track under `DESIGN.md`, Shell: product is `AppShell`, w
 
   The next step is `miles-new-feature`.
 
-Close with the path, the port, the repo URL when there is one, the share link, password and invite when Share was a yes, the tracks and the website platform, whether TypeSafe is on, and the one command that starts the server. Nothing is committed unless the user asks.
+Close with the path, the port, the repo URL when there is one, the share link and the user's own sign-in link when Share was a yes, the tracks and the website platform, whether TypeSafe is on, and the one command that starts the server. Nothing is committed unless the user asks.

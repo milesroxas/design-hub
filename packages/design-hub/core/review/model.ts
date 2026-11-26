@@ -14,8 +14,32 @@ export type PersonKind = (typeof PERSON_KINDS)[number];
 export const KINDS = ['bug', 'taste', 'copy'] as const;
 export type Kind = (typeof KINDS)[number];
 
-/** How long an invite link signs its person in before Studio must issue a new one. */
-export const INVITE_DAYS = 14;
+/** How long an unused sign-in link lasts. A link signs in one device, then stops working. */
+export const LINK_DAYS = 14;
+
+/**
+ * How long a person keeps access: three months, six months, or open-ended.
+ * The project sets a default; Studio can set it for one person.
+ */
+export const ACCESS = ['3m', '6m', 'open'] as const;
+export type Access = (typeof ACCESS)[number];
+/** The project default when none is set. */
+export const DEFAULT_ACCESS: Access = '3m';
+
+const ACCESS_MONTHS: Record<Exclude<Access, 'open'>, number> = { '3m': 3, '6m': 6 };
+
+/** When access given at `from` ends, as an ISO time, or null for open-ended. */
+export function accessEnd(access: Access, from: Date): string | null {
+  if (access === 'open') return null;
+  // On the same day of the month, or the target month's last day when it is shorter (30 Nov + 3m is 28 Feb).
+  const end = new Date(from.getTime());
+  const day = end.getUTCDate();
+  end.setUTCDate(1);
+  end.setUTCMonth(end.getUTCMonth() + ACCESS_MONTHS[access]);
+  const last = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() + 1, 0)).getUTCDate();
+  end.setUTCDate(Math.min(day, last));
+  return end.toISOString();
+}
 
 export const LIMITS = {
   name: 80,
@@ -34,11 +58,18 @@ export type Person = {
   /** The group a person belongs to, shown beside their name: the studio, or the client's company. */
   team: string;
   kind: PersonKind;
+  /** Always null until email sign-in exists. */
+  email: string | null;
+  /** When their access ends (ISO time), or null for open-ended. Their sessions end with it. */
+  accessEndsAt: string | null;
   createdAt: string;
   revokedAt: string | null;
-  /** Bumped on revoke and on a new invite, which signs out every session signed with the old one. */
+  /** Bumped on revoke and on sign out everywhere, which ends every session signed with the old one. */
   epoch: number;
 };
+
+/** A one-time sign-in link, stored under the hash of its token and deleted when used. */
+export type Link = { person: string; expiresAt: string };
 
 /** A comment's author as it was when they wrote it, so a revoked person's comments still read. */
 export type Author = Pick<Person, 'id' | 'name' | 'team'>;
@@ -80,6 +111,39 @@ export type Comment = {
   triage: Triage | null;
 };
 
+const isText = (v: unknown) => typeof v === 'string';
+const isTextOrNull = (v: unknown) => v === null || typeof v === 'string';
+
+/** What a stored profile must hold to be a person; anything else is no person at all. */
+const PROFILE_RULES: [string, (v: unknown) => boolean][] = [
+  ['id', (v) => isText(v) && v !== ''],
+  ['name', isText],
+  ['team', isText],
+  ['kind', (v) => PERSON_KINDS.includes(v as PersonKind)],
+  ['email', isTextOrNull],
+  ['accessEndsAt', isTextOrNull],
+  ['createdAt', isText],
+];
+
+/** Whether a stored profile (a person without revocation and epoch) is well formed. */
+export function isProfile(v: unknown): v is Omit<Person, 'revokedAt' | 'epoch'> {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return false;
+  const o = v as Record<string, unknown>;
+  return PROFILE_RULES.every(([key, ok]) => ok(o[key]));
+}
+
+/**
+ * Whether someone may sign in at `at`: not revoked, and an access end that is
+ * open (null) or a parseable time still ahead. An access end that does not
+ * parse is no access.
+ */
+export function hasAccess(p: Pick<Person, 'revokedAt' | 'accessEndsAt'>, at: Date): boolean {
+  if (p.revokedAt !== null) return false;
+  if (p.accessEndsAt === null) return true;
+  const end = Date.parse(p.accessEndsAt);
+  return Number.isFinite(end) && end > at.getTime();
+}
+
 export const authorOf = (p: Person): Author => ({ id: p.id, name: p.name, team: p.team });
 export const isRoot = (c: Comment) => c.thread === c.id;
 
@@ -100,17 +164,29 @@ const text = (v: unknown, path: string, max: number, problems: string[]): string
 const fraction = (v: unknown) => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 1;
 const size = (v: unknown) => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v < 100_000;
 
-export function checkPersonInput(input: unknown): Checked<Pick<Person, 'name' | 'team' | 'kind'>> {
+const isAccess = (v: unknown): v is Access => ACCESS.includes(v as Access);
+const ACCESS_PROBLEM = `access: one of ${ACCESS.join(', ')}`;
+
+export function checkAccess(input: unknown): Checked<Access> {
+  return isAccess(input) ? { ok: true, value: input } : { ok: false, problems: [ACCESS_PROBLEM] };
+}
+
+export type PersonInput = Pick<Person, 'name' | 'team' | 'kind'> & { access: Access | null };
+
+export function checkPersonInput(input: unknown): Checked<PersonInput> {
   const i = (input ?? {}) as Record<string, unknown>;
   const problems: string[] = [];
   const name = text(i.name, 'name', LIMITS.name, problems);
   const team = text(i.team, 'team', LIMITS.team, problems);
-  // Most people invited are on the client's side; Studio is the deliberate choice.
+  // Most people added are on the client's side; Studio is the deliberate choice.
   const kind = i.kind ?? 'client';
   if (!PERSON_KINDS.includes(kind as PersonKind)) problems.push(`kind: one of ${PERSON_KINDS.join(', ')}`);
+  // Absent, the service picks: the project default for a Client, open-ended for Studio.
+  const access = i.access ?? null;
+  if (access !== null && !isAccess(access)) problems.push(ACCESS_PROBLEM);
   return problems.length
     ? { ok: false, problems }
-    : { ok: true, value: { name, team, kind: kind as PersonKind } };
+    : { ok: true, value: { name, team, kind: kind as PersonKind, access: access as Access | null } };
 }
 
 export function checkBody(body: unknown): Checked<string> {

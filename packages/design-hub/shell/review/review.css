@@ -524,6 +524,8 @@
 .rv-share-row .input { flex: 1; min-width: 0; }
 /* Copy and Copied are one width, so the row holds still when the word changes. */
 .rv .btn.rv-copy { flex: none; width: 68px; padding: 0; }
+/* How links behave: one quiet line of small print under the form. */
+.rv-disclosure { font-size: 12px; line-height: 16px; }
 .rv-people { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; }
 .rv-people li { display: flex; flex-direction: column; gap: 4px; padding: 10px 0; border-bottom: 1px solid var(--harness-border); }
 .rv-people li:last-child { border-bottom: 0; }

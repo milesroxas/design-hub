@@ -2,7 +2,7 @@
 // What `design-hub signin` and `design-hub share` decide, kept apart from the
 // vercel and git calls that feed them so every branch is tested: the sign-in
 // link in the CLI's log, which way a deploy goes, the production URL, and
-// whether the deployed site answers with the gate.
+// whether the deployed site answers with the gate's sign-in page.
 
 /** The device sign-in `vercel login` prints and then waits on. */
 export function deviceLink(log: string): { url: string; code: string } | null {
@@ -56,9 +56,9 @@ export function plan(repo: Repo, forceCli: boolean): Plan {
 }
 
 /**
- * How `design-hub share` asks for the home page: as a browser does. The gate
- * answers a client that does not accept HTML with a plain-text 401, which has
- * no password form to find.
+ * How `design-hub share` asks for the home page: as a browser does, signed
+ * out. The gate answers a client that does not accept HTML with a plain-text
+ * 401, which has no sign-in page to find.
  */
 export const GATE_REQUEST = {
   redirect: 'manual',
@@ -68,30 +68,47 @@ export const GATE_REQUEST = {
 export type Answer = { status: number; location: string | null; robots: string | null; body: string };
 export type Verdict = { ok: true } | { ok: false; problem: string; fix: string };
 
-/** Whether the production URL answers a signed-out visitor with the hub's password page. */
-export function gateVerdict(answer: Answer): Verdict {
+/** The hub's sign-in page carries this on its main element (vercel/proxy.ts). */
+const SIGN_IN_MARKER = 'data-gate="sign-in"';
+const quote = (body: string) => JSON.stringify(body.replace(/\s+/g, ' ').trim().slice(0, 80));
+
+/** The first problem with the status alone, or null when it is the 401 the gate answers. */
+function statusProblem(answer: Answer): Verdict | null {
   if (answer.status >= 300 && answer.status < 400 && /vercel\.com/.test(answer.location ?? ''))
     return {
       ok: false,
-      problem: 'Visitors are sent to a Vercel login before the password page.',
-      fix: 'design-hub bootstrap --vercel <project> turns Vercel Authentication off; run it, then deploy again.',
+      problem: 'Visitors are sent to a Vercel login before the sign-in page.',
+      fix: 'design-hub bootstrap --vercel <project> --review turns Vercel Authentication off; run it, then deploy again.',
     };
   if (answer.status === 503)
     return {
       ok: false,
-      problem: 'The gate answers 503: GATE_PASSWORD or GATE_SECRET is missing on the deployment.',
-      fix: 'design-hub bootstrap --vercel <project>, then deploy again so the env reaches the site.',
+      problem: 'The gate answers 503: GATE_SECRET is missing on the deployment.',
+      fix: 'design-hub bootstrap --vercel <project> --review, then deploy again so the env reaches the site.',
     };
   if (answer.status !== 401)
     return {
       ok: false,
-      problem: `Expected the password page (401), got ${answer.status}.`,
+      problem: `Expected the sign-in page (401), got ${answer.status}.`,
       fix: 'Check that proxy.ts and vercel.json are the template’s, then deploy again.',
     };
-  if (!/name="password"/.test(answer.body))
+  return null;
+}
+
+/** Whether the production URL answers a signed-out visitor with the hub's sign-in page. */
+export function gateVerdict(answer: Answer): Verdict {
+  const status = statusProblem(answer);
+  if (status) return status;
+  if (/name="password"/.test(answer.body))
     return {
       ok: false,
-      problem: `The site answered 401, but the body was not the password page: ${JSON.stringify(answer.body.replace(/\s+/g, ' ').trim().slice(0, 80))}.`,
+      problem: 'The site still asks for a password: it runs a hub from before one-time links.',
+      fix: 'Commit the updated @milesroxas/design-hub (package.json and pnpm-lock.yaml), then deploy again.',
+    };
+  if (!answer.body.includes(SIGN_IN_MARKER))
+    return {
+      ok: false,
+      problem: `The site answered 401, but the body was not the sign-in page: ${quote(answer.body)}.`,
       fix: 'Something other than the hub’s gate answered. Check that Vercel’s Password Protection is off and that proxy.ts and vercel.json are the template’s, then deploy again.',
     };
   if (!/noindex/.test(answer.robots ?? ''))
@@ -101,6 +118,26 @@ export function gateVerdict(answer: Answer): Verdict {
       fix: 'Restore vercel.json from the template.',
     };
   return { ok: true };
+}
+
+/**
+ * A link no store holds, asked for as a browser does once the sign-in page
+ * passed: it proves the review store is wired, since people sign in only with
+ * links it keeps. 43 characters, the length of a real token.
+ */
+export const PROBE_LINK = `/invite/${'x'.repeat(43)}`;
+
+/** Whether the probe link's answer shows a review store behind the gate: 404 means it looked and found nothing. */
+export function storeVerdict(status: number): Verdict {
+  if (status === 404) return { ok: true };
+  return {
+    ok: false,
+    problem:
+      status === 503
+        ? 'The site has no review store, so nobody can sign in: people sign in with links it keeps.'
+        : `A sign-in link answered ${status}, not 404, so the review store could not be checked.`,
+    fix: 'pnpm bootstrap --vercel <project> --review, then deploy again so the store reaches the site.',
+  };
 }
 
 export type Seen = { url: string; state: string } | null;

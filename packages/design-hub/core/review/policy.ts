@@ -1,8 +1,8 @@
-// Who may do what. Studio runs the review: it invites and revokes people,
+// Who may do what. Studio runs the review: it adds and revokes people,
 // deletes any comment and corrects triage. A Client comments, replies, edits
 // and deletes what they wrote, and resolves or reopens any thread, because
 // clients work alongside others in their own organisation. A revoked person,
-// or a visitor with only the shared password, may do nothing here.
+// or a visitor who is not signed in, may do nothing here.
 import type { Comment, Person } from './model.ts';
 
 export type Action = 'read' | 'comment' | 'edit' | 'delete' | 'resolve' | 'triage' | 'people';

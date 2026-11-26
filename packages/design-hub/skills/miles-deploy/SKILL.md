@@ -1,11 +1,11 @@
 ---
 name: miles-deploy
-description: "Deploy the prototypes to Vercel behind the password gate and hand out the share link: the pre-flight (pnpm preflight), the GATE_* env, the review store for comments, the handover message. Load when the user asks to deploy, share, send a link, set or rotate the password, turn on comments, or check the work before any of those. Triggers on: deploy, share, share link, send to the client, send it to the team, put it online, publish, go live, update the link, push the latest, Vercel, sign in to Vercel, vercel login, password, gate, GATE_PASSWORD, production, preview URL, pre-flight, preflight, ready to send, turn on comments, review store, invite someone."
+description: "Deploy the prototypes to Vercel behind the gate and hand out sign-in links: the pre-flight (pnpm preflight), GATE_SECRET, the review store that keeps people and their links, the handover message, adding people, a second device, signing someone out, how long access lasts. Load when the user asks to deploy, share, send a link, add or remove someone, give someone access on another device, change how long access lasts, turn on comments, or check the work before any of those. Triggers on: deploy, share, share link, send to the client, send it to the team, put it online, publish, go live, update the link, push the latest, Vercel, sign in to Vercel, vercel login, gate, GATE_SECRET, sign-in link, one-time link, new link, another device, link stopped working, sign out everywhere, access length, 3 months, 6 months, open-ended, password, production, preview URL, pre-flight, preflight, ready to send, turn on comments, review store, add someone, invite someone, remove someone."
 ---
 
 # Deploy
 
-`pnpm share` deploys the project to the linked Vercel project and checks the live link; the user never types a command. Every path sits behind the gate in `proxy.ts`: the shared password opens it to view, and an invite link opens it to one named person who can comment. The mechanics are scripts; this skill decides when they run and what the user is told.
+`pnpm share` deploys the project to the linked Vercel project and checks the live link; the user never types a command. Every path sits behind the gate in `proxy.ts`. There is no password: each person is named, and signs in with their own one-time link. A link signs in one device, then stops working, so a used link opens nothing. An unused link signs in whoever opens it first, so it goes only to its person. The mechanics are scripts; this skill decides when they run and what the user is told.
 
 ## Before every link goes out
 
@@ -23,7 +23,8 @@ step failed?
 │              or, only after the user says it is a business contact:
 │              pnpm preflight --allow-contact <value>
 ├── states   → add the missing rows to that README's States table (miles-prototype), then rerun
-├── gate     → pnpm bootstrap --vercel <project> sets GATE_PASSWORD and GATE_SECRET
+├── gate     → pnpm bootstrap --vercel <project> --review sets GATE_SECRET and adds the review store
+│              (KV_REST_API_URL, KV_REST_API_TOKEN): without the store nobody can sign in
 └── any other → fix what `detail` names; `fix` says how
 ```
 
@@ -44,32 +45,59 @@ Signed in, it prints `signedIn: true` and the account. Signed out, it starts the
 1. `pnpm signin` (above).
 2. Ask which Vercel team the project goes in when `vercel teams ls` lists more than one. Then, from the project root:
    ```bash
-   pnpm bootstrap --vercel <project-name> --team <team-slug> [--review]
+   pnpm bootstrap --vercel <project-name> --team <team-slug> --review [--access 3m|6m|open]
    ```
-   `--team` is the team the project is created in; without it the CLI's current team wins, which is often not the one the user means. It links the project, connects it to the GitHub repo (`vercel.git`: `connected`, `kept`, or `none` with a warning), turns Vercel Authentication off (the hub's gate is the protection), writes `GATE_PASSWORD` (12 readable characters, or `--gate-password <word>`) and a fresh `GATE_SECRET` to `.env` and to Production and Preview, and prints the password in `share.password`. `--review` also adds the comment store (see Comments). A second run keeps what is set.
+   `--team` is the team the project is created in; without it the CLI's current team wins, which is often not the one the user means. It links the project, connects it to the GitHub repo (`vercel.git`: `connected`, `kept`, or `none` with a warning), turns Vercel Authentication off (the hub's gate is the protection), and writes a fresh `GATE_SECRET` to `.env` and to Production and Preview. `--review` adds the review store, which keeps the people and their links (see The review store). Without it nobody can sign in. `--access` sets how long a new client keeps access by default (see Access). A second run keeps what is set.
 3. Deploy:
    ```bash
    pnpm share
    ```
-   It runs the pre-flight, deploys, waits for the build, and requests the production URL signed out, which must answer with the password page. Connected to the repo and on a clean `main`, it pushes and follows the build for that commit; otherwise it uploads the folder with the Vercel CLI. It refuses uncommitted changes rather than deploy something other than the commit: ask the user before committing. `ok: false` names the `stage` (`preflight`, `deploy` or `gate`) and the fix; a failed pre-flight step is walked as above, and nothing deploys until it passes.
-4. The handover message, from the JSON's `share`, in one message: the `url`, the `password`, which prototype to open (`share.open`: its path and its walkthrough), and that Controls is the round button at the top of the page. A reviewer who is not told about Controls reviews one state. Never send `GATE_SECRET`.
+   It runs the pre-flight, deploys, waits for the build, and requests the production URL as a signed-out browser, which must answer with the sign-in page, and then a made-up sign-in link, which must answer 404: that proves the review store is wired, since nobody signs in without it. Connected to the repo and on a clean `main`, it pushes and follows the build for that commit; otherwise it uploads the folder with the Vercel CLI. It refuses uncommitted changes rather than deploy something other than the commit: ask the user before committing. `ok: false` names the `stage` (`preflight`, `deploy` or `gate`) and the fix; a failed pre-flight step is walked as above, and nothing deploys until it passes.
+4. Add the first Studio person, the user, and send them their link (see People).
+5. The handover message, from the JSON's `share`, one per person: their own link, which prototype to open (`share.open`: its path and its walkthrough), that Controls is the round button at the top of the page, and that the link signs in one device, then stops working, so for another device they ask for a new one. A reviewer who is not told about Controls reviews one state. Never send `GATE_SECRET`, and never send one person's link to another.
 
-## Comments
+## The review store
 
-Ask the user once whether reviewers should comment on the link; ask before the first deploy, so one `bootstrap` carries `--review`. If yes, `--review [--typesafe-key <key>]` adds Upstash Redis to the project through the Vercel Marketplace and copies the store's credentials into `.env`. The first time on a team it can stop on the Marketplace terms. Send the user the message in its `fix` as written: it links that team's terms page, names the one product to pick (**Upstash for Redis**, Redis Compatible Database) when Vercel lists several, and tells them not to create a database there, since the rerun creates the store and connects it. Rerun when they say it is done; if `stderr` shows another cause, show it to them instead. With TypeSafe on, comments are sorted by kind and state as they arrive. `pnpm share` after it, so the env reaches the site, then invite the first Studio person:
+Every share needs it: it keeps the people, their links and their comments. Ask once whether comments should be sorted by TypeSafe; `--review [--typesafe-key <key>]` adds Upstash Redis to the project through the Vercel Marketplace and copies the store's credentials into `.env`. The first time on a team it can stop on the Marketplace terms. Send the user the message in its `fix` as written: it links that team's terms page, names the one product to pick (**Upstash for Redis**, Redis Compatible Database) when Vercel lists several, and tells them not to create a database there, since the rerun creates the store and connects it. Rerun when they say it is done; if `stderr` shows another cause, show it to them instead. With TypeSafe on, comments are sorted by kind and state as they arrive. `pnpm share` after it, so the env reaches the site. `miles-review` owns working from the comments.
+
+## People
+
+Every person is named, and each gets their own link. Add the first Studio person, the user, from here:
 
 ```bash
-pnpm people invite --name "<user>" --team "<studio>" --kind studio --site <share.url>
+pnpm people add --name "<user>" --team "<studio>" --kind studio --site <share.url>
 ```
 
-Send them the link; from then on, Studio invites everyone else from the People tab. `miles-review` owns working from the comments.
+Send them the `link`; from then on, Studio adds everyone else in the People tab (the round comments button, then **⋯**, **People**), or ask for it here with `pnpm people add --name "<name>" --team "<company>" --site <share.url>`. A Client is the default kind.
 
-## Rotating access
+- **A link signs in one device, then stops working.** Opening it shows who it is for and a Continue button; Continue uses it up. Why: a mail or chat preview opens links too, and must not use one up. An unused link lasts 14 days.
+- **Another device, or a link that stopped working:** `pnpm people link <id> --site <url>` gives one more link. Their other devices stay signed in.
+- **A lost or shared device:** `pnpm people sign-out <id> --site <url>` ends every session (within five minutes) and every unused link (at once) they hold, and gives one new link.
+- **Someone leaves:** `pnpm people revoke <id>`, or Revoke in the People tab. Their access ends on every device within five minutes, and their links stop working at once.
+- `pnpm people` lists everyone, with their id and when their access ends.
+- Never paste a link into a commit, a document, a ticket or a comment, and never send one to anyone but its person. Why: until it is used, whoever opens it first signs in as that person.
 
-- **Someone leaves:** revoke them in the People tab, or `pnpm people revoke <id>`. Their sessions end on their next page load.
-- **The shared password leaked:** `pnpm bootstrap --vercel <project> --gate-password <new>`, then `pnpm share`. Every password visitor signs in again; invited people are not affected.
+## Access
+
+A signed-in device stays signed in until the person's access ends: 3 months, 6 months, or open-ended. A new client gets the project default; a new Studio person is open-ended.
+
+- The project default: `pnpm people access` reads it, `pnpm people access --access 6m` sets it. Absent, it is 3 months. Ask the user at the first deploy how long the engagement runs.
+- One person: `pnpm people access <id> --access 3m|6m|open`, counted from today, or `--access` on `pnpm people add`.
+- When someone's access ends their links stop working at once, and every device signs out within five minutes. A changed access length reaches their signed-in devices within five minutes too. Change their access to let them back in, then send a new link.
+
+## A project that shared before one-time links
+
+A project that shared with a password (before one-time links) needs this once, before its next `pnpm share`. The pre-flight `gate` step stops the share until the store is there, so production is never replaced by a gate nobody can pass.
+
+1. The review store is now required: `pnpm bootstrap --vercel <project> --review`. Why: people and their links live in it, so without it nobody can sign in.
+2. People, links and comments from before are not carried over. Add everyone again with `pnpm people add`, and send each person their own link. Tell the user once that the old comments stay in the old store and in any `comments.md` already pulled, and are not on the new site.
+3. The old password variable (the `GATE_` one that is not `GATE_SECRET`) is no longer read. Remove it from `.env`, and from the Vercel project: `vercel env ls` names it, then `vercel env rm <name> production` and `preview`.
+4. Earlier deployments still serve the old password page at their own URLs. Remove them: `vercel ls <project>` lists them; `vercel rm <url>` each one older than the new production deployment, with the user's word.
 
 ## Security, never weakened for a prototype
 
-- `vercel.json` sets `noindex`, `X-Frame-Options: DENY`, `nosniff`, HSTS and a same-origin referrer on every path. The gate and invite pages add a hash CSP and send no referrer.
-- A wrong password waits 800ms. For a link going to a large client list, add a Vercel Firewall rate-limit rule on `POST` before it goes out.
+- `vercel.json` sets `noindex`, `X-Frame-Options: DENY`, `nosniff`, HSTS and a same-origin referrer on every path. The gate pages add a hash CSP, run no script and send no referrer.
+- A link is 32 random bytes, and the store keeps only its hash. Using one is atomic: of two requests with the same link, only one signs in.
+- The session cookie carries when the store last said yes. After five minutes the gate asks the store again on the next request of any kind and issues a fresh cookie, so a revoke, a sign out everywhere or a changed access length reaches every device within five minutes. A store that does not answer gives 503 and signs nobody out.
+- `--site` needs the deployed store's credentials in `.env`; with only the local store, `people` refuses rather than print a link the site does not know.
+- `GATE_SECRET` signs every session, together with the review store's URL, so two projects that share a secret (a copied folder) never accept each other's cookies. Never send it, never commit it. Replacing it on Vercel signs everyone out.

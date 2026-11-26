@@ -13,8 +13,9 @@ export function fakeUpstash(): typeof fetch {
         await kv.hset(key, a, b);
         return 1;
       case 'HDEL':
-        await kv.hdel(key, a);
-        return 1;
+        return kv.hdel(key, a);
+      case 'HINCRBY':
+        return kv.hincrby(key, a, Number(b));
       case 'HGETALL':
         return Object.entries(await kv.hgetall(key)).flat();
       case 'SADD':

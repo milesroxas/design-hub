@@ -22,6 +22,8 @@ export const localStudio = (id = 'local', team = 'Local'): Person => ({
   name: gitName() || 'You',
   team,
   kind: 'studio',
+  email: null,
+  accessEndsAt: null,
   createdAt: new Date(0).toISOString(),
   revokedAt: null,
   epoch: 0,

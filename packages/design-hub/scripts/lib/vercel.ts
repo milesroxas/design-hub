@@ -9,7 +9,8 @@ import type { ProjectInfo } from './deploy.ts';
 
 export const ENVIRONMENTS = ['production', 'preview'] as const;
 export type Target = (typeof ENVIRONMENTS)[number] | 'development';
-const GATE_ENV = ['GATE_PASSWORD', 'GATE_SECRET'] as const;
+/** What the gate needs: the secret that signs each person's session. */
+const GATE_ENV = ['GATE_SECRET'] as const;
 /** What the Upstash for Redis integration injects (Vercel Marketplace). */
 export const STORE_ENV = ['KV_REST_API_URL', 'KV_REST_API_TOKEN'] as const;
 
@@ -45,21 +46,37 @@ export function envNames(cwd: string, target: Target): Set<string> | null {
   return new Set([...out.stdout.matchAll(/^\s*([A-Z][A-Z0-9_]*)\s/gm)].map((m) => m[1]));
 }
 
-/** Sets one variable for one target; `force` replaces a value that is already there. */
-export function setEnv(cwd: string, name: string, target: Target, value: string, force: boolean): Run | null {
+/** Adds one variable for one target that does not have it yet. */
+export function setEnv(cwd: string, name: string, target: Target, value: string): Run | null {
   // The value goes on stdin, never argv, so it stays out of the process list.
-  return vercel(cwd, ['env', 'add', name, target, ...(force ? ['--force'] : []), '--yes'], value);
+  return vercel(cwd, ['env', 'add', name, target, '--yes'], value);
+}
+
+/** The Upstash console's names for the same store; server/upstash.ts reads either pair. */
+const UPSTASH_ENV = ['UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN'] as const;
+
+/**
+ * What the gate needs that a target lacks, as `NAME:target`: the secret, and
+ * the review store, without which nobody can sign in, since it keeps the
+ * people and their links. Null when a target's names could not be read.
+ */
+export function missingGateEnv(
+  names: Record<(typeof ENVIRONMENTS)[number], Set<string> | null>,
+): string[] | null {
+  const missing: string[] = [];
+  for (const target of ENVIRONMENTS) {
+    const have = names[target];
+    if (!have) return null;
+    for (const name of GATE_ENV) if (!have.has(name)) missing.push(`${name}:${target}`);
+    const store = [STORE_ENV, UPSTASH_ENV].some((pair) => pair.every((n) => have.has(n)));
+    if (!store) missing.push(...STORE_ENV.filter((n) => !have.has(n)).map((n) => `${n}:${target}`));
+  }
+  return missing;
 }
 
 /** The gate variables missing from production or preview, or null when the CLI cannot say. */
 export function gateEnvMissing(cwd: string): string[] | null {
-  const missing: string[] = [];
-  for (const target of ENVIRONMENTS) {
-    const names = envNames(cwd, target);
-    if (!names) return null;
-    for (const name of GATE_ENV) if (!names.has(name)) missing.push(`${name}:${target}`);
-  }
-  return missing;
+  return missingGateEnv({ production: envNames(cwd, 'production'), preview: envNames(cwd, 'preview') });
 }
 
 /** The signed-in account, or null when the CLI is missing or signed out. */

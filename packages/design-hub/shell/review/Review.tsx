@@ -129,16 +129,16 @@ export function Review({ prototype, feature, states }: Props) {
   );
 }
 
-/** With no person behind the session, comment mode is this card and nothing else. */
+/**
+ * The session ended after the page loaded (a revoke, a sign out everywhere,
+ * or the end of their access): comment mode is this card and nothing else.
+ */
 function GuestCard({ onClose }: { onClose: () => void }) {
   return (
     <Card at={null} label="Comments" onDismiss={onClose}>
       <div className="rv-note">
-        <strong>Comments need an invite</strong>
-        <p>
-          You are viewing with the shared password. Ask the team for an invite link to read and leave
-          comments.
-        </p>
+        <strong>You are signed out</strong>
+        <p>Ask the studio for a new link to read and leave comments.</p>
       </div>
     </Card>
   );
@@ -230,7 +230,7 @@ function PeopleCard({ store, s, onClose }: { store: ReviewStore; s: State; onClo
           onClick={onClose}
         />
       </header>
-      <People store={store} me={s.me} people={s.people} />
+      <People store={store} me={s.me} people={s.people} access={s.access} />
     </Card>
   );
 }

@@ -8,6 +8,8 @@ const person = (id: string, kind: PersonKind, revokedAt: string | null = null): 
   name: id,
   team: kind === 'studio' ? 'Studio' : 'Acme',
   kind,
+  email: null,
+  accessEndsAt: null,
   createdAt: '',
   revokedAt,
   epoch: 0,

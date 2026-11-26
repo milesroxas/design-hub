@@ -26,6 +26,11 @@ test('sends one command per call and reads HGETALL pairs', async () => {
   await kv.hset('k', 'f', 'v');
   assert.deepEqual(await kv.hgetall('k'), { a: '1', b: '2' });
   assert.deepEqual(sent[0], ['HSET', 'k', 'f', 'v']);
+  // HDEL's count passes through: a one-time link is claimed by whoever removed it.
+  assert.equal(await kv.hdel('k', 'f'), 1);
+  assert.deepEqual(sent[2], ['HDEL', 'k', 'f']);
+  assert.equal(await kv.hincrby('k', 'n', 1), 1);
+  assert.deepEqual(sent[3], ['HINCRBY', 'k', 'n', '1']);
 });
 
 test('throws on a Redis error so the service never reads a failure as empty', async () => {

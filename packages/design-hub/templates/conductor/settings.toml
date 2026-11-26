@@ -5,7 +5,7 @@
 
 # Each workspace installs the project and serves it on its own
 # $CONDUCTOR_PORT; the dev server reads that port before .env's PORT. No
-# secrets are copied in: the GATE_* values are for Vercel only.
+# secrets are copied in: GATE_SECRET is for Vercel only.
 [scripts]
 setup = """
 git -C "$CONDUCTOR_ROOT_PATH" fetch --prune origin && git -C "$CONDUCTOR_ROOT_PATH" pull --ff-only || true

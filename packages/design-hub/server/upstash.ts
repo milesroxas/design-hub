@@ -36,9 +36,10 @@ export function upstashKV({ url, token }: StoreConfig, fetcher: typeof fetch = f
     hset: async (key, field, value) => {
       await command('HSET', key, field, value);
     },
-    hdel: async (key, field) => {
-      await command('HDEL', key, field);
-    },
+    // HDEL answers how many fields it removed, which is what lets a one-time link be claimed once.
+    hdel: (key, field) => command<number>('HDEL', key, field),
+    // Atomic in Redis, so two sign-outs everywhere at once raise the epoch twice.
+    hincrby: (key, field, by) => command<number>('HINCRBY', key, field, String(by)),
     hgetall: async (key) => {
       const flat = (await command<string[] | null>('HGETALL', key)) ?? [];
       const out: Record<string, string> = {};

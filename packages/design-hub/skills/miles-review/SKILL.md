@@ -1,6 +1,6 @@
 ---
 name: miles-review
-description: "Work from review comments on the deployed prototypes: pull them into the repo, sort them by state and kind, act on each, resolve them, and manage who may comment. Load when the user mentions comments, feedback, review notes, a reviewer, an invite link, or asks what the client said. Triggers on: comments, feedback, review notes, client notes, what did they say, reviewer, invite, people, revoke, resolve, triage, pnpm comments, pnpm people."
+description: "Work from review comments on the deployed prototypes: pull them into the repo, sort them by state and kind, act on each, resolve them, and manage who may comment. Load when the user mentions comments, feedback, review notes, a reviewer, a sign-in link, or asks what the client said. Triggers on: comments, feedback, review notes, client notes, what did they say, reviewer, add someone, invite, sign-in link, new link, people, revoke, resolve, triage, pnpm comments, pnpm people."
 ---
 
 # Review
@@ -28,11 +28,13 @@ Each comment is pinned to a prototype, its state (the URL and every dial value) 
 
 ## People
 
-- Every person is **Studio** or **Client**. Both comment, reply, edit their own words, and resolve or reopen any thread. Studio also deletes any comment, sorts comments and invites people; a Client deletes only their own. The studio's team are Studio; everyone on the client's side is Client, the default.
+- Every person is **Studio** or **Client**. Both comment, reply, edit their own words, and resolve or reopen any thread. Studio also deletes any comment, sorts comments and manages people; a Client deletes only their own. The studio's team are Studio; everyone on the client's side is Client, the default.
 - **Team** is the company: `Studio`, or the client's name. It shows beside every name, so a reviewer reads who said what.
-- The first Studio person comes from `pnpm people invite --name <n> --team <t> --kind studio --site <url>`; after that, Studio invites from the People tab.
-- A link works for 14 days. `pnpm people reissue <id>` replaces it and signs that person out everywhere; `revoke` ends their access on their next page load.
-- Never paste an invite link into a commit, a document, a ticket or a comment. Why: anyone holding it signs in as that person.
+- The first Studio person comes from `pnpm people add --name <n> --team <t> --kind studio --site <url>`; after that, Studio adds people from the People tab.
+- A link signs in one device, then stops working; unused, it lasts 14 days. `pnpm people link <id>` gives another for another device, `sign-out <id>` ends every session and gives one new link, and `revoke <id>` ends their access everywhere within five minutes. `miles-deploy` holds the rest: access length, the handover.
+- Never paste a link into a commit, a document, a ticket or a comment. Why: whoever opens it first signs in as that person.
+
+- A project that shared before one-time links lost its people and comments in the move: the new store starts empty. `miles-deploy` has the steps; comments pulled before stay in `comments.md`.
 
 ## The words in comments
 

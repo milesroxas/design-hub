@@ -200,7 +200,7 @@ function gate(): Step {
       step: 'gate',
       ok: true,
       skipped: 'not linked to Vercel yet',
-      fix: 'design-hub bootstrap --vercel <project>',
+      fix: 'design-hub bootstrap --vercel <project> --review',
     };
   const missing = gateEnvMissing(ROOT);
   if (missing === null) return { step: 'gate', ok: true, skipped: 'vercel CLI unavailable or signed out' };
@@ -209,7 +209,7 @@ function gate(): Step {
         step: 'gate',
         ok: false,
         detail: { missing },
-        fix: 'design-hub bootstrap --vercel <project> sets them.',
+        fix: 'pnpm bootstrap --vercel <project> --review sets GATE_SECRET and adds the review store, which keeps the people and their links: without it nobody can sign in.',
       }
     : { step: 'gate', ok: true };
 }

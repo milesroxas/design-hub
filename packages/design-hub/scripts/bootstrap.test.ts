@@ -63,44 +63,31 @@ test("a harness's port is used as given and never claimed or written", () => {
   assert.throws(() => envIn(dir), /ENOENT/);
 });
 
-test('keeps the password and secret already set, so a second run changes nothing', () => {
-  const env = { GATE_PASSWORD: 'kept-password', GATE_SECRET: 's'.repeat(44) };
-  assert.deepEqual(gateValues(undefined, env), {
-    password: 'kept-password',
-    secret: env.GATE_SECRET,
-    rotated: false,
-  });
-  assert.equal(gateValues('kept-password', env).rotated, false);
-});
-
-test('a new password given rotates it and keeps the secret', () => {
-  const env = { GATE_PASSWORD: 'old-password', GATE_SECRET: 'secret' };
-  assert.deepEqual(gateValues('new-password', env), {
-    password: 'new-password',
-    secret: 'secret',
-    rotated: true,
-  });
+test('the gate env is the signing secret alone: made once, then kept', () => {
+  const made = gateValues({});
+  assert.deepEqual(Object.keys(made), ['GATE_SECRET']);
+  assert.equal(Buffer.from(made.GATE_SECRET, 'base64').length, 32);
+  assert.notEqual(gateValues({}).GATE_SECRET, made.GATE_SECRET);
+  // A password left in .env by an older release is neither kept nor returned.
+  const old = { [['GATE', 'PASSWORD'].join('_')]: 'old-password', GATE_SECRET: 's'.repeat(44) };
+  assert.deepEqual(gateValues(old), { GATE_SECRET: old.GATE_SECRET });
 });
 
 const TEMPLATE_GITIGNORE = 'node_modules/\n.vercel/\n.env\n!.env.example\n';
 
-test('.gitignore goes back as it was when a step after vercel link throws', () => {
+test('.gitignore goes back as it was when a step after vercel link throws', async () => {
   const dir = project();
   const file = join(dir, '.gitignore');
   writeFileSync(file, TEMPLATE_GITIGNORE);
-  assert.throws(
-    () =>
-      keepingGitignore(dir, () => {
-        appendFileSync(file, '.vercel\n.env*\n');
-        throw new Error('Could not add the Upstash for Redis store');
-      }),
+  await assert.rejects(
+    keepingGitignore(dir, async () => {
+      appendFileSync(file, '.vercel\n.env*\n');
+      throw new Error('Could not add the Upstash for Redis store');
+    }),
     /Upstash/,
   );
   assert.equal(readFileSync(file, 'utf8'), TEMPLATE_GITIGNORE);
-  assert.equal(
-    keepingGitignore(dir, () => 'linked'),
-    'linked',
-  );
+  assert.equal(await keepingGitignore(dir, () => 'linked'), 'linked');
 });
 
 // A stand-in for the Vercel CLI: link appends to .gitignore as the real one
@@ -110,10 +97,35 @@ const FAKE_VERCEL = `#!/bin/sh
 case "$1" in
   whoami) echo tester ;;
   link) printf '.vercel\\n.env*\\n' >> .gitignore; [ "$FAIL" = link ] && exit 1 ;;
-  integration) echo 'Error: accept the terms' >&2; exit 1 ;;
+  integration) [ "$FAIL" = none ] && exit 0; echo 'Error: accept the terms' >&2; exit 1 ;;
 esac
 exit 0
 `;
+
+/** Runs bootstrap's main in a child on `dir` with the fake Vercel CLI; stdout is its result or its error. */
+function bootstrapIn(dir: string, fail: string, flags: Record<string, unknown>) {
+  const bin = project();
+  writeFileSync(join(bin, 'vercel'), FAKE_VERCEL, { mode: 0o755 });
+  const script = `import { main } from ${JSON.stringify(join(import.meta.dirname, 'bootstrap.ts'))};
+try { process.stdout.write(JSON.stringify(await main({ flags: ${JSON.stringify(flags)}, positionals: [] }))); }
+catch (error) { process.stdout.write(error.message); }`;
+  const out = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
+    env: {
+      ...process.env,
+      PATH: `${bin}:${process.env.PATH}`,
+      FAIL: fail,
+      DESIGN_HUB_ROOT: dir,
+      DESIGN_HUB_PORTS: join(project(), 'ports.json'),
+      DESIGN_HUB_PORT: undefined,
+      CONDUCTOR_PORT: undefined,
+    },
+    encoding: 'utf8',
+  });
+  assert.equal(out.status, 0, out.stderr);
+  return out.stdout;
+}
+
+const REVIEW = { vercel: 'acme', review: true, 'no-install': true, branch: 'main' };
 
 for (const [fail, error] of [
   ['link', /vercel link/],
@@ -121,32 +133,35 @@ for (const [fail, error] of [
 ] as const)
   test(`bootstrap --review puts .gitignore back when vercel ${fail} fails`, () => {
     const dir = project();
-    const bin = project();
     writeFileSync(join(dir, '.gitignore'), TEMPLATE_GITIGNORE);
-    writeFileSync(join(bin, 'vercel'), FAKE_VERCEL, { mode: 0o755 });
-    const script = `import { main } from ${JSON.stringify(join(import.meta.dirname, 'bootstrap.ts'))};
-try { main({ flags: { vercel: 'acme', review: true, 'no-install': true, branch: 'main' }, positionals: [] }); }
-catch (error) { process.stdout.write(error.message); }`;
-    const out = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
-      env: {
-        ...process.env,
-        PATH: `${bin}:${process.env.PATH}`,
-        FAIL: fail,
-        DESIGN_HUB_ROOT: dir,
-        DESIGN_HUB_PORTS: join(project(), 'ports.json'),
-        DESIGN_HUB_PORT: undefined,
-        CONDUCTOR_PORT: undefined,
-      },
-      encoding: 'utf8',
-    });
-    assert.equal(out.status, 0, out.stderr);
-    assert.match(out.stdout, error);
+    assert.match(bootstrapIn(dir, fail, REVIEW), error);
     assert.equal(readFileSync(join(dir, '.gitignore'), 'utf8'), TEMPLATE_GITIGNORE);
   });
 
-test('makes a readable 12-character password and a 32-byte secret when none exist', () => {
-  const { password, secret } = gateValues(undefined, {});
-  assert.match(password, /^[a-hjkmnp-z2-9]{12}$/);
-  assert.equal(Buffer.from(secret, 'base64').length, 32);
-  assert.throws(() => gateValues('short', {}), /8 characters or more/);
+test('bootstrap --vercel makes no password, makes the secret once and keeps it', () => {
+  const dir = project();
+  writeFileSync(join(dir, '.gitignore'), TEMPLATE_GITIGNORE);
+  const first = bootstrapIn(dir, 'none', { ...REVIEW, access: '6m' });
+  assert.doesNotMatch(first, /password/i);
+  const result = JSON.parse(first);
+  assert.equal(result.vercel.env['GATE_SECRET:production'], 'set');
+  assert.equal('share' in result, false);
+  // The fake store hands back no credentials, so the default is left for `people access`, and said so.
+  assert.equal(result.review.access, undefined);
+  assert.ok(result.warnings.some((w: string) => /people access --access 6m/.test(w)));
+  const secret = envIn(dir).match(/^GATE_SECRET=(.+)$/m)?.[1];
+  assert.equal(Buffer.from(secret ?? '', 'base64').length, 32);
+  // The secret goes to .env and Vercel's stdin, never into what bootstrap prints.
+  assert.equal(first.includes(secret ?? ''), false);
+  assert.doesNotMatch(envIn(dir), /PASSWORD/);
+  const second = bootstrapIn(dir, 'none', REVIEW);
+  assert.equal(second.includes(secret ?? ''), false);
+  assert.equal(envIn(dir).match(/^GATE_SECRET=(.+)$/m)?.[1], secret);
+});
+
+test('--access needs --review', () => {
+  assert.match(
+    bootstrapIn(project(), 'none', { 'no-install': true, branch: 'main', access: '3m' }),
+    /--access needs --review/,
+  );
 });

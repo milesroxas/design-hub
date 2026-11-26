@@ -3,7 +3,7 @@
 // One command from a passing project to a link that works: the pre-flight,
 // the deploy (a push when the Vercel project is connected to the repo, an
 // upload otherwise), the wait for the build, and a signed-out request that
-// must come back as the password page. It ends with what the handover needs.
+// must come back as the sign-in page. It ends with what the handover needs.
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -18,10 +18,12 @@ import {
   gitConnected,
   nextStep,
   type Plan,
+  PROBE_LINK,
   type ProjectInfo,
   plan,
   productionUrl,
   type Repo,
+  storeVerdict,
 } from './lib/deploy.ts';
 import { linkedOrg, linkedProject, projectInfo, STORE_ENV, vercel, whoami } from './lib/vercel.ts';
 import * as preflight from './preflight.ts';
@@ -29,7 +31,7 @@ import * as preflight from './preflight.ts';
 export const spec = {
   name: 'share',
   summary:
-    'Pre-flight, deploy to production, wait for the build, and check the live URL shows the password page. Returns the share details.',
+    'Pre-flight, deploy to production, wait for the build, and check the live URL shows the sign-in page. Returns the share details.',
   flags: {
     skip: {
       type: 'list',
@@ -42,7 +44,7 @@ export const spec = {
     },
   },
   output:
-    '{ ok, via, deployment, url, gate, share: { url, password, open: [{ title, path, guide? }] }, review, next } or { ok: false, stage, ... }',
+    '{ ok, via, deployment, url, gate, share: { url, open: [{ title, path, guide? }] }, review, next } or { ok: false, stage, ... }',
 } as const satisfies CommandSpec;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -98,16 +100,22 @@ function viaCli(): string {
   return url;
 }
 
-/** A signed-out request for the home page, the way a reviewer first meets the link. */
+/**
+ * Signed-out requests as a browser makes them: the home page must answer with
+ * the sign-in page, and a link no store holds with 404, which proves the store
+ * that keeps people's links is wired.
+ */
 async function smoke(url: string) {
   try {
     const res = await fetch(`${url}/`, GATE_REQUEST);
-    return gateVerdict({
+    const gate = gateVerdict({
       status: res.status,
       location: res.headers.get('location'),
       robots: res.headers.get('x-robots-tag'),
       body: await res.text(),
     });
+    if (!gate.ok) return gate;
+    return storeVerdict((await fetch(`${url}${PROBE_LINK}`, GATE_REQUEST)).status);
   } catch (error) {
     return {
       ok: false as const,
@@ -139,7 +147,7 @@ function target(): { project: string; scope: string | null } {
   const project = linkedProject(ROOT);
   if (!project)
     throw new CliError('This folder is not linked to a Vercel project.', {
-      fix: 'design-hub bootstrap --vercel <project> --team <team>',
+      fix: 'design-hub bootstrap --vercel <project> --team <team> --review',
     });
   return { project, scope: linkedOrg(ROOT) };
 }
@@ -170,16 +178,17 @@ async function deploy(route: Plan, project: string, scope: string | null) {
   return { via: 'cli' as const, deployment: viaCli() };
 }
 
+/** People sign in with their own one-time links, so the handover carries no secret, only who to add. */
 function handover(url: string) {
   const env = readEnv(ROOT);
   const review = STORE_ENV.every((n) => env[n]) ? 'on' : 'off';
   return {
-    share: { url, password: env.GATE_PASSWORD ?? null, open: opens() },
+    share: { url, open: opens() },
     review,
     next:
       review === 'on'
-        ? `Send the handover (miles-deploy). First share with comments: design-hub people invite --name "<user>" --kind studio --site ${url}.`
-        : 'Send the handover (miles-deploy). Never send GATE_SECRET.',
+        ? `Add each person with pnpm people add --name "<name>" --team "<team>" --site ${url} (--kind studio for the studio), and send each person their own link with the handover (miles-deploy). A link signs in one device, then stops working. Never send GATE_SECRET.`
+        : 'Nobody can sign in without the review store: run design-hub bootstrap --vercel <project> --review, then share again. Never send GATE_SECRET.',
   };
 }
 

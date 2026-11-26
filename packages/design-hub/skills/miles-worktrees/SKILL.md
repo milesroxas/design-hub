@@ -16,7 +16,7 @@ pnpm dev
 
 Nothing else is needed, in any harness. On its first start `pnpm dev` claims a free port for the folder and writes it to `.env` and `.claude/launch.json`; later starts reuse it. Both files are gitignored because they belong to the folder, so worktrees never conflict on them. `pnpm bootstrap` remains the full setup (TypeSafe key, Vercel) but is not needed to run.
 
-Some harnesses copy `.env` from the main checkout. That is fine: the copied `PORT` is claimed by the other folder, so this folder gets its own and the dev server says so on stderr. The copied `GATE_*` and `TYPESAFE_API_KEY` keep working.
+Some harnesses copy `.env` from the main checkout. That is fine: the copied `PORT` is claimed by the other folder, so this folder gets its own and the dev server says so on stderr. The copied `GATE_SECRET` and `TYPESAFE_API_KEY` keep working.
 
 ## Ports
 

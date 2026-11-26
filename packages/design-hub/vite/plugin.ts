@@ -21,10 +21,10 @@ import { registry } from './registry.ts';
 
 const require = createRequire(import.meta.url);
 
-// The password page loads before sign-in, so it cannot reach the hashed
-// bundle. Its font goes out at the one fixed path the gate lets through.
-// `design-hub dev` has no gate, so there /_gate/ previews the page (?failed
-// shows the wrong-password state).
+// The gate pages load before sign-in, so they cannot reach the hashed
+// bundle. Their font goes out at the one fixed path the gate lets through.
+// `design-hub dev` has no gate, so there /_gate/ previews the sign-in page,
+// ?page=link a link's page and ?page=used a used or expired link's.
 const gateFontFile = () =>
   join(dirname(require.resolve('@fontsource-variable/geist')), 'files', 'geist-latin-wght-normal.woff2');
 
@@ -43,7 +43,7 @@ function gateFont(): Plugin {
           return;
         }
         if (url.pathname !== '/_gate/') return nextMiddleware();
-        const page = await gatePreview(url.searchParams.has('failed'));
+        const page = await gatePreview(url.searchParams.get('page'));
         res.setHeader('content-type', 'text/html; charset=utf-8');
         res.setHeader('content-security-policy', page.csp);
         res.end(page.html);

@@ -13,7 +13,7 @@ This guide walks every workflow and every state the prototype holds. Follow it t
 
 ## Before you start
 
-1. **Open the prototype** in a desktop browser: the password-protected link sent with this guide.
+1. **Open the prototype** in a desktop browser, with the sign-in link sent to you. It signs in one device, then stops working; for another device, ask for a new one.
 2. **Find Controls.** The dark round button at the top of the page opens a panel that belongs to the prototype, not the product. It holds the switches a review needs; its last row, **Open the walkthrough**, brings this guide back in a new tab.
 3. **Start clean.** Name the reset control, and say what persists in the browser until it is used.
 
