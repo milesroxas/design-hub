@@ -8,12 +8,11 @@
 import { Icon } from '@kit/Icon';
 import { Button, type MenuEntry, useMenu } from '@kit/ui';
 import { type KeyboardEvent, useEffect, useState } from 'react';
-import { type Audience, type Comment, KINDS, type Kind, LIMITS } from '../../core/review/model';
+import { type Audience, type Comment, KINDS, type Kind, LIMITS, threadLabel } from '../../core/review/model';
 import { can } from '../../core/review/policy';
 import { Action, Card } from './Card';
 import { act, type Me, type ReviewStore } from './client';
 import { Field, useTextBox } from './Field';
-import { describe } from './PickLayer';
 
 const KIND_LABEL: Record<Kind, string> = { bug: 'Bug', taste: 'Taste', copy: 'Copy' };
 const AUDIENCE_LABEL: Record<Audience, string> = { internal: 'Internal', client: 'Client-facing' };
@@ -31,14 +30,6 @@ function ago(iso: string): string {
   for (const [unit, size] of STEPS)
     if (Math.abs(seconds) >= size) return relative.format(Math.round(seconds / size), unit);
   return 'just now';
-}
-
-/** What the comment is on, in a few words. */
-function about(root: Comment): string {
-  const target = root.anchor?.target;
-  if (!target) return 'On the page';
-  const el = document.querySelector(target);
-  return el ? `On ${describe(el)}` : 'On another view';
 }
 
 function Avatar({ name }: { name: string }) {
@@ -398,7 +389,7 @@ type HeadProps = {
   onDelete: () => void;
 };
 
-/** What the comment is on, then its one decision and the rest. */
+/** Its number and who it is for, then its one decision and the rest. The pin beside the card already shows what it is on. */
 function ThreadHead({
   store,
   root,
@@ -416,15 +407,15 @@ function ThreadHead({
 }: HeadProps) {
   return (
     <header className="rv-card-head">
-      <span className="rv-no" aria-hidden="true">
+      <span className="rv-no" data-audience={root.audience} aria-hidden="true">
         {root.status === 'resolved' ? <Icon name="check" size={12} /> : root.number || null}
       </span>
-      <span className="rv-about rv-ellipsis">{about(root)}</span>
       {mark && (
         <span className="rv-aud" data-audience={root.audience}>
           {AUDIENCE_LABEL[root.audience]}
         </span>
       )}
+      <span className="rv-spacer" />
       <Stepper index={index} total={total} onStep={onStep} />
       {canResolve && <ResolveButton store={store} root={root} />}
       <ThreadMenu
@@ -477,7 +468,8 @@ export function ThreadCard({
 }) {
   const [confirming, setConfirming] = useState(false);
   const resolved = root.status === 'resolved';
-  const words = [root.number ? `Comment ${root.number}` : 'Comment', mark && AUDIENCE_LABEL[root.audience]];
+  const label = threadLabel(root);
+  const words = [label ? `Comment ${label}` : 'Comment', mark && AUDIENCE_LABEL[root.audience]];
   return (
     <Card
       at={at}

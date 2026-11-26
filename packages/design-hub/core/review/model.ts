@@ -119,11 +119,22 @@ export type Comment = {
   /** The thread's audience. Set on the root when it is made and copied onto every reply; never changed. */
   audience: Audience;
   /**
-   * The thread's number on its prototype, from 1, copied onto every reply. Never reused, so a
-   * deleted or hidden thread moves no other number. 0 for a thread stored before numbers existed.
+   * The thread's number on its prototype and audience, from 1, copied onto every reply.
+   * Internal and client-facing threads count apart, so a Client's numbers run 1, 2, 3 with no
+   * gap where an internal thread sits; `threadLabel` tells the two apart. Never reused, so a
+   * deleted thread moves no other number. 0 for a thread stored before numbers existed.
    */
   number: number;
 };
+
+/**
+ * How a thread is named in words, for a screen reader and an agent: `I2` for internal thread 2,
+ * `2` for client-facing thread 2, '' for a thread stored before numbers. The pin, the card
+ * and `comments pull` use it, so "fix I2" names one thread. The pin and the card's badge show
+ * the bare number; their amber says internal.
+ */
+export const threadLabel = (c: Pick<Comment, 'audience' | 'number'>): string =>
+  !c.number ? '' : c.audience === 'internal' ? `I${c.number}` : String(c.number);
 
 /**
  * A stored comment as the rules read it. A record with no audience, or one

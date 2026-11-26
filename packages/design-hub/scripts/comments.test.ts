@@ -63,7 +63,7 @@ test('groups by README state in table order, then by kind, with replies under th
   assert.match(md, /\n {2}- Ed \(Acme\): Fixed\.\n/);
 });
 
-test('each thread line carries its number and audience; a thread stored before numbers has none', () => {
+test('each thread line carries its label and audience: I7 internal, 8 client-facing, none before numbers', () => {
   const md = renderComments(
     'sample',
     [
@@ -73,7 +73,7 @@ test('each thread line carries its number and audience; a thread stored before n
     ],
     [],
   );
-  assert.match(md, /\n- #7 \(internal\) Rae \(Acme\): Token is off\./);
+  assert.match(md, /\n- #I7 \(internal\) Rae \(Acme\): Token is off\./);
   assert.match(md, /\n- #8 \(client-facing\) Rae \(Acme\): Header heavy\./);
   assert.match(md, /\n- \(internal\) Rae \(Acme\): Old one\./);
 });

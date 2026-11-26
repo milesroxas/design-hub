@@ -382,7 +382,7 @@ const AUDIENCES: { value: Audience; label: string; title: string }[] = [
   { value: 'client', label: 'Client-facing', title: 'Everyone sees it, the client included' },
 ];
 
-/** Studio's choice on a new thread. Fixed once posted: to tell the client later, write a new one. */
+/** Studio's choice on a new thread, in the head beside the title. Fixed once posted: to tell the client later, write a new one. */
 function AudienceChoice({ value, onChange }: { value: Audience; onChange: (a: Audience) => void }) {
   return (
     // biome-ignore lint/a11y/useSemanticElements: a fieldset brings a border and a legend the card does not want
@@ -420,10 +420,15 @@ function DraftCard({
   const [chosen, setChosen] = useState<Audience>('internal');
   const sent = audience === 'choose' ? chosen : audience;
   return (
-    <Card at={draftPoint(draft)} label="New comment" onDismiss={() => dispatch({ type: 'close' })}>
+    // The highlight shows sighted people what it is on; the label tells everyone else.
+    <Card
+      at={draftPoint(draft)}
+      label={`New comment on ${describe(draft.target)}`}
+      onDismiss={() => dispatch({ type: 'close' })}
+    >
       <header className="rv-card-head">
         <h2 className="rv-title">New comment</h2>
-        <span className="rv-muted rv-ellipsis">on {describe(draft.target)}</span>
+        {audience === 'choose' && <AudienceChoice value={chosen} onChange={setChosen} />}
         <span className="rv-spacer" />
         <Button
           kind="tertiary"
@@ -434,7 +439,6 @@ function DraftCard({
           onClick={() => dispatch({ type: 'close' })}
         />
       </header>
-      {audience === 'choose' && <AudienceChoice value={chosen} onChange={setChosen} />}
       <div className="rv-card-foot">
         <Field
           label="New comment"

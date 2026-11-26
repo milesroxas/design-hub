@@ -7,7 +7,7 @@ description: "Work from review comments on the deployed prototypes: pull them in
 
 Each comment is pinned to a prototype, its state (the URL and every dial value) and, usually, an element. The repo gets them as `docs/sprints/<feature>/comments.md`, grouped by README state, then by kind. That file is generated: read it, never edit it, and close comments in the store.
 
-Each thread line starts with its number, as the panel shows it, and its audience: `- #3 (internal) Ed (Studio): ...` or `- #4 (client-facing) Rae (Acme): ...`. A number is fixed and never reused, so gaps are normal. An internal thread is the studio's own note and no client ever sees it; a client-facing one is read by everyone, Studio's replies in it included.
+Each thread line starts with its label and its audience: `- #I3 (internal) Ed (Studio): ...` or `- #4 (client-facing) Rae (Acme): ...`. Internal and client-facing threads count apart: I1, I2 are internal, 1, 2 client-facing, so `I2` and `2` are different threads. Name a thread by its label exactly. The panel shows both as a bare number; an internal pin is amber, so a person may say "the amber 2" for `I2`. A number is fixed and never reused, so gaps after a delete are normal. An internal thread is the studio's own note and no client ever sees it; a client-facing one is read by everyone, Studio's replies in it included.
 
 ## Working from comments
 

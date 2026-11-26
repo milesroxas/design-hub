@@ -20,7 +20,11 @@
   --rv-on-accent: oklch(0.205 0 0);
   --rv-mark: oklch(0.55 0 0);         /* on the page: mid grey holds on light and dark */
   --rv-pin: oklch(0.205 0 0);
-  --rv-done: oklch(0.8 0.13 155);     /* resolved: the one hue in the layer, on its check alone */
+  --rv-done: oklch(0.8 0.13 155);     /* resolved: green, on its check alone */
+  --rv-internal: oklch(0.83 0.15 85);    /* internal: the amber of a support tool's internal note */
+  --rv-on-internal: oklch(0.3 0.06 85);  /* the label on amber, 8:1 */
+  --rv-internal-chip: oklch(0.35 0.06 85);     /* the Internal tag on the card: a solid low tint, not amber at low opacity */
+  --rv-internal-chip-fg: oklch(0.88 0.12 85);  /* 8:1 on the chip */
   --rv-danger: oklch(0.779 0.131 23.4);
   --rv-raised: 0 0 0 1px oklch(1 0 0 / 0.09), 0 12px 32px -8px oklch(0 0 0 / 0.5), 0 2px 6px oklch(0 0 0 / 0.25);
 
@@ -77,7 +81,6 @@
 .rv-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .rv-muted { color: var(--harness-fg-muted); }
 .rv-spacer { flex: 1; }
-.rv-ellipsis { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rv-title { margin: 0; font-size: 13px; line-height: 18px; font-weight: 600; color: var(--rv-fg-strong); white-space: nowrap; }
 
 /* ---------- the kit's controls, at the layer's size ---------- */
@@ -301,16 +304,16 @@
 .rv-alert.rv-viewing .icon { flex: none; color: var(--harness-fg-muted); }
 
 /* ---------- pins ---------- */
-/* Open: solid and numbered. Internal (Studio only): numbered, on a lighter
-   grey with a dashed edge, so it reads apart without a hue. Resolved: smaller,
-   pale, a check where the number was. The open card's pin turns to its other
-   face, so it reads as selected. */
+/* Open: solid and numbered. Internal (Studio only): numbered on amber,
+   far lighter than the open face so it reads apart without the hue too.
+   Resolved: smaller, pale, a check where the number was. The open card's pin
+   turns to its other face, so it reads as selected. */
 .rv-pins { position: fixed; inset: 0; z-index: var(--rv-z-page); pointer-events: none; }
 .rv-pin {
   position: absolute;
   top: -24px;
   left: 0;
-  width: 24px;
+  min-width: 24px;
   height: 24px;
   padding: 0;
   border: 0;
@@ -322,11 +325,14 @@
 .rv-pin::before { content: ''; position: absolute; inset: -10px; }
 .rv-pin[hidden] { display: none; }
 .rv-pin:focus-visible { outline: none; }
+/* Grows from its tip for a longer number (128), never shrinks below a circle. */
 .rv-pin-face {
+  box-sizing: border-box;
   display: grid;
   place-items: center;
-  width: 100%;
+  min-width: 24px;
   height: 100%;
+  padding: 0 5px;
   border: 2px solid oklch(1 0 0);
   border-radius: 12px 12px 12px 3px;
   background: var(--rv-pin);
@@ -344,11 +350,14 @@
 .rv-pin:active .rv-pin-face { scale: 0.94; }
 .rv-pin:focus-visible .rv-pin-face { box-shadow: 0 2px 8px oklch(0 0 0 / 0.35), 0 0 0 2px oklch(1 0 0), 0 0 0 4px var(--rv-pin); }
 .rv-pin[data-active] .rv-pin-face { background: oklch(1 0 0); color: var(--rv-pin); border-color: var(--rv-pin); }
-.rv-pin[data-resolved] { width: 20px; height: 20px; top: -20px; }
+.rv-pin[data-resolved] { min-width: 20px; height: 20px; top: -20px; }
+.rv-pin[data-resolved] .rv-pin-face { min-width: 20px; padding: 0; }
 .rv-pin[data-resolved] .rv-pin-face { border-color: oklch(1 0 0 / 0.9); background: oklch(0.88 0 0); color: oklch(0.42 0 0); box-shadow: 0 1px 4px oklch(0 0 0 / 0.25); }
 .rv-pin[data-resolved][data-active] .rv-pin-face { background: var(--rv-pin); color: var(--rv-done); border-color: oklch(1 0 0); }
-.rv-pin[data-internal]:not([data-resolved]) .rv-pin-face { background: oklch(0.44 0 0); border-style: dashed; }
-.rv-pin[data-internal][data-active]:not([data-resolved]) .rv-pin-face { background: oklch(1 0 0); color: var(--rv-pin); border-color: var(--rv-pin); }
+.rv-pin[data-internal]:not([data-resolved]) .rv-pin-face { background: var(--rv-internal); color: var(--rv-on-internal); }
+.rv-pin[data-internal]:not([data-resolved]):focus-visible .rv-pin-face { box-shadow: 0 2px 8px oklch(0 0 0 / 0.35), 0 0 0 2px oklch(1 0 0), 0 0 0 4px var(--rv-on-internal); }
+/* Selected: the amber face turns over, as the open one does. */
+.rv-pin[data-internal][data-active]:not([data-resolved]) .rv-pin-face { background: var(--rv-on-internal); color: var(--rv-internal); border-color: oklch(1 0 0); }
 .rv-pin[data-new] { pointer-events: none; }
 .rv-pin[data-new] .rv-pin-face { background: oklch(1 0 0); border-color: var(--rv-pin); }
 
@@ -369,7 +378,7 @@
 }
 @starting-style { .rv-card { opacity: 0; transform: scale(0.97); } }
 
-/* The head: what the comment is on, then its one decision and the rest. 44px, no rule under it: the body's own air separates them. */
+/* The head: number and audience, then its one decision and the rest. 44px, no rule under it: the body's own air separates them. */
 .rv-card-head {
   display: flex;
   flex: none;
@@ -378,14 +387,17 @@
   min-height: 44px;
   padding: 6px 6px 0 14px;
 }
-.rv-card-head .rv-title + .rv-muted { margin-left: 6px; }
-.rv-about { flex: 1; min-width: 0; margin-left: 4px; color: var(--harness-fg-muted); font-size: 12px; }
+.rv-card-head .rv-title { margin-right: 6px; }
 .rv-step { margin: 0 2px; font-size: 12px; }
-/* Who the thread is for, Studio only: a hairline tag, quieter than kind and state. */
+/* Who the thread is for, Studio only. Client-facing: a hairline tag, quieter than kind and state.
+   Internal: the pin's amber, as a solid chip. */
+.rv-no + .rv-aud { margin-left: 4px; }
 .rv-aud { flex: none; display: inline-flex; align-items: center; height: 18px; padding: 0 6px; border-radius: 6px; box-shadow: inset 0 0 0 1px oklch(1 0 0 / 0.14); color: var(--harness-fg-muted); font-size: 11px; font-weight: 500; white-space: nowrap; }
-/* Studio's choice on a new thread: the bar's toggle, small, under the head. */
-.rv-toggle.rv-audience { align-self: flex-start; height: 28px; margin: 8px 10px 0 14px; }
-.rv-toggle.rv-audience button { width: auto; height: 24px; padding: 0 10px; border-radius: 12px; font-size: 12px; }
+.rv-aud[data-audience="internal"] { box-shadow: none; background: var(--rv-internal-chip); color: var(--rv-internal-chip-fg); }
+/* Studio's choice on a new thread: the bar's toggle, small, in the head beside the title.
+   A 28px track (radius 14), its halves 2px in (24px, radius 12). */
+.rv-toggle.rv-audience { height: 28px; border-radius: 14px; }
+.rv-toggle.rv-audience button { height: 24px; padding: 0 10px; border-radius: 12px; font-size: 12px; }
 .rv-no {
   display: inline-grid;
   flex: none;
@@ -400,7 +412,7 @@
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
-/* Resolve: the head's one labelled control, quiet until the pointer finds it; done, its check turns the layer's one hue. */
+/* Resolve: the head's one labelled control, quiet until the pointer finds it; done, its check turns green. */
 .rv .btn.rv-resolve { height: 28px; padding: 0 10px 0 8px; color: var(--harness-fg); background: var(--rv-fill); }
 .rv .btn.rv-resolve .icon { color: var(--rv-done); }
 .rv .btn.rv-resolve.is-done .icon { color: var(--harness-fg-muted); }
@@ -415,6 +427,7 @@
 .rv-card-foot.rv-confirm { transition: opacity var(--dur-menu) var(--ease-out); }
 
 /* Resolved: the badge becomes a check, a band names who closed it, the words step back. */
+.rv-no[data-audience="internal"] { background: var(--rv-internal); color: var(--rv-on-internal); }
 .rv-card[data-resolved] .rv-no { background: var(--rv-fill-open); color: var(--rv-done); }
 .rv-band { display: flex; align-items: center; gap: 6px; margin: 8px 10px 0; padding: 8px 10px; border-radius: 10px; background: var(--rv-fill); color: var(--harness-fg-muted); transition: opacity var(--dur-dialog) var(--ease-out), translate var(--dur-dialog) var(--ease-out); }
 @starting-style { .rv-band { opacity: 0; translate: 0 -4px; } }
@@ -571,8 +584,8 @@
   .rv-card[data-sheet][data-dragging] { transition: none; }
   .rv-card[data-sheet][data-leaving] { transition: transform 200ms var(--ease-out); }
   .rv-card[data-sheet] .rv-card-head { touch-action: none; min-height: 44px; padding-top: 4px; }
-  /* The pin shows above the sheet; the head keeps its room for the controls. */
-  .rv-card[data-sheet] .rv-about { visibility: hidden; }
+  .rv-card[data-sheet] .rv-toggle.rv-audience { height: 36px; border-radius: 18px; }
+  .rv-card[data-sheet] .rv-toggle.rv-audience button { height: 32px; border-radius: 16px; }
   .rv-grab { display: block; flex: none; width: 36px; height: 4px; margin: 8px auto 0; border-radius: 999px; background: oklch(1 0 0 / 0.25); touch-action: none; }
   .rv-card[data-sheet] .rv-card-body { padding-inline: 16px; }
   .rv-card[data-sheet] .rv-card-foot { padding: 0 12px 12px; }
@@ -589,9 +602,9 @@
   }
   @starting-style { .rv-bar { opacity: 1; transform: translateY(100%); } }
   .rv-bar { transition: transform var(--dur-sheet, 320ms) var(--ease-drawer), opacity var(--dur-dialog) var(--ease-out); }
-  .rv-toggle { height: 40px; border-radius: 20px; margin-right: auto; }
+  .rv-bar .rv-toggle { height: 40px; border-radius: 20px; margin-right: auto; }
   .rv-bar-rule { display: none; }
-  .rv-toggle button { height: 36px; border-radius: 18px; }
+  .rv-bar .rv-toggle button { height: 36px; border-radius: 18px; }
   .rv-bar .btn { width: 40px; height: 40px; border-radius: 20px; }
   .rv-stepper-count { min-width: 52px; }
   .rv-alert { margin: 0 12px 8px; max-width: none; }
@@ -600,7 +613,7 @@
 
 /* The narrowest phones: the toggle keeps its icons, its words go to the screen reader. */
 @media (max-width: 400px) {
-  .rv-toggle button { width: 44px; padding: 0; justify-content: center; }
+  .rv-bar .rv-toggle button { width: 44px; padding: 0; justify-content: center; }
   .rv-toggle-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .rv-stepper-count { min-width: 44px; }
 }

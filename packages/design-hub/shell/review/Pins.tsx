@@ -3,12 +3,13 @@
 // button in the tab order. The button is the hit area and never changes size;
 // the face inside it is what presses and lifts, so a press near the edge
 // still ends on the pin. An open thread's pin is solid and numbered; an
-// open internal one is numbered too, on a lighter face with a dashed edge; a
-// resolved one is pale and carries a check. The number is the thread's own,
-// never its place in the list.
+// open internal one is numbered on amber, the colour of an internal note, its
+// colour alone telling it apart; a resolved one is pale and carries a check.
+// The number is the thread's own, never its place in the list. The label read
+// out (Comment I2) keeps the I, so two threads never sound alike.
 import { Icon } from '@kit/Icon';
 import { useEffect, useRef } from 'react';
-import type { Comment } from '../../core/review/model';
+import { type Comment, threadLabel } from '../../core/review/model';
 import { pinPoint } from './anchor';
 import { draftPoint } from './PickLayer';
 import type { Draft } from './view';
@@ -18,10 +19,11 @@ const moveTo = (el: HTMLElement, at: { x: number; y: number } | null) => {
   if (at) el.style.transform = `translate(${at.x}px, ${at.y}px)`;
 };
 
-/** "Comment 3, internal, resolved, by Rae": the number when it has one, then what the face shows. */
+/** "Comment I3, internal, resolved, by Rae": the label when it has one, then what the face shows. */
 function pinLabel(c: Comment): string {
+  const label = threadLabel(c);
   const words = [
-    c.number ? `Comment ${c.number}` : 'Comment',
+    label ? `Comment ${label}` : 'Comment',
     c.audience === 'internal' && 'internal',
     c.status === 'resolved' && 'resolved',
   ];

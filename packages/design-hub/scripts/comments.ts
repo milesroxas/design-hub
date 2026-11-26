@@ -6,7 +6,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { featureTitle } from '../core/feature.ts';
-import { type Comment, KINDS } from '../core/review/model.ts';
+import { type Comment, KINDS, threadLabel } from '../core/review/model.ts';
 import type { Review } from '../core/review/service.ts';
 import { jevTriager } from '../core/review/triage.ts';
 import { checks } from '../server/checks.ts';
@@ -54,8 +54,9 @@ function threadLines(root: Comment, comments: Comment[]): string[] {
     : '';
   const resolved = root.status === 'resolved' ? ' Resolved.' : '';
   const replies = comments.filter((c) => c.thread === root.id && !isRoot(c));
-  // The number the panel shows (none on a thread stored before numbers), then who the thread is for.
-  const head = `${root.number ? `#${root.number} ` : ''}(${AUDIENCE_WORD[root.audience]})`;
+  // The label the panel shows (I2 internal, 2 client-facing, none before numbers), then who it is for.
+  const label = threadLabel(root);
+  const head = `${label ? `#${label} ` : ''}(${AUDIENCE_WORD[root.audience]})`;
   return [
     `- ${head} ${line(root)}${where}${resolved} id \`${root.id}\``,
     ...replies.map((r) => `  - ${line(r)}`),

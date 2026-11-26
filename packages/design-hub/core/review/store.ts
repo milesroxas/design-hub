@@ -34,7 +34,10 @@ export const KEY = {
   /** Project settings, one field each: `access` is the default access length. */
   settings: `${PREFIX}settings`,
   prototypes: `${PREFIX}prototypes`,
-  /** The last thread number given on each prototype, one field per prototype, only ever raised by HINCRBY. */
+  /**
+   * The last thread number given on each prototype, only ever raised by HINCRBY: field
+   * `<prototype>` counts client-facing threads, `<prototype>:internal` internal ones.
+   */
   counters: `${PREFIX}counters`,
   comments: (prototype: string) => `${PREFIX}comments:${prototype}`,
 } as const;

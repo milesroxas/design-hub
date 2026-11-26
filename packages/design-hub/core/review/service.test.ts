@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { beforeEach, test } from 'node:test';
-import { type Anchor, accessEnd, type Person } from './model.ts';
+import { type Anchor, accessEnd, type Comment, type Person, threadLabel } from './model.ts';
 import { createReview, type Review, ReviewError } from './service.ts';
 import { KEY, type KV, memoryKV, type Snapshot } from './store.ts';
 
@@ -678,27 +678,71 @@ test('a Client still works on client-facing threads, Studio’s replies included
   assert.deepEqual(await review.remove(client, { ...at, id: t.clientReply.id }), [t.clientReply.id]);
 });
 
-test('numbers are fixed: a delete or a hidden thread moves no other number, and none is reused', async () => {
+test('numbers are fixed: internal and client-facing threads count apart, and none moves or is reused', async () => {
   const t = await twoThreads();
   const third = await review.add(client, { body: 'Third', anchor });
-  assert.deepEqual([t.internal.number, t.shared.number, third.number], [1, 2, 3]);
+  const ours = await review.add(studio, { body: 'Ours too', anchor });
+  assert.deepEqual(
+    [t.internal, t.shared, third, ours].map((c) => [c.audience, c.number]),
+    [
+      ['internal', 1],
+      ['client', 1],
+      ['client', 2],
+      ['internal', 2],
+    ],
+  );
+  assert.deepEqual([t.internal, t.shared, third, ours].map(threadLabel), ['I1', '1', '2', 'I2']);
   // Replies carry their thread's number.
-  assert.deepEqual([t.internalReply.number, t.studioReply.number], [1, 2]);
-  // A Client sees 2 and 3: the internal thread is hidden and leaves a gap.
-  const roots = (cs: { id: string; thread: string; number: number }[]) =>
-    cs.filter((c) => c.id === c.thread).map((c) => c.number);
-  assert.deepEqual(roots(await review.listComments(client, 'sample-list')), [2, 3]);
+  assert.deepEqual([t.internalReply.number, t.studioReply.number], [1, 1]);
+  // A Client sees 1 and 2: no gap where an internal thread sits.
+  const roots = (cs: Comment[]) => cs.filter((c) => c.id === c.thread).map(threadLabel);
+  assert.deepEqual(roots(await review.listComments(client, 'sample-list')), ['1', '2']);
   await review.remove(studio, { prototype: 'sample-list', id: t.shared.id });
-  assert.deepEqual(roots(await review.listComments(studio, 'sample-list')), [1, 3]);
-  assert.deepEqual(roots(await review.listComments(client, 'sample-list')), [3]);
-  assert.equal((await review.add(client, { body: 'Fourth', anchor })).number, 4);
+  assert.deepEqual(roots(await review.listComments(studio, 'sample-list')), ['I1', '2', 'I2']);
+  assert.deepEqual(roots(await review.listComments(client, 'sample-list')), ['2']);
+  assert.equal((await review.add(client, { body: 'Fourth', anchor })).number, 3);
 });
 
 test('numbers count per prototype', async () => {
   const a = await review.add(client, { body: 'A1', anchor });
   const b = await review.add(client, { body: 'B1', anchor: { ...anchor, prototype: 'other' } });
-  const a2 = await review.add(studio, { body: 'A2', anchor });
+  const a2 = await review.add(studio, { body: 'A2', anchor, audience: 'client' });
   assert.deepEqual([a.number, b.number, a2.number], [1, 1, 2]);
+});
+
+test('the internal count starts past internal threads numbered while the two shared one count', async () => {
+  const kv = memoryKV();
+  const r = createReview(kv);
+  const root = { ...studio, id: 'cli' };
+  // Under one shared count: internal 1, client-facing 2, internal 3.
+  const shared = [
+    { id: 'a', audience: 'internal', number: 1 },
+    { id: 'b', audience: 'client', number: 2 },
+    { id: 'c', audience: 'internal', number: 3 },
+  ];
+  await kv.sadd(KEY.prototypes, 'sample-list');
+  await kv.hset(KEY.counters, 'sample-list', '3');
+  for (const c of shared)
+    await kv.hset(
+      KEY.comments('sample-list'),
+      c.id,
+      JSON.stringify({
+        ...c,
+        thread: c.id,
+        author: { id: 'cli', name: 'Ed', team: 'Studio' },
+        body: 'Before',
+        createdAt: '2030-01-01T00:00:00Z',
+        editedAt: null,
+        anchor,
+        status: 'open',
+        resolvedBy: null,
+        triage: null,
+      }),
+    );
+  const next = await r.add(root, { body: 'After', anchor });
+  assert.deepEqual([next.audience, next.number], ['internal', 4]);
+  assert.equal((await r.add(root, { body: 'Again', anchor })).number, 5);
+  assert.equal((await r.add(root, { body: 'For them', anchor, audience: 'client' })).number, 4);
 });
 
 test('a stored comment without an audience is internal, and one without a number has none', async () => {

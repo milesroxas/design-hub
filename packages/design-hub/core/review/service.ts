@@ -188,6 +188,24 @@ export function createReview(kv: KV, overrides: Partial<Deps> = {}) {
 
   // Every comment read goes through readComment, so a record with no audience reads as internal.
   // Unfiltered: nothing below hands these out without visibleTo or seen.
+  /**
+   * The next thread number for an audience on a prototype. Atomic and only raised: two threads at
+   * once get two numbers, and a failed save skips one. Client-facing threads keep the field
+   * numbers always had. Internal threads count in their own, which starts past any internal
+   * thread numbered before the two counted apart, so no internal number is given twice.
+   */
+  const nextNumber = async (prototype: string, audience: Audience): Promise<number> => {
+    if (audience === 'client') return kv.hincrby(KEY.counters, prototype, 1);
+    const field = `${prototype}:internal`;
+    const n = await kv.hincrby(KEY.counters, field, 1);
+    if (n !== 1) return n;
+    const before = Math.max(
+      0,
+      ...(await commentsOf(prototype)).filter((c) => c.audience === 'internal').map((c) => c.number),
+    );
+    return before ? kv.hincrby(KEY.counters, field, before) : n;
+  };
+
   const commentsOf = async (prototype: string) =>
     Object.values(await kv.hgetall(KEY.comments(prototype)))
       .map(readComment)
@@ -377,7 +395,7 @@ export function createReview(kv: KV, overrides: Partial<Deps> = {}) {
     /**
      * A new thread. A Client's is client-facing whatever the input says;
      * Studio's is internal unless `audience` is 'client'. Its number is the
-     * prototype's next, never one used before.
+     * next of its audience on the prototype, never one used before.
      */
     async add(
       actor: Person | null,
@@ -408,9 +426,9 @@ export function createReview(kv: KV, overrides: Partial<Deps> = {}) {
         resolvedBy: null,
         triage,
         audience: audienceFor(actor, asked),
-        // Atomic and only raised: two threads at once get two numbers, and a failed save skips one.
-        number: await kv.hincrby(KEY.counters, anchor.prototype, 1),
+        number: 0,
       };
+      c.number = await nextNumber(anchor.prototype, c.audience);
       await kv.sadd(KEY.prototypes, anchor.prototype);
       await saveComment(anchor.prototype, c);
       return c;
