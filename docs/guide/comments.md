@@ -12,7 +12,21 @@ The first time, Vercel asks you to accept the comment store's terms in your brow
 
 Every person is one of two kinds. Your team are **Studio**; the people you make the work for are **Client**.
 
-Both comment, reply, edit what they wrote, and resolve or reopen any thread. A Client can delete only their own comments. Studio can also delete anyone's, sort comments by kind and state, and add and remove people.
+Both comment, reply, edit what they wrote, and resolve or reopen any thread they can see. A Client can delete only their own comments. Studio can also delete anyone's, sort comments by kind and state, and add and remove people.
+
+## Internal and client-facing
+
+Every thread is either **internal** or **client-facing**, and it stays that way: nothing switches it later.
+
+- A thread a Client starts is client-facing. Everyone sees it, and Studio's replies in it are seen by the client too.
+- A thread Studio starts is internal unless Studio picks **Client-facing** on the new comment. Only Studio sees an internal thread and its replies. A client is never sent one: it is not hidden on their screen, it never reaches their browser at all.
+- To tell the client something from an internal thread, write a new client-facing comment. The internal one stays inside the studio.
+
+Studio sees every thread. The card of each one says **Internal** or **Client-facing** beside what it is on, and an internal pin is a lighter grey with a dashed edge. **⋯** and **Show** narrow the list to **Internal** or **Client-facing**; **All** brings everything back. While the list is narrowed, a note over the bar says **Internal only** or **Client-facing only**, and **Show all** on it brings every thread back. The count on the round button always counts every open thread, so a narrowed list never hides one. A client sees none of these words: every thread they see is one they may see.
+
+## Client view
+
+**⋯** and **Client view** show the comments exactly as a client gets them: only client-facing threads, with Studio's controls out of the way. Use it to check what a client will read before a presentation. A note over the bar says Client view is on; press **Leave** on it, or **⋯** and **Leave Client view**, to go back. A comment you write in Client view is client-facing. That browser remembers Client view until you leave it.
 
 ## Add someone
 
@@ -28,7 +42,7 @@ Or say it:
 
 Press the round comments button at the edge of the screen. It turns light: you are commenting. Click the part of the page you mean, write the comment and press Enter. The toggle on the bar switches between **Pin** (a comment on one part of the page) and **Page** (a comment on the page as a whole). Press the button again, **×** on the bar or Esc to stop.
 
-While you are commenting, each comment is a numbered pin on the page. A pin opens its thread in a card beside it; the arrows on the bar step from one thread to the next. Anyone can reply, and anyone can **Resolve** a thread and **Reopen** it. A resolved pin turns pale and shows a check; **⋯** and **Show resolved** bring them back on the page.
+While you are commenting, each comment is a numbered pin on the page. A thread keeps its number for good: deleting one moves no other, and a number is never given twice. So a client, who does not see the internal threads, may see gaps (1, 3, 4); that is expected. A pin opens its thread in a card beside it; the arrows on the bar step from one thread to the next. Anyone can reply, and anyone can **Resolve** a thread and **Reopen** it. A resolved pin turns pale and shows a check; **⋯** and **Show resolved** bring them back on the page.
 
 On a phone, tap instead of click. The bar sits along the bottom edge in place of the button, and a thread opens as a sheet from the bottom: drag it down to close it.
 
