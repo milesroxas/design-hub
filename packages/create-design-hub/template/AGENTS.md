@@ -2,7 +2,7 @@
 
 The contract for every coding agent in this project (Claude, Codex, Cursor, others). `CLAUDE.md` points here.
 
-This project holds prototypes, the materials they are drawn with, and the documents around them. Its tracks, in `.design-hub/project.json`, say what kind of engagement it is: **product** (app screens, handed to the client's engineers as a spec), **website** (pages on a CMS: Webflow, Payload, WordPress or EmDash), **brand** (collateral: social posts, slides, print), or any mix. Read it before starting work; `pnpm tracks` prints it. The hub that lists and serves them, the review panel, the password gate and the `design-hub` command are the `@milesroxas/design-hub` package in `node_modules`: never edit it, never read it to do prototype work. Everything an agent touches is in this folder.
+This project holds prototypes, the materials they are drawn with, and the documents around them. Its tracks, in `.design-hub/project.json`, say what kind of engagement it is: **product** (app screens, handed to the client's engineers as a spec), **website** (pages on a CMS: Webflow, Payload, WordPress or EmDash), **brand** (collateral: social posts, slides, print), or any mix. Read it before starting work; `pnpm tracks` prints it. The hub that lists and serves them, the review panel, the sign-in gate and the `design-hub` command are the `@milesroxas/design-hub` package in `node_modules`: never edit it, never read it to do prototype work. Everything an agent touches is in this folder.
 
 ## Why it works this way
 
@@ -134,7 +134,7 @@ The `miles-*` skills in `.claude/skills/` come from the `@milesroxas/design-hub`
 | `miles-new-feature` | Starting a feature or a prototype: the folder, the README, `docs/sprints/<feature>/`. |
 | `miles-get-hostile` | Writing `fixtures.json` or deciding what an edge case looks like. |
 | `miles-paper-to-prototype` | Every Paper MCP read. Maps Paper output onto the kit's tokens and components. |
-| `miles-deploy` | Deploying, sharing or updating the link, signing in to Vercel, the password, turning on comments, checking the work before any of those. The user never types these commands: run them and send any link they must click. |
+| `miles-deploy` | Deploying, sharing or updating the link, signing in to Vercel, adding people and sending each their sign-in link, a new link for another device, how long access lasts, turning on comments, checking the work before any of those. The user never types these commands: run them and send any link they must click. |
 | `miles-review` | Comments from the deployed prototypes, and who may comment. |
 | `miles-port` | Turning an approved prototype into production. |
 | `miles-brand` | Brand collateral: social posts, slides, print; artboards, formats and export. |

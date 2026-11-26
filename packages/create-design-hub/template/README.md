@@ -19,6 +19,6 @@ Not a developer? The [guide](https://github.com/milesroxas/design-hub/tree/main/
 | `DESIGN.md`, `PRODUCT.md` | The recorded design system and who the product is for. |
 | `.claude/` | Claude Code hooks and the `miles-*` skills (`pnpm skills` refreshes them from the package and adds any script they need). |
 
-The rules for people and agents are in [AGENTS.md](AGENTS.md). Sharing a link, the password gate and review comments: ask Claude to share or turn on comments (the `miles-deploy` and `miles-review` skills run every command), or `pnpm commands` for every command.
+The rules for people and agents are in [AGENTS.md](AGENTS.md). Sharing a link, who can sign in and review comments: ask Claude to share, add someone or turn on comments (the `miles-deploy` and `miles-review` skills run every command), or `pnpm commands` for every command.
 
 Design Hub upgrades itself when a Claude Code session starts here. To upgrade by hand: `pnpm exec design-hub upgrade`. To turn the automatic upgrade off: `DESIGN_HUB_AUTO_UPDATE=0` in `.env`.
