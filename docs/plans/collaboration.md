@@ -1,6 +1,6 @@
 # Collaboration: people, access and what clients see
 
-Status: slice 1 shipped in 0.6.0 (section 9 records what was decided in review) and slice 2 in 0.6.2; slices 3 to 7 are planned. Sections 3 to 7 are a proposed design for the decisions in section 2. Two points stay open (section 8); both are answered by the exploration in slice 6 and block nothing before it.
+Status: slice 1 shipped in 0.6.0 (section 9 records what was decided in review), slice 2 in 0.6.2 and slice 3 in 0.7.0 (section 10 records what was decided in the build and its two second reads); slices 4 to 7 are planned. Sections 3 to 7 are a proposed design for the decisions in section 2. Two points stay open (section 8); both are answered by the exploration in slice 6 and block nothing before it.
 
 ## 1. Problem and success
 
@@ -105,7 +105,7 @@ issuePersonToken(gate, claim: PersonClaim, endsAt: string | null): Promise<strin
 Call trees:
 
 - **Sign-in.** `proxy` on `/invite/<token>`: GET calls `peekLink` and renders who it is for. POST calls `useLink`, then `issuePersonToken`, sets the cookie and redirects.
-- **Any page.** `proxy`: `readPersonToken`, then `sessionPerson` (revoked, epoch, access end). Pass, or the sign-in page.
+- **Any request.** `proxy`: `readPersonToken`. A stamp under 5 minutes old passes on the signature; an older one asks `sessionPerson` (revoked, epoch, access end) whatever the request's headers say, then passes with a re-stamped cookie, or answers the sign-in page (section 10).
 - **A prototype's page or file.** `proxy` reads the slug from the path or the file name; for a Client it calls `audienceOf` and answers 404 when internal. Studio skips the lookup.
 - **Any API op.** `handleReview`: `actorFrom`, then the service, where `can` and `visibleTo` decide. The browser never filters.
 
@@ -199,3 +199,21 @@ Rejected:
 
 Left for later slices: an audience mark on the card header and a third pin face for internal threads (slice 4).
 
+## 10. Slice 3: decided in the build
+
+Built by one agent, read twice by a second model. The first read found that a revoked cookie still loaded pages; the second found nothing that passes the gate. What the code now does where section 4 said less or said otherwise:
+
+- **The session is re-checked every 5 minutes, on every kind of request.** Section 4 had only pages ask the store. A request's headers are the client's to choose, so a revoked cookie sent without `sec-fetch-dest: document` loaded every page and file until the token expired. The token is now `p3.<id>.<epoch>.<expires>.<checkedAt>.<sig>`. Under 5 minutes since the store's last yes (`CHECK_SECONDS`), the signature is enough. After that the gate asks the store on the next request of any kind and re-issues the cookie with a new stamp and an expiry from the person's current access end. So a revoke, a sign out everywhere or a changed access end reaches a signed-in device within 5 minutes; a link stops at once. The API asks the store on every call.
+- **The token is signed to the site.** The review store's URL is in the signed message (`Gate = { secret, site }`), so two projects with one `GATE_SECRET` never accept each other's cookies.
+- **A store that does not answer is 503, never a sign out.** Links work once, so clearing cookies on an outage would lock everyone out. The cookie is cleared only when the store answers no.
+- **A person is three records.** A profile (`people`), a write-once revocation (`revoked`) and an epoch only ever raised by `HINCRBY` (`epochs`). The last two overrule the profile, so a write that started from a stale read cannot undo a revoke or a sign out everywhere. `KV` gained `hincrby`, and `hdel` returns its count.
+- **Using a link.** Read and check the link and person, delete the link (the count is the claim, so two POSTs sign in one device), then read the person again and refuse if a revoke or sign out landed in between.
+- **Access length.** `3m`, `6m` or `open`; the project default is `3m` when unset and lives in the store's `settings`. A Client gets the default, a Studio person open-ended, either can be overridden, and `setAccess` changes one person later. Month ends clamp (30 Nov plus 3 months is the last day of February). A session never outlasts 400 days, the browser's cookie cap; the re-issue renews it while access holds.
+- **The review store is required.** People and links live in it, so a deployed site without one has a gate nobody can pass. `preflight` and `share` refuse before any deploy, and `share` probes a made-up link after one.
+- **Old state.** Store prefix `hub3:`; `p1` and `p2` tokens and the old gate cookie never verify. An upgraded project adds everyone again (`miles-deploy` says how).
+- **Words.** Service: `addPerson`, `newLink`, `signOutEverywhere`, `revoke`, `setAccess`, `peekLink`, `useLink`. API: `people.add`, `people.link`, `people.signOut`, `people.revoke`, `people.access`, `access`, `access.set`. CLI: `people add | link | sign-out | revoke | access`, `--access`.
+- **The link page** sends `Referrer-Policy: same-origin`, so Continue carries an Origin on browsers without `Sec-Fetch-Site`; every other gate page sends `no-referrer`.
+
+Slices 4 and 5 build on these: a new read path goes through the composed person, and slice 5's refusal of an internal file sits after the session check in `proxy`, where the store is already asked at most once per 5 minutes per device.
+
+Left in the backlog: a double press on Continue, a rate limit on `/invite/*`, earlier deployments that keep the password page, two sign outs at once, the comment-id answer to a signed-out caller, the local store across two processes.

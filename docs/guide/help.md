@@ -7,10 +7,11 @@
 | "One thing first" | Click **Install developer tools**, wait for the installer to finish, then **Check again**. |
 | The Prototypes page does not open, or the browser says it cannot connect | The Terminal window behind it was closed. Double-click **Design Hub.command** in your project folder again. |
 | A prototype shows an older version | Reload the page. If it is still old, tell Claude: "The hub shows the old version." |
-| The share link shows a Vercel sign-in page instead of the password page | Vercel's own protection is on. Tell Claude: "Run the Vercel setup again." It turns that off. |
-| "Review is not set up on this site" | Comments are not on yet. Tell Claude: "Turn on comments." |
-| The password is rejected | It was changed. Ask Claude: "What is the share password?" |
-| "This invite link has expired or was revoked" | Ask someone on the Studio side for a new link, or tell Claude: "Reissue Dana's link." |
+| The share link shows a Vercel sign-in page instead of the page that says to open your link | Vercel's own protection is on. Tell Claude: "Run the Vercel setup again." It turns that off. |
+| "Review is not set up on this site" | The people store is not on yet, so nobody can sign in. Tell Claude: "Turn on comments." |
+| "This link has been used, has expired or was removed" | Each link signs in one device, then stops working. Ask someone on the Studio side for a new link, or tell Claude: "A new link for Dana." |
+| The site says to open the link you were sent | This device is not signed in, or its access ended. Open your link, or ask the studio for a new one. |
+| Comments say "You are signed out" | Your access ended or was removed while the page was open. Ask the studio for a new link. |
 | Claude sends a Vercel sign-in link | Open it and choose **Allow**. If the link has expired, tell Claude: "Send a new sign-in link." |
 | You want the newest Design Hub | Nothing to do: each time you start Claude in your project, it upgrades itself and says so. Your prototypes and docs stay as they are. If Claude says the upgrade failed, tell it: "Try the Design Hub upgrade again." |
 | Claude asks you to accept the Upstash terms | Open the link Claude gives and accept for your team. If Vercel lists several Upstash products, choose **Install** on **Upstash for Redis**. Don't create a database there; close that step and tell Claude it's done. |

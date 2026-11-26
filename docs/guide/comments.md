@@ -1,26 +1,28 @@
 # Comments
 
-Two ways into a shared site. The password lets anyone look. An invite link lets one named person comment.
+Everyone on a shared site is a named person who signed in with their own link, so every comment says who wrote it.
 
 ## Turn comments on
 
 > Turn on comments.
 
-The first time, Vercel asks you to accept the comment store's terms in your browser; Claude gives you the link. If it lists several Upstash products, choose **Install** on **Upstash for Redis**, accept, and close any step that offers to create a database: Claude creates it. Claude then updates the site and gives you your own invite link. You are the first Studio person.
+The first time, Vercel asks you to accept the comment store's terms in your browser; Claude gives you the link. If it lists several Upstash products, choose **Install** on **Upstash for Redis**, accept, and close any step that offers to create a database: Claude creates it. Claude then updates the site and gives you your own sign-in link. You are the first Studio person.
 
 ## Studio and Client
 
 Every person is one of two kinds. Your team are **Studio**; the people you make the work for are **Client**.
 
-Both comment, reply, edit what they wrote, and resolve or reopen any thread. A Client can delete only their own comments. Studio can also delete anyone's, sort comments by kind and state, and invite and remove people.
+Both comment, reply, edit what they wrote, and resolve or reopen any thread. A Client can delete only their own comments. Studio can also delete anyone's, sort comments by kind and state, and add and remove people.
 
-## Invite someone
+## Add someone
 
-On the site, press the round comments button, then **⋯** and **People**. Enter their name, their team (your studio, or the client's company) and their kind: **Client**, or **Studio** for your own team. Copy the link and send it to them. Each link is for one person. When they open it, the page says who they are invited as; they press the button and they are in.
+On the site, press the round comments button, then **⋯** and **People**. Enter their name, their team (your studio, or the client's company), their kind (**Client**, or **Studio** for your own team) and how long their access lasts. **Default** is the project's length for a client, and open-ended for Studio. Copy the link and send it to them.
+
+Each link is for one person and signs in one device, then stops working. When they open it, the page says who it is for; they press **Continue** and they are in. For a second device, press **New link** on their row and send that one. An unused link lasts 14 days.
 
 Or say it:
 
-> Invite Dana from Acme as a client.
+> Add Dana from Acme as a client.
 
 ## Leave a comment
 
@@ -44,4 +46,6 @@ Claude pulls the comments into the project, sorts them by state and kind, acts o
 
 > Revoke Dana's access.
 
-Their link and their sessions stop. For a fresh link instead, say **Reissue Dana's link**.
+Their links stop working at once, and every device they signed in on is signed out within five minutes. Or press **Revoke** on their row in the People tab.
+
+To sign them out of every device but keep them, press **Sign out everywhere**: their devices are signed out within five minutes, and you get one new link to send. To change how long they keep access, press **Access** and choose a length; it counts from today, and their signed-in devices follow within five minutes.

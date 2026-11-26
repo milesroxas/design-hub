@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D22.18-brightgreen.svg)](packages/design-hub/package.json)
 
-Prototype every state of a product, website or brand piece in code, share it behind a password, and port it from the same list of states. A project is a thin folder of prototypes, materials and docs; everything else installs as `@milesroxas/design-hub`.
+Prototype every state of a product, website or brand piece in code, share it on a private link, and port it from the same list of states. A project is a thin folder of prototypes, materials and docs; everything else installs as `@milesroxas/design-hub`.
 
 Not a developer? Start with the [guide](docs/guide/README.md).
 
@@ -67,15 +67,15 @@ api/review.ts  proxy.ts  vercel.json   one line each
 - **Kit.** `@kit/ui`, `@kit/Space`, `@kit/Artboard` and more. A project's `kit/<name>` overrides the package's.
 - **Real content.** `fixtures-pull` reads Webflow, Payload, WordPress, or a JSON file (EmDash, anything else).
 - **Brand export.** `export` writes artboards to PNG and PDF through the installed Chrome.
-- **Review.** A shared password to view, invite links to comment, comments pinned to the element and dial state.
+- **Review.** Named people, each signed in by a one-time link, comments pinned to the element and dial state.
 - **Guardrails.** The fidelity guard on every write, axe in dev, `check` (TypeScript, Biome), `preflight` before sharing.
 - **CLI and skills.** `design-hub <command>`: flags only, one JSON object out, `--help` for the schema. The `miles-*` skills ship with it.
 
-Projects upgrade themselves. Each new Claude Code session in a project checks npm (cached for an hour) and, when a newer version is out, runs `pnpm add @milesroxas/design-hub@latest && pnpm skills` before the session loads, so the skills are current; Claude says so in one line and commits the change with the next commit. The upgrade touches only `package.json`, the lockfile, `.claude/skills/` and `.claude/settings.json` (where `skills` adds any script or hook a newer version needs). Offline or failed, the session starts as it was. `DESIGN_HUB_AUTO_UPDATE=0` in a project's `.env` turns it off; `design-hub upgrade` runs it by hand. A project made before 0.5.0 needs that command once to get the hook. Inspect tools for the port to production will arrive the same way.
+Projects upgrade themselves. Each new Claude Code session in a project checks npm (cached for an hour) and, when a newer version is out, runs `pnpm add @milesroxas/design-hub@latest && pnpm skills` before the session loads, so the skills are current; Claude says so in one line and commits the change with the next commit. The upgrade touches only `package.json`, the lockfile, `.claude/skills/` and `.claude/settings.json` (where `skills` adds any script or hook a newer version needs). Offline or failed, the session starts as it was. `DESIGN_HUB_AUTO_UPDATE=0` in a project's `.env` turns it off; `design-hub upgrade` runs it by hand. A project made before 0.5.0 needs that command once to get the hook. A project that shared with a password needs `pnpm bootstrap --vercel <project> --review` once before its next share, then everyone added again with their own link: people, links and comments from before are not carried over, the old password variable (the `GATE_` one that is not `GATE_SECRET`) can go from `.env` and Vercel, and earlier deployments that still show the password page should be removed. Inspect tools for the port to production will arrive the same way.
 
 ## Deploy and review
 
-Nothing to type. `design-hub signin` turns the Vercel sign-in into a link to click; `pnpm bootstrap --vercel <project> [--review]` links the project, connects its repo, sets the password gate and, with `--review`, the comment store; `pnpm share` runs the pre-flight, deploys, waits for the build and checks the live link shows the password page. Opening a comment reopens the exact URL and dial values the reviewer saw. Details: [packages/design-hub/README.md](packages/design-hub/README.md).
+Nothing to type. `design-hub signin` turns the Vercel sign-in into a link to click; `pnpm bootstrap --vercel <project> --review` links the project, connects its repo, sets the gate's secret and adds the review store, which keeps the people and their links; `pnpm share` runs the pre-flight, deploys, waits for the build and checks the live link shows the sign-in page; `pnpm people add` gives each person a link that signs in one device, then stops working. Opening a comment reopens the exact URL and dial values the reviewer saw. Details: [packages/design-hub/README.md](packages/design-hub/README.md).
 
 ## TypeSafe checks (optional)
 
