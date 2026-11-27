@@ -26,7 +26,7 @@ Studio sees every thread. The card of each one says **Internal** or **Client-fac
 
 ## Client view
 
-**⋯** and **Client view** show the comments exactly as a client gets them: only client-facing threads, with Studio's controls out of the way. Use it to check what a client will read before a presentation. A note over the bar says Client view is on; press **Leave** on it, or **⋯** and **Leave Client view**, to go back. A comment you write in Client view is client-facing. That browser remembers Client view until you leave it.
+**⋯** and **Client view** show the comments exactly as a client gets them: only client-facing threads, with Studio's controls out of the way. Use it to check what a client will read before a presentation. A note over the bar says Client view is on; press **Leave** on it, or **⋯** and **Leave Client view**, to go back. A comment you write in Client view is client-facing. That browser remembers Client view until you leave it. It covers the **Prototypes** page too: there it lists only the client-facing prototypes (see [Share a link](sharing.md)).
 
 ## Add someone
 
