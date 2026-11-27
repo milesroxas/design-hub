@@ -235,11 +235,14 @@ importers:
       motion:
         specifier: ^14.6.0
         version: 14.9.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      postcss:
+        specifier: ^8.5.32
+        version: 8.5.32
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
       vite:
-        specifier: ^8.3.5
+        specifier: ~8.3.5
         version: 8.3.5(@types/node@26.6.6)
     devDependencies:
       react:

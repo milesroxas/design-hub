@@ -59,7 +59,7 @@
     "check": "tsc --noEmit && biome check .",
     "fix": "biome check --write .",
     "test": "node --test \"core/**/*.test.ts\" \"shell/**/*.test.ts\" \"server/**/*.test.ts\" \"scripts/**/*.test.ts\" \"vite/**/*.test.ts\" \"vercel/**/*.test.ts\"",
-    "quality": "rm -rf .coverage && NODE_V8_COVERAGE=.coverage pnpm run --silent test > /dev/null && npx -y fallow@3.38.0 --coverage .coverage"
+    "quality": "mkdir -p .coverage && c=$(mktemp -d .coverage/run-XXXXXX) && if NODE_V8_COVERAGE=$c/v8 pnpm run --silent test > $c/test.log 2>&1; then npx -y fallow@3.38.0 --coverage $c/v8; s=$?; else cat $c/test.log; echo 'pnpm quality: the test step failed; its output is above.' >&2; s=1; fi; rm -rf $c; exit $s"
   },
   "peerDependencies": {
     "react": "^19.0.0",
@@ -78,8 +78,9 @@
     "dialkit": "^2.1.0",
     "marked": "^18.1.2",
     "motion": "^14.6.0",
+    "postcss": "^8.5.32",
     "typescript": "^7.0.2",
-    "vite": "^8.3.5"
+    "vite": "~8.3.5"
   },
   "devDependencies": {
     "react": "^19.3.1",

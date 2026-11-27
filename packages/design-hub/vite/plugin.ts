@@ -61,8 +61,9 @@ export type HubOptions = {
 export function designHub({ root }: HubOptions): PluginOption[] {
   return [
     react(),
-    kitResolver(join(root, 'kit'), PACKAGE_KIT),
+    // The boundary resolves first, so it sees every import, `@kit/*` included.
     registry(root),
+    kitResolver(join(root, 'kit'), PACKAGE_KIT),
     lapse(root),
     markdownDocs(),
     devReview(),
