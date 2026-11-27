@@ -20,6 +20,8 @@ Click **Open Design Hub** on the Design Hub page, or open the address Claude giv
 
 At the top of every prototype is a round button, **Controls**. It opens the dials: every state Claude built, such as empty, loading, the longest names, dark mode and slow motion. A reviewer who never opens Controls sees one state. Say so when you share. A client has only the dials you share with them (see [Share a link](sharing.md)).
 
+The **View** group in Controls holds only what applies to the prototype: theme, reduce motion and speed on a product or a website; none on brand collateral, which is a still file with one look. There, **Board** has **Zoom** and **Guides** instead, and the board always shows the light version it exports, whatever theme you use.
+
 ## Walkthroughs
 
 A feature can have a walkthrough: a page that explains the prototype and links straight into its states. They are listed under **Walkthroughs** on the Prototypes page.

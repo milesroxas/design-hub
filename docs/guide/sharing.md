@@ -26,16 +26,16 @@ Every prototype starts **Internal**: only your studio can open it. When one is r
 
 A client-facing prototype still keeps its controls inside the studio until you share them.
 
-- **Dials.** Open **Controls** on the prototype. Beside each dial is an eye. A dim, struck eye means internal: the client's panel does not have that dial, and the prototype uses its starting value. Click the eye and it turns bright: the client has the dial. Click again to take it back. The **View** tools (theme, reduce motion, speed) have no eye: a client always has them.
+- **Dials.** Open **Controls** on the prototype. Beside each dial is an eye. A dim, struck eye means internal: the client's panel does not have that dial, and the prototype uses its starting value. Click the eye and it turns bright: the client has the dial. Click again to take it back. The **View** tools (theme, reduce motion, speed), where a prototype has them, have no eye: a client always has them.
 - **Variants.** At the end of the picker is an eye. Click it, then click each variant the client should be able to flip between; a green dot marks them. Click **Done**. With one variant marked the client sees that one and no picker. With none marked they see the first.
 
-Both are kept on the shared site, like the prototype's own switch, and apply to every client at once. Turn on **Client view** to see the prototype as a client gets it: the eyes are gone and only the shared dials and variants remain.
+Both are kept on the shared site, like the prototype's own switch, and apply to every client at once. To see the prototype as a client gets it, open **Controls** and press **Client view** at the bottom. The page loads again as a client's: the eyes are gone, and only the shared dials and variants remain. A note at the top says Client view is on; press **Leave** on it, or **Leave Client view** in Controls, to go back. A prototype that is still internal shows as missing there, as it does for a client. Only your studio has this; a client never sees it.
 
 An internal dial is left out of the client's panel, not out of the page: its name can still be found in the page's code by someone who looks. Do not put anything secret in a dial's name.
 
 Walkthroughs are the exception: every walkthrough, and every feature's name, reaches everyone signed in, clients included, whatever the switches say. Do not write about internal work in a walkthrough until the client may see it.
 
-**Client view**, at the top of the **Prototypes** page, shows the page exactly as a client gets it. A note at the bottom says Client view is on; press **Leave** to go back. It is the same Client view as the comments', so turning it on in one place turns it on in the other.
+**Client view**, at the top of the **Prototypes** page, shows the page exactly as a client gets it. A note at the bottom says Client view is on; press **Leave** to go back. It is the same Client view as the comments' and the one in a prototype's **Controls**, so turning it on in one place turns it on in the others.
 
 The switches on your own computer (while you work with Claude, before sharing) only change that computer's copy. The shared site keeps its own: set them there.
 
