@@ -1,10 +1,18 @@
 declare module 'virtual:design-hub/registry' {
   import type { ComponentType } from 'react';
   import type { Doc } from './doc';
-  /** Each prototype's README text, by slug. */
-  export const readmes: Record<string, string>;
-  /** Each prototype's module loader, by slug; absent when the folder has no index.tsx. */
-  export const modules: Record<string, () => Promise<{ default: ComponentType }>>;
+  /** One prototype's entry: its README text, and its module loader, absent when the folder has no index.tsx. */
+  export type RegistryEntry = { readme: string; load?: () => Promise<{ default: ComponentType }> };
+  /**
+   * Every prototype's slug. Built, this loads `_p/all.js`, which the gate
+   * gives Studio only; for a Client it fails.
+   */
+  export function allSlugs(): Promise<string[]>;
+  /**
+   * One prototype's entry. Served, null for a slug with no prototype. Built,
+   * it loads `_p/<slug>/entry.js` and fails where the gate refuses it or there is none.
+   */
+  export function entryOf(slug: string): Promise<RegistryEntry | null>;
   /** Each feature's compiled walkthrough loader, by feature. */
   export const guideDocs: Record<string, () => Promise<Doc>>;
 }

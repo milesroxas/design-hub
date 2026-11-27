@@ -2,13 +2,17 @@ import { setGuide } from '@kit/dials';
 import '@kit/tokens.css';
 import '@kit/base.css';
 import './system.css';
-import { attachLapse } from '@kit/prefs';
+import { attachLapse, isClientView, setClientView } from '@kit/prefs';
 import { lazy, type ReactNode, StrictMode, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
 import { guideHref } from '../core/feature';
+import { hiddenFor } from './audience';
+import { ClientViewNote } from './ClientViewNote';
+import { readHub } from './hub';
 import { Index } from './Index';
+import { Notice } from './Notice';
 import { Prototype } from './Prototype';
-import { findEntry, guides } from './registry';
+import { getEntry, guides } from './registry';
 
 const params = new URLSearchParams(location.search);
 // `design-hub export` opens a prototype with ?export: its artboards alone, no
@@ -29,9 +33,39 @@ if (import.meta.env.DEV && !exporting && params.get('a11y') !== '0') {
 }
 
 // /<slug>/ is a prototype; /guide/<feature>/ is that feature's walkthrough.
-// The slug `guide` belongs to the shell (new.ts refuses it).
+// `guide`, `api` and `assets` belong to the hub (core/prototype.ts; new.ts refuses them).
 const [slug, sub] = location.pathname.split('/').filter(Boolean);
 const Guide = lazy(() => import('./Guide'));
+
+/**
+ * The prototype a page opens, or none, and whether Studio's Client view is
+ * what hides it: one a client cannot open reads as missing there, as it does
+ * for them (the gate refuses it to a Client).
+ */
+async function pageEntry(name: string) {
+  const entry = await getEntry(name);
+  if (!entry || !isClientView()) return { entry, hidden: false };
+  const answer = await readHub('client').catch(() => null);
+  const hidden = hiddenFor(answer, name) && answer?.me?.kind === 'studio';
+  return { entry: hidden ? undefined : entry, hidden };
+}
+
+/** Studio in Client view on a prototype a client cannot open: the missing page, with the way back. */
+function HiddenInClientView({ name }: { name: string }) {
+  const leave = () => {
+    setClientView(false);
+    location.reload();
+  };
+  return (
+    <>
+      <Notice
+        title={`No prototype called “${name}”`}
+        body="Check the link, or open one from all prototypes."
+      />
+      <ClientViewNote onLeave={leave} />
+    </>
+  );
+}
 
 let page: ReactNode;
 // Hub pages wear the neutral system look; a prototype keeps the project's tokens.
@@ -43,9 +77,9 @@ if (slug === 'guide') {
     </Suspense>
   );
 } else if (slug) {
-  const entry = findEntry(slug);
+  const { entry, hidden } = await pageEntry(slug);
   if (entry?.feature && guides.has(entry.feature)) setGuide(guideHref(entry.feature));
-  page = <Prototype slug={slug} entry={entry} />;
+  page = hidden ? <HiddenInClientView name={slug} /> : <Prototype slug={slug} entry={entry} />;
   if (entry && !exporting) {
     const { mountReview } = await import('./review/mount');
     mountReview({ prototype: slug, feature: entry.feature, states: (entry.states ?? []).map((s) => s.name) });

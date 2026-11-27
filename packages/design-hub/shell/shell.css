@@ -1,5 +1,5 @@
 /* The index: one group per feature (its primary prototype, its alternates on
-   a rail, its internal explorations folded into cards), then prototypes with
+   a rail, its explorations folded into cards), then prototypes with
    no feature, then the archive. Rows draw no dividers; their hover surface
    bleeds 12px into the gutter. The list ends in a foot (the Ledger Foot Rule).
    The rules are in README.md, The index. */
@@ -13,6 +13,7 @@
 .index-head, .index-tracks, .index-filter, .index-section, .index-subsection, .index-empty, .index-none, .index-foot { padding-inline: 12px; }
 
 .index-head { display: flex; flex-direction: column; gap: 8px; margin-bottom: 40px; }
+.index-head-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 32px; }
 .index-head h1 { font-size: 18px; line-height: 28px; font-weight: 600; text-wrap: balance; }
 .index-voice { font: 400 18px/28px var(--font-voice); letter-spacing: -0.01em; color: var(--text-secondary); max-width: 44ch; text-wrap: pretty; }
 .index code { font: 13px/20px var(--sys-font-mono); color: var(--text-secondary); }
@@ -114,6 +115,48 @@
 
 .index-foot { margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border-secondary); color: var(--text-primary); }
 
+/* Studio, outside Client view: each prototype's audience in a fifth column,
+   beside its row and never inside the link. Internal wears the internal
+   comments' amber; Client-facing stays quiet. The switch is the plain kind:
+   a 28px track, its hit area grown to 40px. */
+.index.has-audience { grid-template-columns: minmax(0, 1fr) auto auto auto auto; }
+.index.has-audience .index-row { grid-column: 1 / 5; }
+.index-list > li > .index-audience { grid-column: 5; align-self: center; padding-right: 12px; }
+.index-cards > li { flex-direction: column; gap: 6px; }
+.index-cards > li > .index-audience { padding: 0 12px 4px; }
+.index-audience { display: flex; align-items: center; justify-content: flex-end; gap: 8px; font-size: 12px; line-height: 18px; color: var(--text-quaternary); white-space: nowrap; }
+.index-cards .index-audience { justify-content: space-between; }
+.index-audience-word[data-audience="internal"] { padding: 0 6px; border-radius: var(--radius-xs); background: var(--sys-internal); color: var(--sys-on-internal); font-weight: 500; }
+.index-switch { position: relative; flex: none; width: 28px; height: 16px; padding: 0; border: 0; border-radius: var(--radius-full); background: var(--border-primary); cursor: pointer; transition: background-color var(--dur-hover) var(--ease-hover); }
+.index-switch::before { content: ""; position: absolute; inset: -12px -6px; }
+.index-switch[aria-disabled="true"] { cursor: progress; opacity: 0.6; }
+.index-switch:focus-visible { outline: 2px solid transparent; box-shadow: var(--focus-ring); }
+.index-switch-thumb { position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: oklch(1 0 0); box-shadow: 0 1px 2px oklch(0 0 0 / 0.2); transition: translate 160ms var(--ease-out), background-color var(--dur-hover) var(--ease-hover); }
+.index-switch[aria-checked="true"] { background: var(--fg-primary); }
+.index-switch[aria-checked="true"] .index-switch-thumb { translate: 12px 0; background: var(--bg-primary); }
+
+/* Studio's Client view, entered from the head and left from this note: the
+   comment layer's note (shell/review, .rv-viewing), in its words and look. */
+.index-client-view { flex: none; }
+.index-viewing {
+  --button-tertiary-fg: var(--harness-fg-muted);
+  --button-tertiary-fg_hover: oklch(1 0 0);
+  --button-tertiary-bg_hover: oklch(1 0 0 / 0.1);
+  --focus-ring: 0 0 0 2px var(--harness-bg), 0 0 0 4px oklch(1 0 0 / 0.7);
+  position: fixed; z-index: 10; left: 50%; bottom: max(24px, env(safe-area-inset-bottom));
+  translate: -50% 0;
+  display: flex; align-items: center; gap: 8px;
+  width: max-content; max-width: min(480px, calc(100vw - 32px)); margin: 0;
+  padding: 4px 4px 4px 14px; border-radius: 12px;
+  background: var(--harness-bg); color: oklch(1 0 0);
+  box-shadow: 0 0 0 1px oklch(1 0 0 / 0.09), 0 12px 32px -8px oklch(0 0 0 / 0.5), 0 2px 6px oklch(0 0 0 / 0.25);
+  font: 13px/18px var(--sys-font);
+  transition: opacity 200ms var(--ease-out), translate 200ms var(--ease-out);
+}
+@starting-style { .index-viewing { opacity: 0; translate: -50% 4px; } }
+.index-viewing .icon { flex: none; color: var(--harness-fg-muted); }
+.index-viewing .btn.index-viewing-act { height: 28px; padding: 0 8px; }
+
 @media (hover: hover) and (pointer: fine) {
   .index-row:hover { background: var(--bg-primary_hover); }
   .index-row:hover .index-summary { color: var(--text-secondary); }
@@ -140,9 +183,9 @@
    prototype, and the chosen row holds, so the eye keeps what it picked.
    The browser paints this page until the next one is ready, so the fade
    fills a wait that was blank. */
-.index-head, .index-tracks, .index-filter, .index-section, .index-subsection, .index-alternates-label, .index-foot { transition: opacity var(--dur-dialog-out) var(--ease-in); }
+.index-head, .index-tracks, .index-filter, .index-section, .index-subsection, .index-alternates-label, .index-foot, .index-audience { transition: opacity var(--dur-dialog-out) var(--ease-in); }
 .index.is-leaving .index-alternates::before { opacity: 0; transition: opacity var(--dur-dialog-out) var(--ease-in); }
-.index.is-leaving :is(.index-head, .index-tracks, .index-filter, .index-section, .index-subsection, .index-alternates-label, .index-foot, .index-row:not([data-chosen]), .index-card:not([data-chosen])) { opacity: 0; }
+.index.is-leaving :is(.index-head, .index-tracks, .index-filter, .index-section, .index-subsection, .index-alternates-label, .index-foot, .index-row:not([data-chosen]), .index-card:not([data-chosen]), .index-audience) { opacity: 0; }
 .index.is-leaving :is(.index-row, .index-card) { pointer-events: none; }
 
 :root[data-motion="reduce"] .index-rise { animation-name: index-fade; animation-duration: 120ms; animation-timing-function: linear; }
@@ -150,11 +193,15 @@
 :root[data-motion="reduce"] .index-fold { transition-property: opacity; }
 :root[data-motion="reduce"] .index-fold-toggle svg { transition: none; }
 :root[data-motion="reduce"] .index-card:hover .index-card-head svg { transform: none; }
+:root[data-motion="reduce"] .index-switch-thumb { transition: none; }
+:root[data-motion="reduce"] .index-viewing { transition-property: opacity; }
+@starting-style { :root[data-motion="reduce"] .index-viewing { translate: -50% 0; } }
 
 @media (max-width: 560px) {
   .index, .index-group, .index-alternates, .index-list, .index-list > li, .index-row { display: flex; flex-direction: column; }
   .index-row { gap: 2px; }
   .index-meta { display: flex; gap: 12px; margin-top: 4px; }
+  .index-list > li > .index-audience { justify-content: flex-start; padding: 0 12px 8px; }
 }
 
 .shell-notice { width: min(720px, 100% - 32px); margin: 0 auto; padding: 96px 0; display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }

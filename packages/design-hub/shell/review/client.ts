@@ -1,4 +1,5 @@
-// The review UI's one store: who is signed in, this prototype's comments and,
+// The review UI's one store, and the one way to the API (`call`), which the
+// index uses too: who is signed in, this prototype's comments and,
 // for Studio, the people. Components read it with useSyncExternalStore and
 // call its actions; every call goes to /api/review (server/api.ts), and each
 // answer is merged in place, so a write never refetches the list. The list is
@@ -25,6 +26,8 @@ class ApiError extends Error {
   problems: string[];
   /** A 503 with Retry-After: the store did not answer, and review is on. */
   retry: boolean;
+  /** The answer was not JSON: no review API answered (`vite preview` serves its page instead). */
+  notJson = false;
   constructor(status: number, message: string, problems: string[] = [], retry = false) {
     super(message);
     this.status = status;
@@ -38,7 +41,7 @@ const API = '/api/review';
 /** For a click handler: the store shows every failure in the panel, so the handler has nothing left to do with one. */
 export const act = (pending: Promise<unknown>) => void pending.catch(() => {});
 
-async function call<T>(
+export async function call<T>(
   op: string,
   body?: Record<string, unknown>,
   params: Record<string, string> = {},
@@ -56,8 +59,14 @@ async function call<T>(
     | null;
   if (response.status === 503 && response.headers.has('retry-after'))
     throw new ApiError(503, 'The review store did not answer. Reload in a minute.', [], true);
-  if (!json)
-    throw new ApiError(response.status, `The review API did not answer with JSON (${response.status}).`);
+  if (!json) {
+    const error = new ApiError(
+      response.status,
+      `The review API did not answer with JSON (${response.status}).`,
+    );
+    error.notJson = true;
+    throw error;
+  }
   if (!response.ok)
     throw new ApiError(response.status, json.error ?? `Request failed (${response.status}).`, json.problems);
   return json;
@@ -69,6 +78,9 @@ async function call<T>(
  */
 const isOff = (error: unknown) =>
   error instanceof ApiError && !error.retry && (error.status === 503 || error.status === 404);
+
+/** No review API at all: none set up (`isOff`), or an answer that is not the API's (a static preview's page). */
+export const noApi = (error: unknown) => isOff(error) || (error instanceof ApiError && error.notJson);
 
 export function createReviewStore(prototype: string) {
   let state: State = { status: 'loading', me: null, comments: [], people: null, access: null, error: null };

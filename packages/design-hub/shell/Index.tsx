@@ -1,10 +1,14 @@
 import { fmtDate, plural } from '@kit/format';
 import { useStoredState } from '@kit/hooks';
 import { Icon } from '@kit/Icon';
+import { isClientView, setClientView } from '@kit/prefs';
+import { Button, Toaster, toast } from '@kit/ui';
 import {
   type CSSProperties,
   type KeyboardEvent,
   type MouseEvent,
+  type ReactNode,
+  useCallback,
   useDeferredValue,
   useEffect,
   useRef,
@@ -13,11 +17,19 @@ import {
 import { placeLabel } from '../core/catalog';
 import { featureTitle, guideHref } from '../core/feature';
 import { TRACK_LABEL, TRACKS, type Track } from '../core/project';
-import { type Entry, entries, guides } from './registry';
+import type { Audience } from '../core/review/model';
+import { AUDIENCE_LABEL, audienceIn, emptyState, lensOf, withAudience } from './audience';
+import { ClientViewNote } from './ClientViewNote';
+import { type Hub, loadHub, saveAudience } from './hub';
+import { type Entry, guides } from './registry';
 import './shell.css';
 
+// The index is built from the server's answer (shell/hub.ts): Studio's view
+// lists every prototype, a Client's only the client-facing ones. Studio,
+// outside Client view, sees each prototype's audience and a switch for it.
+//
 // One group per feature: its one primary prototype, its alternates on a rail
-// under it, then its internal explorations folded away. A second sprint
+// under it, then its explorations folded away. A second sprint
 // becomes an alternate, since a feature has one primary. Prototypes with no
 // feature fold into their own group. Archived ones leave their group.
 type Group = {
@@ -63,7 +75,7 @@ const groupsOf = (list: Entry[]): Group[] => {
 };
 
 /** The track the index shows, remembered per browser. Only the tracks the prototypes use are offered; a stale choice shows all. */
-function useTrackFilter() {
+function useTrackFilter(entries: Entry[]) {
   const [track, setTrack] = useStoredState<Track | 'all'>('index-track', 'all');
   const tracks = TRACKS.filter((t) => entries.some((e) => e.track === t));
   const inTrack = (e: Entry) => track === 'all' || !tracks.includes(track) || e.track === track;
@@ -74,25 +86,184 @@ const byQuery = (q: string) => (e: Entry) =>
   !q || `${e.title} ${e.summary} ${e.slug}`.toLowerCase().includes(q);
 
 /** The filter text and the track, and the entries they leave: the chosen track's, matching the text. */
-function useIndexFilter() {
+function useIndexFilter(entries: Entry[]) {
   const [query, setQuery] = useState('');
   const q = useDeferredValue(query.trim().toLowerCase());
-  const { filter, inTrack } = useTrackFilter();
+  const { filter, inTrack } = useTrackFilter(entries);
   return { query, setQuery, q, shown: entries.filter(inTrack).filter(byQuery(q)), trackFilter: filter };
 }
 
 const RISE_CAP = 8;
 const rise = (i: number) => ({ '--i': Math.min(i, RISE_CAP) }) as CSSProperties;
 
+type Loaded = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; hub: Hub };
+
+/**
+ * The index as the server answers it for this view, and Studio's switch.
+ * A switch shows at once and is undone, with a toast, if the save fails.
+ * One save at a time per prototype: its switch waits until the answer, so a
+ * late failure never undoes a later switch.
+ */
+function useHub(clientView: boolean) {
+  const [loaded, setLoaded] = useState<Loaded>({ status: 'loading' });
+  const [saving, setSaving] = useState<ReadonlySet<string>>(new Set());
+  const busy = useRef(new Set<string>());
+  useEffect(() => {
+    let current = true;
+    setLoaded({ status: 'loading' });
+    loadHub(clientView).then(
+      (hub) => current && setLoaded({ status: 'ready', hub }),
+      (error: Error) => current && setLoaded({ status: 'error', message: error.message }),
+    );
+    return () => {
+      current = false;
+    };
+  }, [clientView]);
+  const mark = useCallback((slug: string, audience: Audience) => {
+    setLoaded((l) =>
+      l.status === 'ready'
+        ? {
+            status: 'ready',
+            hub: { ...l.hub, clientFacing: withAudience(l.hub.clientFacing, slug, audience) },
+          }
+        : l,
+    );
+  }, []);
+  const onSwitch = useCallback(
+    (entry: Entry, audience: Audience) => {
+      if (busy.current.has(entry.slug)) return;
+      busy.current.add(entry.slug);
+      setSaving(new Set(busy.current));
+      mark(entry.slug, audience);
+      saveAudience(entry.slug, audience)
+        .catch((error: Error) => {
+          // Only this prototype, back to what it was before this save.
+          mark(entry.slug, audience === 'client' ? 'internal' : 'client');
+          const as = audience === 'client' ? 'client-facing' : 'internal';
+          toast(`Could not mark ${entry.title} ${as}. ${error.message}`, { kind: 'error' });
+        })
+        .finally(() => {
+          busy.current.delete(entry.slug);
+          setSaving(new Set(busy.current));
+        });
+    },
+    [mark],
+  );
+  return { loaded, onSwitch, saving };
+}
+
+/** Client view, remembered per browser in kit/prefs (the comment layer reads the same choice). */
+function useClientView(): [boolean, (on: boolean) => void] {
+  const [on, setOn] = useState(isClientView);
+  const set = useCallback((next: boolean) => {
+    setClientView(next);
+    setOn(next);
+  }, []);
+  return [on, set];
+}
+
 export function Index() {
-  const { query, setQuery, q, shown, trackFilter } = useIndexFilter();
+  const [clientView, setView] = useClientView();
+  const { loaded, onSwitch, saving } = useHub(clientView);
+  const lens = loaded.status === 'ready' ? lensOf(loaded.hub.me, loaded.hub.view) : null;
+  // Leave stays in reach when the index did not load, so Client view is never a dead end.
+  const note = lens ? lens.clientView : loaded.status === 'error' && clientView;
+  return (
+    <>
+      <IndexPage
+        loaded={loaded}
+        controls={lens?.controls ? { onSwitch, saving } : null}
+        head={lens?.controls ? <ClientViewButton onEnter={() => setView(true)} /> : null}
+      />
+      {note ? <ClientViewNote onLeave={() => setView(false)} /> : null}
+      <Toaster />
+    </>
+  );
+}
+
+/** Studio's way into Client view: the index, and every comment, as a client gets them. */
+function ClientViewButton({ onEnter }: { onEnter: () => void }) {
+  return (
+    <Button
+      kind="tertiary"
+      size="sm"
+      icon="briefcase-01"
+      iconSize={16}
+      className="index-client-view"
+      label="Client view"
+      title="See the prototypes as a client does"
+      onClick={onEnter}
+    />
+  );
+}
+
+type Controls = Omit<NonNullable<AudienceControls>, 'clientFacing'> | null;
+
+function IndexPage({ loaded, controls, head }: { loaded: Loaded; controls: Controls; head: ReactNode }) {
+  if (loaded.status === 'ready')
+    return (
+      <IndexList
+        entries={loaded.hub.entries}
+        failed={loaded.hub.failed}
+        view={loaded.hub.view}
+        audience={controls ? { ...controls, clientFacing: loaded.hub.clientFacing } : null}
+        head={head}
+      />
+    );
+  return (
+    <main className="index" aria-busy={loaded.status === 'loading'}>
+      <IndexHead>{head}</IndexHead>
+      {loaded.status === 'error' ? (
+        <p className="index-none" role="alert">
+          The prototypes did not load: {loaded.message}
+        </p>
+      ) : null}
+    </main>
+  );
+}
+
+function IndexHead({ children }: { children?: ReactNode }) {
+  return (
+    <header className="index-head">
+      <div className="index-head-row">
+        <h1>Prototypes</h1>
+        {children}
+      </div>
+      <p className="index-voice">
+        High-fidelity sketches in code, made as we sprint on features and improve the product.
+      </p>
+    </header>
+  );
+}
+
+/** Studio's audience controls, outside Client view: the client-facing slugs and the switch. */
+type AudienceControls = {
+  clientFacing: string[];
+  onSwitch: (entry: Entry, audience: Audience) => void;
+  /** Prototypes whose switch waits on a save. */
+  saving: ReadonlySet<string>;
+} | null;
+
+function IndexList({
+  entries,
+  failed,
+  view,
+  audience,
+  head,
+}: {
+  entries: Entry[];
+  failed: number;
+  view: Hub['view'];
+  audience: AudienceControls;
+  head: ReactNode;
+}) {
+  const { query, setQuery, q, shown, trackFilter } = useIndexFilter(entries);
   const [leaving, setLeaving] = useState<string | null>(null);
   const [opened, setOpened] = useStoredState<Record<string, boolean>>('index-explorations-open', {});
   const [instant, setInstant] = useState(false);
   const main = useRef<HTMLElement>(null);
   const groups = groupsOf(shown);
   const archivedTotal = entries.filter((e) => e.status === 'archived').length;
-
   // A back-forward cache restore brings the faded page back; undo the exit.
   useEffect(() => {
     const restore = (e: PageTransitionEvent) => {
@@ -143,18 +314,14 @@ export function Index() {
           <span className="index-summary">{e.summary}</span>
           <EntryMeta entry={e} className="index-meta" />
         </a>
+        <AudienceSwitch entry={e} controls={audience} />
       </li>
     ));
 
   let slot = 0;
   return (
-    <main className={leaving ? 'index is-leaving' : 'index'} ref={main} onKeyDown={onKeyDown}>
-      <header className="index-head">
-        <h1>Prototypes</h1>
-        <p className="index-voice">
-          High-fidelity sketches in code, made as we sprint on features and improve the product.
-        </p>
-      </header>
+    <main className={indexClass(leaving, audience)} ref={main} onKeyDown={onKeyDown}>
+      <IndexHead>{head}</IndexHead>
       <TrackFilter {...trackFilter} />
       {entries.length > 6 ? (
         <label className="index-filter">
@@ -168,15 +335,7 @@ export function Index() {
           />
         </label>
       ) : null}
-      {entries.length === 0 ? (
-        <section className="index-empty index-rise" style={rise(0)}>
-          <h2>No prototypes yet</h2>
-          <p>
-            Write the problem and the one question in a README, then start one with{' '}
-            <code>pnpm new &lt;slug&gt;</code>.
-          </p>
-        </section>
-      ) : null}
+      <IndexNotes view={view} total={entries.length} failed={failed} />
       {groups.map((g) => {
         const from = slot;
         const alt = from + 1 + g.items.length;
@@ -217,6 +376,7 @@ export function Index() {
                 open={open}
                 instant={instant}
                 leaving={leaving}
+                audience={audience}
                 onToggle={(ev) => onToggle(ev, g.id)}
                 onOpen={onOpen}
               />
@@ -241,13 +401,14 @@ export function Index() {
   );
 }
 
-/** A group's internal explorations, folded away under a toggle until asked for or a search matches them. */
+/** A group's explorations, folded away under a toggle until asked for or a search matches them. */
 function Explorations({
   group,
   at,
   open,
   instant,
   leaving,
+  audience,
   onToggle,
   onOpen,
 }: {
@@ -256,6 +417,7 @@ function Explorations({
   open: boolean;
   instant: boolean;
   leaving: string | null;
+  audience: AudienceControls;
   onToggle: (e: MouseEvent<HTMLButtonElement>) => void;
   onOpen: (e: MouseEvent<HTMLAnchorElement>, slug: string) => void;
 }) {
@@ -270,7 +432,7 @@ function Explorations({
           aria-controls={foldId}
           onClick={onToggle}
         >
-          Internal explorations
+          Explorations
           <span className="index-fold-count tabular">{group.explorations.length}</span>
           <Icon name="chevron-down" size={16} />
         </button>
@@ -298,6 +460,7 @@ function Explorations({
                 <span className="index-summary">{e.summary}</span>
                 <EntryMeta entry={e} className="index-card-meta" />
               </a>
+              <AudienceSwitch entry={e} controls={audience} />
             </li>
           ))}
         </ul>
@@ -341,6 +504,75 @@ function EntryMeta({ entry, className }: { entry: Entry; className: string }) {
       <time dateTime={entry.created} className="tabular">
         {fmtDate(entry.created)}
       </time>
+    </span>
+  );
+}
+
+const indexClass = (leaving: string | null, audience: AudienceControls) =>
+  ['index', leaving && 'is-leaving', audience && 'has-audience'].filter(Boolean).join(' ');
+
+/** The empty index, or how many prototypes did not load. One that failed to load is never an empty index. */
+function IndexNotes({ view, total, failed }: { view: Hub['view']; total: number; failed: number }) {
+  const empty = emptyState(view, total + failed);
+  if (empty) return <EmptyIndex kind={empty} />;
+  if (!failed) return null;
+  return (
+    <p className="index-none" role="alert">
+      {plural(failed, 'prototype')} did not load. Reload the page to try again.
+    </p>
+  );
+}
+
+/** The empty index: Studio's says how to start one; a Client's, or Client view's, that nothing is shared yet. */
+function EmptyIndex({ kind }: { kind: 'studio' | 'client' }) {
+  return (
+    <section className="index-empty index-rise" style={rise(0)}>
+      {kind === 'studio' ? (
+        <>
+          <h2>No prototypes yet</h2>
+          <p>
+            Write the problem and the one question in a README, then start one with{' '}
+            <code>pnpm new &lt;slug&gt;</code>.
+          </p>
+        </>
+      ) : (
+        <>
+          <h2>Nothing shared yet</h2>
+          <p>Prototypes appear here once the studio shares them with you.</p>
+        </>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Studio's switch for one prototype, beside its row and never inside the
+ * link: the audience in words (Internal in the internal comments' amber),
+ * and a switch that marks it client-facing. It waits while its save is out.
+ * Nothing outside Studio's view.
+ */
+function AudienceSwitch({ entry, controls }: { entry: Entry; controls: AudienceControls }) {
+  if (!controls) return null;
+  const audience = audienceIn(controls.clientFacing, entry.slug);
+  const on = audience === 'client';
+  const waiting = controls.saving.has(entry.slug);
+  return (
+    <span className="index-audience">
+      <span className="index-audience-word" data-audience={audience}>
+        {AUDIENCE_LABEL[audience]}
+      </span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        aria-disabled={waiting || undefined}
+        aria-label={`Client-facing: ${entry.title}`}
+        title={on ? 'Clients can open this prototype' : 'Only the studio can open this prototype'}
+        className="index-switch"
+        onClick={() => controls.onSwitch(entry, on ? 'internal' : 'client')}
+      >
+        <span className="index-switch-thumb" aria-hidden="true" />
+      </button>
     </span>
   );
 }

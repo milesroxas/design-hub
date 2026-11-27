@@ -24,6 +24,11 @@
   --harness-fg-muted: oklch(1 0 0 / 0.55);
   --harness-border: oklch(1 0 0 / 0.1);
   --harness-shadow: 0 8px 24px oklch(0 0 0 / 0.4);
+
+  /* Internal: the amber an internal comment wears (shell/review), and the
+     label on it, 8:1. The index marks an Internal prototype with the same pair. */
+  --sys-internal: oklch(0.83 0.15 85);
+  --sys-on-internal: oklch(0.3 0.06 85);
 }
 
 .sys {

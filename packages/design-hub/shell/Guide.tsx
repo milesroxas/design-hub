@@ -1,10 +1,12 @@
 import { Icon } from '@kit/Icon';
 import '@kit/ui/ui.css';
+import { isClientView } from '@kit/prefs';
 import { Suspense, use, useEffect, useState } from 'react';
 import { featureTitle, guideHref } from '../core/feature';
 import type { Doc } from './doc';
+import { loadHub } from './hub';
 import { Boundary, Notice } from './Notice';
-import { featureEntry, guides } from './registry';
+import { type Entry, featureEntry, guides } from './registry';
 import './guide.css';
 
 const fmtDate = (iso: string) =>
@@ -27,6 +29,19 @@ function docOf(feature: string) {
     doc.catch(() => docs.delete(feature));
   }
   return doc;
+}
+
+// The prototype a walkthrough opens, among the ones this person may see; none when the index does not load.
+const openers = new Map<string, Promise<Entry | undefined>>();
+function openerOf(feature: string) {
+  let found = openers.get(feature);
+  if (!found) {
+    found = loadHub(isClientView())
+      .then((hub) => featureEntry(hub.entries, feature))
+      .catch(() => undefined);
+    openers.set(feature, found);
+  }
+  return found;
 }
 
 // /guide/<feature>/ renders docs/sprints/<feature>/guide.md. /guide/ alone
@@ -71,7 +86,7 @@ function GuideList() {
 // The Markdown is the source; this page is how a reviewer without the repo reads it.
 function GuidePage({ feature }: { feature: string }) {
   const { html, meta, title, toc } = use(docOf(feature));
-  const prototype = featureEntry(feature);
+  const prototype = use(openerOf(feature));
   const [current, setCurrent] = useState<string | null>(null);
 
   useEffect(() => {

@@ -21,8 +21,8 @@
   --rv-mark: oklch(0.55 0 0);         /* on the page: mid grey holds on light and dark */
   --rv-pin: oklch(0.205 0 0);
   --rv-done: oklch(0.8 0.13 155);     /* resolved: green, on its check alone */
-  --rv-internal: oklch(0.83 0.15 85);    /* internal: the amber of a support tool's internal note */
-  --rv-on-internal: oklch(0.3 0.06 85);  /* the label on amber, 8:1 */
+  --rv-internal: var(--sys-internal);       /* internal: the amber of a support tool's internal note (system.css) */
+  --rv-on-internal: var(--sys-on-internal); /* the label on amber, 8:1 */
   --rv-internal-chip: oklch(0.35 0.06 85);     /* the Internal tag on the card: a solid low tint, not amber at low opacity */
   --rv-internal-chip-fg: oklch(0.88 0.12 85);  /* 8:1 on the chip */
   --rv-danger: oklch(0.779 0.131 23.4);
