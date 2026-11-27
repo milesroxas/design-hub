@@ -1,6 +1,6 @@
 # Studios: one hub per client, on any provider
 
-Status: proposed. Slice 5 of `collaboration.md` shipped in 0.9.0, so this can start; it builds on what that slice decided (its section 12). Collaboration slice 6 (dials) is independent of this plan. Collaboration slice 7 (email sign-in) waits for it, so it is built once, on studio people. Four points stay open (section 8).
+Status: proposed, next to build. Slices 5 and 6 of `collaboration.md` shipped in 0.9.0 and 0.10.0; this plan builds on what those slices decided (its sections 12 and 13). Collaboration slice 7 (email sign-in) waits for it, so it is built once, on studio people. Four points stay open (section 8).
 
 ## 1. Problem and success
 
@@ -52,7 +52,7 @@ Today one prototype project is one Vercel project, one site, one Upstash store a
 
 | Component | Today | After |
 | --- | --- | --- |
-| `core/review/store.ts` | Flat `hub3:` keys, one store per site | `hub4:` keys from a scope: studio (`studio:people`, `studio:settings`, `clients`), client (`c:<client>:people`, `c:<client>:links`), project (`c:<client>:p:<project>:audiences`, `…:comments:<prototype>`, `…:counters`) |
+| `core/review/store.ts` | Flat `hub3:` keys, one store per site | `hub4:` keys from a scope: studio (`studio:people`, `studio:settings`, `clients`), client (`c:<client>:people`, `c:<client>:links`), project (`c:<client>:p:<project>:audiences`, `…:comments:<prototype>`, `…:counters`, `…:controls:<prototype>`) |
 | `core/review/model.ts` | `Person` without a client | `Person.client: string \| null` (null is Studio); new `Client` and `Project` |
 | `core/review/policy.ts` | Rules by kind, ownership and audience | A scope check before the table: a Client whose client is not the request's gets `not_found` on everything |
 | `core/review/service.ts` | One service per site | Every method takes a `Scope`; the API builds it from the host and the project |
@@ -134,7 +134,7 @@ Read from slice 5's build, before it is released:
 - **One seam for paths.** `prototypeOfPath` in `core/prototype.ts` is the only place the gate reads a path. In this plan it becomes `routeOf(host, path)` with a project segment. Keep every path decision there.
 - **The hub assumes `/`.** `API = '/api/review'` (`shell/review/client.ts`), `/_p/` in `core/prototype.ts` and the registry's base `/` all need to become relative to a base path before projects can sit under `/<project>/`.
 - **The token's `site` is the store URL.** That separates sites today because each site has its own store. With one store per studio it no longer separates clients, so `p5` signs the client too (slice 2).
-- **`hub3:audiences` is per site.** It moves under the project scope. So does `_p/all.js`, Studio's list of slugs, which stays one file per project.
+- **`hub3:audiences` and `hub3:controls:<slug>` are per site.** Both move under the project scope; the dial and variant marks (slice 6) keep their field shape (`dial:<id>`, `variant:<name>`). So does `_p/all.js`, Studio's list of slugs, which stays one file per project.
 - **`invite` is not reserved.** 0.9.0 shipped `RESERVED` as `guide`, `api`, `assets`. At a client host, project slugs share the first path segment with `invite`, `api`, `_gate` and `assets`, so slice 2 reserves every gate route, before slice 3 puts projects there.
 - **Store reads per request.** A Client's prototype page already costs one store read per file (slice 5's backlog). The host-to-client lookup adds one more unless the client list is cached briefly; budget it in slice 3.
 - **Deleted things keep their marks.** A deleted prototype's client-facing mark stays in the store (slice 5's backlog). The same goes for a deleted project or client, so archiving one must remove its keys.
