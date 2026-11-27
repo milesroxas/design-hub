@@ -4,6 +4,7 @@
 // enforced by the service, whichever adapter (Vercel, Vite dev, the CLI)
 // calls it.
 
+import { CONTROL_KINDS, type ControlKind, isControlId } from '../controls.ts';
 import { SLUG } from '../feature.ts';
 
 /** Which side a person is on: the studio that makes the work, or the client it is for. */
@@ -239,6 +240,30 @@ export function checkPrototypeAudience(input: unknown): Checked<Audience> {
   return AUDIENCES.includes(input as Audience)
     ? { ok: true, value: input as Audience }
     : { ok: false, problems: [`audience: one of ${AUDIENCES.join(', ')}`] };
+}
+
+/** One control's mark as Studio sets it: which kind, its id, and who it is for. */
+export function checkControl(input: {
+  kind: unknown;
+  id: unknown;
+  audience: unknown;
+}): Checked<{ kind: ControlKind; id: string; audience: Audience }> {
+  const problems: string[] = [];
+  if (!CONTROL_KINDS.includes(input.kind as ControlKind))
+    problems.push(`kind: one of ${CONTROL_KINDS.join(', ')}`);
+  if (!isControlId(input.id)) problems.push('id: the control’s name, one line of at most 200 characters');
+  if (!AUDIENCES.includes(input.audience as Audience))
+    problems.push(`audience: one of ${AUDIENCES.join(', ')}`);
+  return problems.length
+    ? { ok: false, problems }
+    : {
+        ok: true,
+        value: {
+          kind: input.kind as ControlKind,
+          id: input.id as string,
+          audience: input.audience as Audience,
+        },
+      };
 }
 
 /** Whose view of the comments is asked for: a person kind, or null for the caller's own. */

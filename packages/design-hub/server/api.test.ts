@@ -344,3 +344,32 @@ test('comments on an internal prototype: a Client gets an empty list and not_fou
   const edited = await call(post({ op: 'comment.edit', prototype: 'p', id: shared.id, body: 'x' }), client);
   assert.deepEqual([edited.status, edited.body], [unknown.status, unknown.body]);
 });
+
+test('controls and control.audience: a prototype page reads the marks, and only Studio sets one', async () => {
+  const client = (await review.addPerson(studio, { name: 'Rae', team: 'Acme' })).person;
+  await review.setAudience(studio, 'sample-list', 'client');
+  const read = (actor: Person | null = studio, prototype = 'sample-list') =>
+    call(get('controls', `&prototype=${prototype}`), actor);
+  const set = (body: Record<string, unknown>, actor: Person | null = studio) =>
+    call(post({ op: 'control.audience', prototype: 'sample-list', ...body }), actor);
+  assert.deepEqual((await read()).body, { view: 'studio', dials: {}, variants: [] });
+  assert.deepEqual(await set({ kind: 'dial', id: 'Review/density', audience: 'client' }), {
+    status: 200,
+    body: { prototype: 'sample-list', kind: 'dial', id: 'Review/density', audience: 'client' },
+  });
+  await set({ kind: 'variant', id: 'Lift', audience: 'client' });
+  assert.deepEqual((await read(client)).body, {
+    view: 'client',
+    dials: { 'Review/density': 'client' },
+    variants: ['Lift'],
+  });
+  assert.equal((await set({ kind: 'dial', id: 'Review/density', audience: 'internal' }, client)).status, 403);
+  assert.equal((await set({ kind: 'dial', id: 'Review/density', audience: 'internal' }, null)).status, 401);
+  const invalid = await set({ kind: 'dial', id: '', audience: 'client' });
+  assert.equal(invalid.status, 422);
+  assert.deepEqual(invalid.body.problems, ['id: the control’s name, one line of at most 200 characters']);
+  // An internal prototype answers a Client as one that does not exist.
+  assert.equal((await read(client, 'secret-plan')).status, 404);
+  assert.equal((await read(null)).status, 401);
+  assert.equal((await call(get('controls'))).status, 422);
+});

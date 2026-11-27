@@ -921,3 +921,82 @@ test('a Client acting on a client-facing thread of an internal prototype is told
   assert.ok(await review.add(studio, { body: 'Internal note', anchor }));
   assert.ok(await review.reply(studio, { ...at, thread: root.id, body: 'Studio reply' }));
 });
+
+// Slice 6: what Studio marks on a prototype's dials and variants.
+test('controls: Studio marks a dial either way and a variant on or off, one field each', async () => {
+  const kv = memoryKV();
+  const own = createReview(kv);
+  const mark = (kind: string, id: string, audience: string) =>
+    own.setControl(studio, { prototype: 'sample-list', kind, id, audience });
+  assert.deepEqual(await own.controlsOf(studio, 'sample-list'), { view: 'studio', dials: {}, variants: [] });
+  assert.deepEqual(await mark('dial', 'Review/density', 'client'), {
+    kind: 'dial',
+    id: 'Review/density',
+    audience: 'client',
+  });
+  // Internal is stored for a dial: it overrules a client() in the code.
+  await mark('dial', 'Review/avatars', 'internal');
+  await mark('variant', 'Lift', 'client');
+  await mark('variant', 'Sink', 'client');
+  await mark('variant', 'Sink', 'internal');
+  // Unmarking a variant never marked is no error.
+  await mark('variant', 'Baseline', 'internal');
+  assert.deepEqual(await kv.hgetall(KEY.controls('sample-list')), {
+    'dial:Review/density': 'client',
+    'dial:Review/avatars': 'internal',
+    'variant:Lift': 'client',
+  });
+  assert.deepEqual(await own.controlsOf(studio, 'sample-list'), {
+    view: 'studio',
+    dials: { 'Review/density': 'client', 'Review/avatars': 'internal' },
+    variants: ['Lift'],
+  });
+  // Marks are per prototype.
+  assert.deepEqual(await own.controlsOf(studio, 'sample-page'), { view: 'studio', dials: {}, variants: [] });
+});
+
+test('controls: only Studio marks, and every field is checked', async () => {
+  const input = { prototype: 'sample-list', kind: 'dial', id: 'Review/density', audience: 'client' };
+  await rejects(review.setControl(client, input), 'forbidden');
+  await rejects(review.setControl(null, input), 'unauthorized');
+  await assert.rejects(
+    review.setControl(studio, { prototype: 'guide', kind: 'knob', id: ' x', audience: 'all' }),
+    (e: unknown) =>
+      e instanceof ReviewError &&
+      e.code === 'invalid' &&
+      e.problems.join('|') ===
+        [
+          'prototype: a prototype slug',
+          'kind: one of dial, variant',
+          'id: the control’s name, one line of at most 200 characters',
+          'audience: one of internal, client',
+        ].join('|'),
+  );
+  assert.deepEqual((await review.controlsOf(studio, 'sample-list')).dials, {});
+});
+
+test('controls: a Client reads the marks of a client-facing prototype, and none of an internal one', async () => {
+  await review.setControl(studio, {
+    prototype: 'sample-list',
+    kind: 'dial',
+    id: 'Review/density',
+    audience: 'client',
+  });
+  await review.setControl(studio, {
+    prototype: 'secret-plan',
+    kind: 'variant',
+    id: 'Lift',
+    audience: 'client',
+  });
+  assert.deepEqual(await review.controlsOf(client, 'sample-list'), {
+    view: 'client',
+    dials: { 'Review/density': 'client' },
+    variants: [],
+  });
+  // The same answer as for a prototype that does not exist.
+  await rejects(review.controlsOf(client, 'secret-plan'), 'not_found');
+  await rejects(review.controlsOf(client, 'never-made'), 'not_found');
+  await rejects(review.controlsOf(null, 'sample-list'), 'unauthorized');
+  await rejects(review.controlsOf(studio, 'guide'), 'invalid');
+  assert.deepEqual((await review.controlsOf(studio, 'secret-plan')).variants, ['Lift']);
+});

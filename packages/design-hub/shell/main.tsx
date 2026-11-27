@@ -8,6 +8,7 @@ import { createRoot } from 'react-dom/client';
 import { guideHref } from '../core/feature';
 import { hiddenFor } from './audience';
 import { ClientViewNote } from './ClientViewNote';
+import { exportControls, loadControls } from './controls';
 import { readHub } from './hub';
 import { Index } from './Index';
 import { Notice } from './Notice';
@@ -77,7 +78,11 @@ if (slug === 'guide') {
     </Suspense>
   );
 } else if (slug) {
-  const { entry, hidden } = await pageEntry(slug);
+  // The controls' audience is read beside the entry, so the first render already has it.
+  const [{ entry, hidden }] = await Promise.all([
+    pageEntry(slug),
+    exporting ? exportControls() : loadControls(slug),
+  ]);
   if (entry?.feature && guides.has(entry.feature)) setGuide(guideHref(entry.feature));
   page = hidden ? <HiddenInClientView name={slug} /> : <Prototype slug={slug} entry={entry} />;
   if (entry && !exporting) {

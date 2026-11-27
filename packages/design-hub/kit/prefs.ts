@@ -117,6 +117,8 @@ export function setClientView(on: boolean) {
 export const isDark = () => root.classList.contains('dark-mode');
 export const prefersReducedMotion = () => root.dataset.motion === 'reduce';
 
+/** Client view, for the controls that step aside in it (kit/audience.ts). */
+export const useClientView = () => useSyncExternalStore(subscribe, isClientView);
 export const useAppearance = () => useSyncExternalStore(subscribe, () => appearance);
 export const useDark = () => useSyncExternalStore(subscribe, isDark);
 export const useReducedMotion = () => useSyncExternalStore(subscribe, prefersReducedMotion);

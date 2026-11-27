@@ -56,6 +56,9 @@ async function query(op: string, params: URLSearchParams, { review, actor }: Api
     case 'prototypes':
       // The index's read: the view the caller gets and the client-facing slugs. viewAs is checked as comments checks it.
       return await review.visiblePrototypes(actor, params.get('viewAs') ?? undefined);
+    case 'controls':
+      // A prototype page's read: the caller's view, and what Studio marked on its dials and variants.
+      return await review.controlsOf(actor, params.get('prototype'));
     case 'people':
       return { people: (await review.listPeople(actor)).map(visible) };
     case 'access':
@@ -129,6 +132,16 @@ async function command(op: string, b: Record<string, unknown>, ctx: ApiContext):
       return {
         prototype: b.prototype,
         audience: await review.setAudience(actor, b.prototype, b.audience),
+      };
+    case 'control.audience':
+      return {
+        prototype: b.prototype,
+        ...(await review.setControl(actor, {
+          prototype: b.prototype,
+          kind: b.kind,
+          id: b.id,
+          audience: b.audience,
+        })),
       };
     default:
       return peopleCommand(op, b, ctx);

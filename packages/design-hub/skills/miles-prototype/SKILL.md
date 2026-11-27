@@ -85,6 +85,9 @@ Is it a value CSS consumes (duration, distance, scale, colour)?
 - Every dial carries a hint: one sentence, the unit named. A reviewer never guesses what a slider does.
 - Panels register in the order a reviewer reaches for them: Review (fixtures, role, scenarios) first, then the feature's own numbers, then Motion. View is mounted by the shell.
 - Slider defaults are the comp's values. The decision is the number the user settles on; copy it into the README's Decision with the rejected range.
+- Every dial is internal: a client's panel has the View tools and nothing else until a dial is marked client-facing. `client(...)` from `@kit/dials` marks one where it is declared (`density: client({ type: 'select', ... })`, or around a folder for every dial in it); use it only when the user asks for clients to have that dial. Studio can also mark any dial with the eye beside its row, per deployed site, and that overrules the code. Fixtures, roles and scenarios stay internal.
+- A client reads an internal dial at its default, so the default is the value to present, not a test value.
+- The picker is Studio's until marked: a client gets the first variant and no picker, unless Studio marks variants with the picker's eye. Put the direction to present first.
 - Never a control inside the product chrome. A sidebar item or a sheet that switches fixtures is a testing aid wearing the product's clothes.
 
 ## Motion, accessibility, performance

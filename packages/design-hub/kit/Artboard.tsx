@@ -8,7 +8,7 @@ import {
   useState,
 } from 'react';
 import { FORMATS, type Format, type FormatName, sizeLabel, zoomFor } from '../core/formats.ts';
-import { restoreDials, useDials } from './dials';
+import { client, restoreDials, useDials } from './dials';
 import { ViewTools } from './ViewTools';
 import './artboard.css';
 
@@ -65,8 +65,9 @@ export function Board({ title, lede, children }: BoardProps) {
   const view = useDials(
     'Board',
     {
-      zoom: { type: 'select', options: ZOOMS, default: 'fit' },
-      guides: true,
+      // How a person looks at the boards, not the design: a Client's from the start, like the View tools.
+      zoom: client({ type: 'select', options: ZOOMS, default: 'fit' }),
+      guides: client(true),
     },
     {
       hints: {

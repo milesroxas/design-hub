@@ -10,9 +10,20 @@ import {
 } from 'dialkit';
 import 'dialkit/styles.css';
 import './dials.css';
-import { type RefObject, useLayoutEffect } from 'react';
+import { type RefObject, useEffect, useLayoutEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import {
+  type ControlAudience,
+  dialAudience,
+  dialId,
+  keepDials,
+  readConfig,
+  withDefaults,
+} from '../core/controls.ts';
+import { markControl, useControls } from './audience';
 import { type IconName, iconMarkup } from './Icon';
+
+export { client } from '../core/controls.ts';
 
 // What the panel calls itself. DialKit hard-codes its own name as the root
 // title; the prototypes say what the thing is instead.
@@ -45,17 +56,21 @@ export function ensureDialRoot() {
   // DialKit hides its panel in production builds unless told otherwise; the
   // deployed prototypes are for tuning, so the dials ship with them.
   createRoot(host).render(
-    <DialRoot
-      position={parked ? 'top-left' : 'top-right'}
-      theme="dark"
-      defaultOpen={open}
-      productionEnabled
-    />,
+    <>
+      <DialRoot
+        position={parked ? 'top-left' : 'top-right'}
+        theme="dark"
+        defaultOpen={open}
+        productionEnabled
+      />
+      <DialEyes />
+    </>,
   );
   // DialKit portals the panel to <body>; it appears once the first panel registers.
   const settle = (root: HTMLElement) => {
     retitle(root);
     placeLinks(root);
+    tagEmpty(root);
     new MutationObserver((records) => {
       for (const { type, target } of records) {
         // DialKit keeps the panel's scroll offset when it collapses, which pushes the trigger icon off-centre.
@@ -65,6 +80,7 @@ export function ensureDialRoot() {
       }
       retitle(root);
       placeLinks(root);
+      tagEmpty(root);
     }).observe(root, { subtree: true, childList: true, attributeFilter: ['data-collapsed'] });
   };
   const found = document.body.querySelector<HTMLElement>('.dialkit-root');
@@ -183,7 +199,7 @@ const rowLabel = (row: HTMLElement) =>
   row.getAttribute('aria-label') ??
   (
     row.querySelector('.dialkit-labeled-control-label')?.firstChild ??
-    row.querySelector('.dialkit-select-label') ??
+    row.querySelector('.dialkit-select-label, .dialkit-text-label, .dialkit-color-label') ??
     row
   ).textContent?.trim() ??
   '';
@@ -263,19 +279,204 @@ function installHints() {
   document.addEventListener('scroll', hide, true);
 }
 
-export function useDials<T extends DialConfig>(name: string, config: T, options?: DialOptions<T>) {
+// Who a dial is for (core/controls.ts). Every dial is internal until marked
+// client-facing: with `client(...)` where it is declared, or by Studio's eye
+// beside its row, which is stored per site and overrules the code. Studio's
+// panel has every dial. A Client's has only the client-facing ones: the others
+// are never handed to DialKit, and code reads their defaults.
+
+type Panel = {
+  /** Each dial's id by the label path its row shows, as the hints key theirs. */
+  byLabel: Record<string, string>;
+  inCode: Record<string, ControlAudience>;
+  /** Nothing in it for the person looking, so its header leaves the panel. */
+  empty: boolean;
+};
+const panels = new Map<string, Panel>();
+
+function labelIds(
+  panel: string,
+  cfg: DialConfig,
+  into: Record<string, string>,
+  labels = '',
+  path: string[] = [],
+) {
+  for (const [k, v] of Object.entries(cfg)) {
+    if (k === '_collapsed') continue;
+    const label = labels + (actionLabel(v) ?? labelOf(k));
+    if (v && typeof v === 'object' && !Array.isArray(v) && !('type' in v))
+      labelIds(panel, v as DialConfig, into, label + PATH_SEP, [...path, k]);
+    else into[label] = dialId(panel, [...path, k]);
+  }
+}
+
+/**
+ * A panel's config as DialKit takes it (`all`), the part of it the person
+ * looking gets (`shown`), and DialKit's own options. Registers the hints too.
+ */
+function usePanel<T extends DialConfig>(name: string, config: T, options?: DialOptions<T>) {
   useLayoutEffect(ensureDialRoot, []);
+  const { studio, marks } = useControls();
   const { hints: h, ...rest } = options ?? {};
-  registerHints(name, config, h as Record<string, unknown> | undefined);
-  return useDialKit(name, config, rest);
+  const { config: all, dials } = readConfig(name, config);
+  const inCode = Object.fromEntries(dials.map((d) => [d.id, d.inCode]));
+  const shown = studio
+    ? all
+    : keepDials(name, all, (id) => dialAudience(marks, id, inCode[id] ?? 'internal') === 'client');
+  const byLabel: Record<string, string> = {};
+  labelIds(name, all as DialConfig, byLabel);
+  panels.set(name, { byLabel, inCode, empty: Object.keys(shown).length === 0 });
+  registerHints(name, all as DialConfig, h as Record<string, unknown> | undefined);
+  /** What the prototype reads: DialKit's values, with the default of every dial it was not given. */
+  const read = (values: unknown) => (studio ? values : withDefaults(all, values as Record<string, unknown>));
+  return { shown: shown as T, rest, read };
+}
+
+// DialKit draws a header for a panel with no dials in it.
+function tagEmpty(root: HTMLElement) {
+  for (const section of root.querySelectorAll<HTMLElement>('.dialkit-folder-section')) {
+    const title = section
+      .querySelector(':scope > .dialkit-folder-header .dialkit-folder-title')
+      ?.textContent?.trim();
+    const empty = !!title && !!panels.get(title)?.empty;
+    if (empty !== 'dialEmpty' in section.dataset) section.toggleAttribute('data-dial-empty', empty);
+  }
+}
+
+export function useDials<T extends DialConfig>(name: string, config: T, options?: DialOptions<T>) {
+  const { shown, rest, read } = usePanel(name, config, options);
+  return read(useDialKit(name, shown, rest)) as ReturnType<typeof useDialKit<T>>;
 }
 
 // The same panel with its controller, for dials that code also sets (every toggle at once).
 export function useDialsController<T extends DialConfig>(name: string, config: T, options?: DialOptions<T>) {
-  useLayoutEffect(ensureDialRoot, []);
-  const { hints: h, ...rest } = options ?? {};
-  registerHints(name, config, h as Record<string, unknown> | undefined);
-  return useDialKitController(name, config, rest);
+  const { shown, rest, read } = usePanel(name, config, options);
+  const controller = useDialKitController(name, shown, rest);
+  return { ...controller, values: read(controller.values) } as ReturnType<typeof useDialKitController<T>>;
+}
+
+// Studio's eye beside each dial: one click marks it client-facing or internal.
+// DialKit has no slot in a row, so the row gives up 32px at its right end
+// (kit/dials.css) and the eye is drawn over that slot, from outside the row:
+// a click on it never reaches a slider's drag.
+
+const EYE_ROWS =
+  '.dialkit-slider, .dialkit-labeled-control, .dialkit-select-row, .dialkit-text-control, .dialkit-color-control';
+/** The panel's own sticky header, which a row scrolls under. */
+const PANEL_HEAD = 48;
+
+type Spot = { id: string; label: string; top: number; left: number };
+
+function spotOf(row: HTMLElement, clip: DOMRect): Spot | null {
+  if (row.parentElement?.closest(EYE_ROWS)) return null;
+  const { path, panel } = rowPlace(row);
+  const label = rowLabel(row);
+  const id = panel ? panels.get(panel)?.byLabel[[...path, label].join(PATH_SEP)] : undefined;
+  if (!id) return null;
+  if (!('dialEye' in row.dataset)) row.dataset.dialEye = '';
+  const r = row.getBoundingClientRect();
+  const mid = r.top + r.height / 2;
+  if (r.height === 0 || mid < clip.top + PANEL_HEAD || mid > clip.bottom - 8) return null;
+  return { id, label, top: Math.round(mid), left: Math.round(r.right) };
+}
+
+function eyeSpots(): Spot[] {
+  const clip = document.querySelector('.dialkit-root .dialkit-panel-inner')?.getBoundingClientRect();
+  if (!clip) return [];
+  const rows = document.querySelectorAll<HTMLElement>(`.dialkit-root :is(${EYE_ROWS})`);
+  return [...rows].flatMap((row) => spotOf(row, clip) ?? []);
+}
+
+/** Where each eye sits, followed every frame while Studio can mark: the panel scrolls, folds and is dragged. */
+function useEyeSpots(on: boolean) {
+  const [spots, setSpots] = useState<Spot[]>([]);
+  useEffect(() => {
+    if (!on) return setSpots([]);
+    document.documentElement.dataset.dialMarking = '';
+    let frame = 0;
+    let last = '';
+    const tick = () => {
+      const next = eyeSpots();
+      const sig = JSON.stringify(next);
+      if (sig !== last) setSpots(next);
+      last = sig;
+      frame = requestAnimationFrame(tick);
+    };
+    tick();
+    return () => {
+      cancelAnimationFrame(frame);
+      delete document.documentElement.dataset.dialMarking;
+    };
+  }, [on]);
+  return spots;
+}
+
+const EYE =
+  'M2.4 12.7a1.2 1.2 0 0 1 0-1.4C3.5 9.6 6.7 5 12 5s8.5 4.6 9.6 6.3a1.2 1.2 0 0 1 0 1.4C20.5 14.4 17.3 19 12 19s-8.5-4.6-9.6-6.3Z';
+
+function EyeIcon({ off }: { off: boolean }) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d={EYE} />
+      <circle cx="12" cy="12" r="3" />
+      {off ? <path d="M4 4l16 16" /> : null}
+    </svg>
+  );
+}
+
+function inCodeOf(id: string): ControlAudience {
+  for (const p of panels.values()) if (id in p.inCode) return p.inCode[id];
+  return 'internal';
+}
+
+function DialEyes() {
+  const { studio, canMark, marks, failed } = useControls();
+  const spots = useEyeSpots(canMark);
+  // DialKit's own tools (Copy parameters, Save version) are Studio's: the panel shows them only under this mark.
+  useEffect(() => {
+    document.documentElement.toggleAttribute('data-dial-studio', studio);
+  }, [studio]);
+  if (!canMark) return null;
+  return (
+    <div data-harness="dial-eyes">
+      {spots.map((s) => {
+        const on = dialAudience(marks, s.id, inCodeOf(s.id)) === 'client';
+        return (
+          <button
+            key={s.id}
+            type="button"
+            className="dial-eye"
+            style={{ top: s.top, left: s.left }}
+            aria-pressed={on}
+            aria-label={`Client-facing: ${s.label}`}
+            title={
+              on
+                ? 'Clients get this dial. Click to keep it internal.'
+                : 'Internal. Click to give it to clients.'
+            }
+            onClick={() => void markControl('dial', s.id, on ? 'internal' : 'client')}
+          >
+            <EyeIcon off={!on} />
+          </button>
+        );
+      })}
+      {failed ? (
+        <p className="dial-eye-failed" role="alert">
+          {failed}
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
 // Dial values as CSS variables on an element: `--key`, a folder's as `--folder-key`,

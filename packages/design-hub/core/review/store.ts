@@ -46,6 +46,13 @@ export const KEY = {
    */
   counters: `${PREFIX}counters`,
   comments: (prototype: string) => `${PREFIX}comments:${prototype}`,
+  /**
+   * What Studio marked on one prototype's controls (core/controls.ts): field
+   * `dial:<id>` is `client` or `internal`, overruling the code either way;
+   * field `variant:<name>` is `client`, and internal is its absence. One
+   * field per control, so two people marking at once never undo each other.
+   */
+  controls: (prototype: string) => `${PREFIX}controls:${prototype}`,
 } as const;
 
 export type Snapshot = { hashes: Record<string, Record<string, string>>; sets: Record<string, string[]> };

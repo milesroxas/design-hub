@@ -97,3 +97,58 @@
   margin-top: 4px;
   border-top: 1px solid var(--dial-border);
 }
+
+/* Who a dial is for (kit/dials.tsx). Studio's eye sits in a slot each row gives
+   up at its right end; DialKit sizes a slider by an inline width, so its slot
+   is a max-width. The eye is drawn over the slot from outside the row. */
+:root[data-dial-marking] .dialkit-root :is(.dialkit-select-row, .dialkit-labeled-control, .dialkit-text-control, .dialkit-color-control)[data-dial-eye] { margin-right: 32px; }
+:root[data-dial-marking] .dialkit-root .dialkit-slider[data-dial-eye] { max-width: calc(100% - 32px); }
+.dial-eye {
+  position: fixed;
+  z-index: 2147483647;
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 2px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: oklch(1 0 0 / 0.32);
+  cursor: pointer;
+  transition: color var(--dur-hover) var(--ease-hover), background-color var(--dur-hover) var(--ease-hover), transform var(--dur-press-out) var(--ease-press);
+}
+/* 28px drawn, 40px to hit; rows are 42px apart, so two never overlap. */
+.dial-eye::before { content: ''; position: absolute; inset: -6px -2px; }
+.dial-eye[aria-pressed="true"] { color: oklch(1 0 0); }
+@media (hover: hover) and (pointer: fine) {
+  .dial-eye:hover { background: oklch(1 0 0 / 0.08); color: oklch(1 0 0 / 0.7); }
+  .dial-eye[aria-pressed="true"]:hover { color: oklch(1 0 0); }
+}
+.dial-eye:active { transform: scale(0.94); }
+.dial-eye:focus-visible { outline: 2px solid var(--dial-focus-ring, oklch(1 0 0 / 0.5)); outline-offset: -2px; }
+:root[data-motion="reduce"] .dial-eye:active { transform: none; }
+/* A select's open list covers the rows under it; the eyes step aside. */
+body:has(.dialkit-select-dropdown) .dial-eye { visibility: hidden; }
+/* A mark that did not save, in the hint's material, under the panel's corner. */
+.dial-eye-failed {
+  position: fixed;
+  z-index: 2147483647;
+  right: 16px;
+  bottom: 16px;
+  max-width: 280px;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--harness-bg);
+  color: var(--harness-fg);
+  border: 1px solid var(--harness-border);
+  box-shadow: var(--harness-shadow);
+  font: 500 12px/16px var(--sys-font);
+  text-wrap: pretty;
+}
+/* A panel with no dial for the person looking: DialKit still draws its header. */
+.dialkit-root .dialkit-folder-section[data-dial-empty] { display: none; }
+/* Copy parameters and Save version are for whoever tunes. A Client's panel has dials only;
+   hidden unless the page is marked Studio's, so a page that never says shows neither. */
+:root:not([data-dial-studio]) .dialkit-root :is(.dialkit-panel-section-toolbar-clip, .dialkit-versions-host) { display: none; }

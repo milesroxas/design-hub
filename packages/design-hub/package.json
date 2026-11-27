@@ -75,7 +75,7 @@
     "@vercel/functions": "^3.10.4",
     "@vitejs/plugin-react": "^6.1.2",
     "axe-core": "^4.14.0",
-    "dialkit": "^2.1.0",
+    "dialkit": "^2.2.1",
     "marked": "^18.1.2",
     "motion": "^14.6.0",
     "postcss": "^8.5.32",

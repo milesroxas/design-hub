@@ -227,8 +227,8 @@ importers:
         specifier: ^4.14.0
         version: 4.14.0
       dialkit:
-        specifier: ^2.1.0
-        version: 2.1.0(motion@14.9.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        specifier: ^2.2.1
+        version: 2.2.1(motion@14.9.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       marked:
         specifier: ^18.1.2
         version: 18.1.2
@@ -616,8 +616,8 @@ packages:
     resolution: {integrity: sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==}
     engines: {node: '>=8'}
 
-  dialkit@2.1.0:
-    resolution: {integrity: sha512-W335tF+Yi6vQ4CkNu1xNc50AUs2jgPfAFsZbSB2GnCnPadoViMNzc1ccqlmKXtO2fGqFS/BJTQDpJ9DuGlhNJg==}
+  dialkit@2.2.1:
+    resolution: {integrity: sha512-4PDVfRy4LtOZxr3LHTzJmdIqeonYbqc+/jaUOmll5jYof/alQLdFd5D7DIVSmBgygqsb21nkoYxnmUH5uvKd7A==}
     peerDependencies:
       motion: '>=11.0.0'
       motion-v: '>=2.0.0'
@@ -1146,7 +1146,7 @@ snapshots:
 
   detect-libc@2.1.2: {}
 
-  dialkit@2.1.0(motion@14.9.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+  dialkit@2.2.1(motion@14.9.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
     optionalDependencies:
       motion: 14.9.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       react: 19.3.1

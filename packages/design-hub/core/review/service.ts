@@ -5,6 +5,7 @@
 // person, per comment), so two people commenting at once never collide;
 // two edits of the same comment at once keep the last.
 import { base64url, hex, sha256 } from '../bytes.ts';
+import { type ControlKind, controlField, type Marks, readMarks } from '../controls.ts';
 import { isPrototypeSlug } from '../prototype.ts';
 import {
   type Access,
@@ -18,6 +19,7 @@ import {
   checkAnchor,
   checkAudience,
   checkBody,
+  checkControl,
   checkPersonInput,
   checkPrototypeAudience,
   checkStates,
@@ -545,6 +547,45 @@ export function createReview(kv: KV, overrides: Partial<Deps> = {}) {
       if (value === 'client') await kv.hset(KEY.audiences, slug, 'client');
       else await kv.hdel(KEY.audiences, slug);
       return value;
+    },
+
+    /**
+     * What Studio marked on a prototype's dials and variants, with the view
+     * the actor gets. A Client reads the marks too: their page needs a dial
+     * Studio switched back to internal as much as one it shared, and the
+     * names are in the prototype's own code already. An internal prototype
+     * has none for a Client, as it has no comments.
+     */
+    async controlsOf(actor: Person | null, prototype: unknown): Promise<{ view: PersonKind } & Marks> {
+      allow(actor, 'read');
+      if (!isPrototypeSlug(prototype))
+        throw new ReviewError('invalid', 'Some fields are not valid.', ['prototype: a prototype slug']);
+      const view = viewOf(actor);
+      if (!(await reachable(view, prototype))) throw new ReviewError('not_found', 'No such prototype.');
+      return { view, ...readMarks(await kv.hgetall(KEY.controls(prototype))) };
+    },
+
+    /**
+     * Marks one dial or one variant client-facing or internal. A dial's mark
+     * is stored either way, because it overrules what the code says; a
+     * variant's internal is the field's absence. Studio only. The server
+     * keeps no list of a prototype's controls, so any well-formed id is taken.
+     */
+    async setControl(
+      actor: Person | null,
+      input: { prototype: unknown; kind: unknown; id: unknown; audience: unknown },
+    ): Promise<{ kind: ControlKind; id: string; audience: Audience }> {
+      allow(actor, 'audience');
+      const [slug, mark] = validAll<[string, { kind: ControlKind; id: string; audience: Audience }]>(
+        isPrototypeSlug(input.prototype)
+          ? { ok: true, value: input.prototype }
+          : { ok: false, problems: ['prototype: a prototype slug'] },
+        checkControl(input),
+      );
+      const field = controlField(mark.kind, mark.id);
+      if (mark.kind === 'variant' && mark.audience === 'internal') await kv.hdel(KEY.controls(slug), field);
+      else await kv.hset(KEY.controls(slug), field, mark.audience);
+      return mark;
     },
 
     /**
