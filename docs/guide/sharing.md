@@ -22,6 +22,17 @@ Someone who opens the site without signing in sees a short page that says to ope
 
 Every prototype starts **Internal**: only your studio can open it. When one is ready for the client, open the **Prototypes** page on the shared site and turn on the switch beside it; it is then **Client-facing**, and clients see it listed and can open it. Turn the switch off and it is internal again, for everyone, at once. A client never receives an internal prototype's page, code, text or images: it is not hidden on their screen, the site refuses it.
 
+## What a client can change
+
+A client-facing prototype still keeps its controls inside the studio until you share them.
+
+- **Dials.** Open **Controls** on the prototype. Beside each dial is an eye. A dim, struck eye means internal: the client's panel does not have that dial, and the prototype uses its starting value. Click the eye and it turns bright: the client has the dial. Click again to take it back. The **View** tools (theme, reduce motion, speed) have no eye: a client always has them.
+- **Variants.** At the end of the picker is an eye. Click it, then click each variant the client should be able to flip between; a green dot marks them. Click **Done**. With one variant marked the client sees that one and no picker. With none marked they see the first.
+
+Both are kept on the shared site, like the prototype's own switch, and apply to every client at once. Turn on **Client view** to see the prototype as a client gets it: the eyes are gone and only the shared dials and variants remain.
+
+An internal dial is left out of the client's panel, not out of the page: its name can still be found in the page's code by someone who looks. Do not put anything secret in a dial's name.
+
 Walkthroughs are the exception: every walkthrough, and every feature's name, reaches everyone signed in, clients included, whatever the switches say. Do not write about internal work in a walkthrough until the client may see it.
 
 **Client view**, at the top of the **Prototypes** page, shows the page exactly as a client gets it. A note at the bottom says Client view is on; press **Leave** to go back. It is the same Client view as the comments', so turning it on in one place turns it on in the other.

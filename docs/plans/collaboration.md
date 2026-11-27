@@ -1,6 +1,6 @@
 # Collaboration: people, access and what clients see
 
-Status: slice 1 shipped in 0.6.0 (section 9 records what was decided in review), slice 2 in 0.6.2 and slice 3 in 0.7.0 (section 10 records what was decided in the build and its two second reads); slice 4 in 0.8.0 (section 11 records what was decided in the build); slice 5 in 0.9.0 (section 12 records what was decided in the build); slices 6 and 7 are planned. Sections 3 to 7 are a proposed design for the decisions in section 2. Two points stay open (section 8); both are answered by the exploration in slice 6 and block nothing before it.
+Status: slice 1 shipped in 0.6.0 (section 9 records what was decided in review), slice 2 in 0.6.2 and slice 3 in 0.7.0 (section 10 records what was decided in the build and its two second reads); slice 4 in 0.8.0 (section 11 records what was decided in the build); slice 5 in 0.9.0 (section 12 records what was decided in the build); slice 6 is built and not yet released (section 8 records what the exploration decided, section 13 what was decided in the build); slice 7 is planned. Sections 3 to 7 are a proposed design for the decisions in section 2. Nothing stays open.
 
 ## 1. Problem and success
 
@@ -171,12 +171,34 @@ A slice over 3,000 lines is split before it is built. Slices 1 and 2 are read in
 
 No extra-high effort: it costs two to four times as much with no reliable gain in keeping everything working (Dex Horthy, `scb-oct-2026`).
 
-## 8. Open questions
+## 8. Decided by the slice 6 exploration
 
-| # | Question | Recommendation |
+Chosen by Miles from three prototypes in the sample project, each a live picker over the real DialKit panel: marking a dial in the hub (four directions), marking it in code (three), and the variant picker (three). The prototypes are deleted; what they decided is here.
+
+| # | Question | Decision |
 | --- | --- | --- |
-| Q1 | Does Studio mark a dial client-facing in the hub, in code, or both? | Decide from the slice 6 exploration. Leaning hub, to match prototypes (D13). |
-| Q2 | Is the variant picker client-facing, and can Studio limit which variants a Client sees? | Decide from the slice 6 exploration. Leaning the same rule as dials. |
+| Q1 | Does Studio mark a dial client-facing in the hub, in code, or both? | Both. Code sets where a dial starts, with `client(...)` around the dial where it is declared. The hub overrules it either way, per deployed site, with an eye inside each row of the Controls panel. |
+| Q2 | Is the variant picker client-facing, and can Studio limit which variants a Client sees? | Studio limits. An eye in Studio's picker marks variants; a Client's picker holds only those. One marked is no picker. None marked is the first variant. No marking in code. |
+| Q3 | How far is an internal dial kept from a Client? | Out of the panel. A Client's panel never draws it and its value stays at the default. Its name, range and default stay in the prototype's code that a Client's browser loads; keeping them out too would be a build change like slice 5's, and is not planned. |
+
+Hub directions, and why three were rejected:
+
+- **In the row** (chosen): the eye sits at the right end of the dial's own row. One click, and the state shows while tuning.
+- **Beside the row**: the same eye hanging off the panel's left edge. It sits over the page and reads as apart from its dial.
+- **One list**: a count that opens a list of every dial with switches. Away from the dial, two clicks, and a second place that must match the panel.
+- **In Client view**: enter Client view, press Edit, add from ghosted rows. Nothing in Studio's own view says what is shared.
+
+Code directions:
+
+- **On the dial** (chosen): `density: client({...})`. The mark travels with the dial.
+- **On the panel**: `{ audience: 'client' }` on `useDials`. It forces panels to split by audience instead of by topic.
+- **As a list**: `{ client: ['density'] }`. Keys as strings, so a rename breaks it silently.
+
+Picker directions:
+
+- **Studio limits** (chosen): covers both other cases.
+- **Studio only**: one variant and never a picker. Comparing would need a second prototype.
+- **Everyone**: every variant, always. Rejected and rough directions would reach the client.
 
 ## 9. Slice 1: decided in review
 
@@ -266,3 +288,25 @@ Built by one agent and read twice by a second, whose findings (the build boundar
 - **The index.** Built from the server's answer. Studio, outside Client view, sees each prototype's audience beside its row (Internal on the internal comments' amber, now one token, `--sys-internal`, that the comment layer reads too) and a switch, outside the row's link: optimistic, one save at a time per prototype (the switch waits), and a failed save puts back only that prototype, with a toast. **Client view** on the index is the comments' (`proto:client-view`), with the same note and **Leave**; in it no switch and no audience word shows, and an internal prototype's page shows "No prototype called …" with the note beside it. **Leave** stays on screen when the index fails to load. A Client with nothing shared sees "Nothing shared yet". With no review API at all (a 404, or `vite preview`'s page instead of JSON), the index shows Studio's view. The fold once called "Internal explorations" is now "Explorations", since internal means one thing.
 
 Left in the backlog: walkthroughs (`/guide/<feature>/`, `guideDocs`) are still sent to every signed-in person, feature names are in the main bundle, and a walkthrough's text may name an internal prototype; walkthrough text built into `_p/<slug>/` so the gate covers it, as a later slice of its own; a CLI command to set a prototype's audience; a deleted prototype's client-facing mark stays in the store, so a slug used again is born client-facing; a rollback to the release before this one signs out every device holding a `p4` cookie; the walkthrough page loads the whole index to find one link; a Client's refused request does not re-issue a stale cookie, so the next request asks the store again; `invite` is not reserved, so a prototype named `invite` would sit beside the link path; `prototype.audience` accepts a slug that was never built; on a client-facing prototype's page nothing says Client view is on until comment mode opens; a Client's prototype page costs one store read per file it loads, plus the entry probe; an image beside a symlinked kit sheet answers 403 in dev (older than this slice); `?url` of a kit CSS module is refused by Vite itself.
+
+## 13. Slice 6: decided in the build
+
+Built by one agent on the decisions in section 8; the human read of the chosen design against the running hub is still to come. What the code now does where section 4 said nothing:
+
+- **The rules are one pure module.** `core/controls.ts` holds what a mark is, who a dial is for, which variants a Client gets, and how a dial's config is read; the server, the kit and the tests read it. A dial's id is its panel and its key, a folder's dial the keys down to it: `Review/density`, `Card/shadow.blur`. A variant's id is its name in the picker.
+- **Who a dial is for.** The hub's mark when Studio set one, else what the code says, else internal (`dialAudience`). So the hub overrules a `client()` as well as its absence, and a mark is stored either way. `client()` around a folder marks every dial in it.
+- **The store.** One hash per prototype, `hub3:controls:<slug>`, one field per control: `dial:<id>` is `client` or `internal`; `variant:<name>` is `client`, and internal is the field's absence. One field each, so two people marking at once never undo each other. No migration: nothing is marked on an upgraded site, so a Client there has no dial and no picker until Studio marks them.
+- **The API.** Query `controls` (with `prototype`) answers `{ view, dials, variants }`: the caller's own view and every mark. Command `control.audience` takes `prototype`, `kind` (`dial` or `variant`), `id` and `audience`, Studio only, under the `audience` action that already guards a prototype's switch. A Client reads the marks of a client-facing prototype, because their page needs a dial Studio switched back to internal as much as one it shared; for an internal prototype the answer is `not_found`, the same as for one that does not exist. The server keeps no list of a prototype's controls, so any well-formed id is taken (one trimmed line, at most 200 characters), as `prototype.audience` takes a slug that was never built.
+- **A Client's panel is filtered before DialKit, not hidden after it.** `useDials` and `useDialsController` hand DialKit only the client-facing dials, and code reads every other dial at its default (`withDefaults`). So what a Client is kept from does not depend on DialKit's markup; only Studio's eyes do. The default for each kind of dial is repeated from DialKit, which does not export it, and `core/controls.test.ts` holds it equal to DialKit's own for every kind, so a DialKit upgrade that changes one fails a test.
+- **The page knows before it renders.** `shell/main.tsx` reads `controls` beside the prototype's entry and hands it to `kit/audience.ts` before the first render, so no internal dial is drawn and then removed. Until it is set the page is a Client's with nothing marked. With no review API at all (a local preview of the build) it is Studio's view with nowhere to keep a mark, as on the index; any other failure leaves the Client's view. `design-hub export` is Studio's view, so `--dials` still reaches every dial. Client view narrows the page in the kit (`proto:client-view`), with no second read.
+- **The eye.** DialKit has no slot in a row. Each row gives up 32px at its right end (a margin, or a max-width on a slider, which DialKit sizes inline), and the eye is drawn over that slot from outside the row, placed each frame from the row's box. It is never inside a slider, so a click cannot start a drag. Bright is client-facing, dim and struck is internal. It shows only where a mark can be stored: Studio, outside Client view, with a review API. A select's open list covers the rows under it, so the eyes step aside while one is open. A save that fails puts back that one dial and says so under the panel.
+- **Rows the eye reaches.** Sliders, selects, toggles, text fields and colors, in a panel or in a folder inside one. An image or pad dial, and the sliders inside a spring or an easing, get no eye: they are marked in code or stay internal. Left in the backlog.
+- **A panel with nothing for a Client.** DialKit draws a header for an empty panel; it is tagged and hidden, so a Client's panel is the View tools and the dials shared with them.
+- **The picker.** Studio gets every variant, a dot on each one a Client gets, and an eye after Replay that turns a click into a mark, with a note that says so and **Done** to go back. A Client's picker holds `clientVariants`: the marked ones in the prototype's order, or the first. With one, no picker is drawn and the keys do nothing but replay. `?v=N` counts the prototype's own variants, so a link names the same one for Studio and a Client; a Client sent to one they may not have gets their first.
+- **DialKit's own tools.** Copy parameters and Save version show only in Studio's panel. The stylesheet hides them unless the page is marked Studio's (`data-dial-studio` on the root), so a page that never says shows neither.
+- **The board's own dials.** `Board`'s Zoom and Guides are marked `client()` in the kit: they change how a person looks at the boards, not the design, as the View tools do (D16). Studio can still switch them off. Kept by Miles after the build.
+- **DialKit.** Raised from 2.1.0 to 2.2.1. The kit reads DialKit's class names for the hints, the panel's title, its last rows and now the eyes; the row, hint and link hooks were checked on 2.2.1 in the sample project.
+- **The check.** Section 5 left it to be defined with the chosen design. It is: a Client's page hands DialKit no internal dial. `core/controls.test.ts` holds the rules (`keepDials`, `dialAudience`, `clientVariants`, the defaults); `service.test.ts` and `api.test.ts` hold who may read and set a mark. The panel itself was checked in a browser, as UI is here: Studio's panel, a Client's, and the picker with marks.
+
+Left in the backlog: an eye for image and pad dials and for the parts of a spring or an easing; a mark for a control that no longer exists stays in the store; two `Variants` on one page share their marks by name; a CLI command to read or set a mark; `dialkit` is `^2.2.1`, not pinned to its minor as Vite is.
+

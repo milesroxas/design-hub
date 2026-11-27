@@ -18,7 +18,7 @@ Click **Open Design Hub** on the Design Hub page, or open the address Claude giv
 
 ## Controls
 
-At the top of every prototype is a round button, **Controls**. It opens the dials: every state Claude built, such as empty, loading, the longest names, dark mode and slow motion. A reviewer who never opens Controls sees one state. Say so when you share.
+At the top of every prototype is a round button, **Controls**. It opens the dials: every state Claude built, such as empty, loading, the longest names, dark mode and slow motion. A reviewer who never opens Controls sees one state. Say so when you share. A client has only the dials you share with them (see [Share a link](sharing.md)).
 
 ## Walkthroughs
 
