@@ -10,7 +10,7 @@ Code here is for sketching, not shipping. Following Karri Saarinen's [Design is 
 
 1. **Problem first.** `README.md` states the problem and the one question before any code exists. Restate it when you present the prototype.
 2. **Where it stands.** Pick one per prototype: the shell of its track (`AppShell` for product, `SiteShell` for website), the project's chrome from `kit/shell.ts` and `DESIGN.md`, Shell; or the low-gravity space (`Space`), one thing alone on a quiet canvas with the picker and live dials. Brand collateral always stands on a `Board` of `Artboard`s, each at its real pixel size.
-3. **Low gravity.** A prototype imports only `@kit/*` and its own folder. Never another prototype. No tests, no stories, no abstractions for later. The fidelity ceiling is in the `miles-prototype` skill, and the fidelity guard hook says so when a write goes over it.
+3. **Low gravity.** A prototype imports only `@kit/*` and its own folder. Never another prototype: the build refuses it. No tests, no stories, no abstractions for later. The fidelity ceiling is in the `miles-prototype` skill, and the fidelity guard hook says so when a write goes over it.
 4. **Fork, don't flex.** If a kit piece needs to behave differently, copy it into the prototype folder and change the copy. Never add a prop or a variant to `kit/` for one prototype.
 5. **Promote on second use.** When a second prototype copies the same thing, move it into `kit/` and point both at it.
 6. **Real materials, worst content.** Real tokens, fonts and icons. The content comes from `fixtures.json`: `real` pulled from the CMS or copied from the comp, `missing` written by hand, and `longest`, `empty` and `max` derived by `@kit/fixtures`.
@@ -78,9 +78,19 @@ README frontmatter, all fields required (`feature` may be empty for a one-off): 
 
 The README's `## States` table lists every state the prototype holds and how to reach it. The fidelity guard asks whether a write adds a state that is not there, and `miles-port` refuses a folder without the table.
 
-- Sub-pages are hash routes (`/sample-list/#/items/42`) via `useHashRoute`. The path belongs to the hub, and `/guide/` is taken.
+- Sub-pages are hash routes (`/sample-list/#/items/42`) via `useHashRoute`. The path belongs to the hub, and `/guide/`, `/api/` and `/assets/` are taken.
 - Persist with `useStoredState(key, initial)`, keys prefixed with the slug. A preference, never a store.
 - Only the open prototype's code and CSS load. Kit class names are shared: never reuse one for something else.
+
+## Who sees a prototype
+
+- A new prototype is **Internal**: only Studio can open it. A Studio person marks it **Client-facing** with the switch beside it on the hub's index (no command reads or sets it); a Client's index lists only client-facing prototypes. Say so when you hand a new one over. A switch flipped under `pnpm dev` writes this machine's store only; the deployed site keeps its own.
+- Everything in `prototypes/<slug>/` (code, README, styles, fixtures, images) ships only to people who may see that prototype. The deployed site refuses its page and files to a Client while it is internal.
+- Never reach into another prototype's files (an import, a CSS `@import` or `url()`, a `new URL`): the build refuses it, naming both. No web worker in a prototype either: the build refuses it (a worker in `kit/` that uses no prototype's files is fine). Run `pnpm build` before you share: it checks more than `pnpm dev` does. Never put shared code directly in `prototypes/` or in a folder there without a README: the build refuses it; shared code belongs in `kit/`. Write styles in plain CSS (or `.pcss`): Sass, Less and Stylus are refused in prototypes and in `kit/`, in `pnpm dev` and `pnpm build`, because their own imports resolve where no check sees them. The build also fails when a file outside a prototype's folder is one of that prototype's files whole (the same bytes, a `data:` URI of it, or its whole text as a string), however it got there; it does not look for part of a file, so shared lines and rules build. A `new URL` whose path is built at run time is not seen until its content lands outside the folder.
+- A prototype's small images and SVGs are files of their own, never `data:` URIs, so the site can refuse them to a Client while the prototype is internal.
+- `kit/` is shared with every signed-in person, clients included: nothing client-secret goes there, and nothing in it may point into a prototype's folder (the build refuses it). A link from one prototype's page to another's is fine.
+- Walkthrough text (`docs/sprints/<feature>/guide.md`) and feature names go to every signed-in person, clients included, whether or not the feature's prototypes are client-facing: a walkthrough must not name or describe internal work until the client may see it.
+- `guide`, `api` and `assets` are the hub's paths, never a slug (`pnpm new` refuses them).
 
 ## A feature
 
