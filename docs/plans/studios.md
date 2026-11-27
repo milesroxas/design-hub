@@ -125,6 +125,8 @@ One orchestrator (Fable 5.2, medium) runs one slice at a time and writes no prod
 3. **Fix.** For each real finding, spawn a fixer (Opus 5.5) with that finding alone. Each fix adds a test that failed before it.
 4. **Review again** until a round finds nothing that crosses a boundary. Slices 2, 4 and 6 need two clean rounds. Then commit.
 
+**UI work.** Slices 4 and 6 build new screens (the client hub, the studio hub, the People tab per client), and slice 3 touches the hub's links. Any builder or fixer that adds or changes UI loads Emil's skills before writing it (`emil-design-foundations`, `emil-component-design`, `emil-ui-polish`, and whichever others fit), and the reviewer runs `emil-ui-review` on the result beside its security hunt. An agent unsure which skill fits loads `emil-ask-emil`, which routes to the right one. The orchestrator says this in every brief for a slice with UI. New screens are built on `kit/ui` and the hub's own system look, as `shell/` is today.
+
 | Slice | The reviewer hunts for |
 | --- | --- |
 | 2 | A service read or write path that skips the scope; a key built outside the one key function |
