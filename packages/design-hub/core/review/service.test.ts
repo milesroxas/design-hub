@@ -47,6 +47,8 @@ beforeEach(async () => {
   const r = await review.addPerson(studio, { name: 'Rae', team: 'Acme' });
   client = r.person;
   clientToken = r.token;
+  // The prototype these tests comment on is client-facing, so a Client reaches its comments.
+  await review.setAudience(studio, anchor.prototype, 'client');
 });
 
 test('a link works once, and looking at it uses nothing up', async () => {
@@ -60,10 +62,8 @@ test('a link works once, and looking at it uses nothing up', async () => {
 
 test('two requests with one link at once sign in one device', async () => {
   const both = await Promise.all([review.useLink(clientToken), review.useLink(clientToken)]);
-  assert.deepEqual(
-    both.map((p) => p?.id ?? null),
-    [client.id, null],
-  );
+  // Either request may win the claim; exactly one does.
+  assert.deepEqual(both.map((p) => p?.id ?? null).sort(), [client.id, null].sort());
 });
 
 test('a new link is for another device: sessions and other links stay', async () => {
@@ -555,6 +555,7 @@ test('triage runs on add, and a failing triager never loses the comment', async 
       return { kind: 'bug', state: states[0] ?? null, by: 'jev', confidence: 0.9 };
     },
   });
+  await triaged.setAudience(studio, anchor.prototype, 'client');
   const c = await triaged.add(client, {
     body: 'Broken',
     anchor,
@@ -563,6 +564,7 @@ test('triage runs on add, and a failing triager never loses the comment', async 
   assert.deepEqual(seen, [['Empty', 'Real list']]);
   assert.equal(c.triage?.kind, 'bug');
   const failing = createReview(memoryKV(), { triage: async () => Promise.reject(new Error('down')) });
+  await failing.setAudience(studio, anchor.prototype, 'client');
   assert.equal((await failing.add(client, { body: 'Still saved', anchor })).triage, null);
 });
 
@@ -704,6 +706,7 @@ test('numbers are fixed: internal and client-facing threads count apart, and non
 });
 
 test('numbers count per prototype', async () => {
+  await review.setAudience(studio, 'other', 'client');
   const a = await review.add(client, { body: 'A1', anchor });
   const b = await review.add(client, { body: 'B1', anchor: { ...anchor, prototype: 'other' } });
   const a2 = await review.add(studio, { body: 'A2', anchor, audience: 'client' });
@@ -780,4 +783,141 @@ test('a stored comment without an audience is internal, and one without a number
   assert.deepEqual(await r.listComments(rae, 'sample-list'), []);
   assert.equal(await r.locate(rae, 'old'), null);
   await rejects(r.edit(rae, { prototype: 'sample-list', id: 'old', body: 'x' }), 'not_found');
+});
+
+test('a prototype is internal until Studio marks it client-facing, and internal again when unmarked', async () => {
+  assert.equal(await review.audienceOf('secret-plan'), 'internal');
+  assert.equal(await review.setAudience(studio, 'secret-plan', 'client'), 'client');
+  assert.equal(await review.audienceOf('secret-plan'), 'client');
+  assert.equal(await review.audienceOf('sample-page'), 'internal');
+  assert.equal(await review.setAudience(studio, 'secret-plan', 'internal'), 'internal');
+  assert.equal(await review.audienceOf('secret-plan'), 'internal');
+  // Marking internal twice, or one never marked, is no error.
+  assert.equal(await review.setAudience(studio, 'sample-page', 'internal'), 'internal');
+});
+
+test('only client-facing is stored: internal deletes the field, and absent or garbage reads as internal', async () => {
+  const kv = memoryKV();
+  const own = createReview(kv);
+  await own.setAudience(studio, 'secret-plan', 'client');
+  assert.deepEqual(await kv.hgetall(KEY.audiences), { 'secret-plan': 'client' });
+  await own.setAudience(studio, 'secret-plan', 'internal');
+  assert.deepEqual(await kv.hgetall(KEY.audiences), {});
+  for (const garbage of ['Client', 'internal', '', '"client"', 'true', ' client']) {
+    await kv.hset(KEY.audiences, 'secret-plan', garbage);
+    assert.equal(await own.audienceOf('secret-plan'), 'internal', garbage);
+  }
+  await kv.hset(KEY.audiences, 'sample-page', 'yes');
+  await kv.hset(KEY.audiences, 'guide', 'client');
+  await kv.hset(KEY.audiences, 'Not_A_Slug', 'client');
+  await kv.hset(KEY.audiences, 'sample-social', 'client');
+  assert.deepEqual(await own.visiblePrototypes(studio), { view: 'studio', clientFacing: ['sample-social'] });
+  // A name that can never be a prototype is internal without a store read.
+  assert.equal(await own.audienceOf('guide'), 'internal');
+  assert.equal(await own.audienceOf('all.js'), 'internal');
+});
+
+test('only Studio sets an audience: a Client is forbidden, a signed-out caller unauthorized, whatever the input', async () => {
+  await rejects(review.setAudience(client, 'secret-plan', 'client'), 'forbidden');
+  await rejects(review.setAudience(client, 'nope!', 'garbage'), 'forbidden');
+  await rejects(review.setAudience(null, 'secret-plan', 'client'), 'unauthorized');
+  const revoked = await review.revoke(studio, client.id);
+  await rejects(review.setAudience({ ...revoked, kind: 'studio' }, 'secret-plan', 'client'), 'forbidden');
+  assert.equal(await review.audienceOf('secret-plan'), 'internal');
+});
+
+test('a prototype’s audience is checked: the slug and the value, every problem named', async () => {
+  await assert.rejects(
+    review.setAudience(studio, 'Bad Slug', 'everyone'),
+    (e: unknown) =>
+      e instanceof ReviewError &&
+      e.code === 'invalid' &&
+      e.problems.join('|') === 'prototype: a prototype slug|audience: one of internal, client',
+  );
+  for (const reserved of ['guide', 'api', 'assets'])
+    await rejects(review.setAudience(studio, reserved, 'client'), 'invalid');
+  await rejects(review.setAudience(studio, 'sample-list', null), 'invalid');
+  await rejects(review.setAudience(studio, 'sample-list', undefined), 'invalid');
+});
+
+test('the index read: Studio’s view, Client view, and a Client’s, each with the client-facing slugs', async () => {
+  await review.setAudience(studio, 'sample-page', 'client');
+  await review.setAudience(studio, 'sample-list', 'client');
+  const facing = ['sample-list', 'sample-page'];
+  assert.deepEqual(await review.visiblePrototypes(studio), { view: 'studio', clientFacing: facing });
+  assert.deepEqual(await review.visiblePrototypes(studio, 'studio'), {
+    view: 'studio',
+    clientFacing: facing,
+  });
+  assert.deepEqual(await review.visiblePrototypes(studio, 'client'), {
+    view: 'client',
+    clientFacing: facing,
+  });
+  // A Client asking for Studio's view still gets a Client's.
+  assert.deepEqual(await review.visiblePrototypes(client), { view: 'client', clientFacing: facing });
+  assert.deepEqual(await review.visiblePrototypes(client, 'studio'), {
+    view: 'client',
+    clientFacing: facing,
+  });
+  await rejects(review.visiblePrototypes(studio, 'everyone'), 'invalid');
+  await rejects(review.visiblePrototypes(null), 'unauthorized');
+  await rejects(review.visiblePrototypes(null, 'client'), 'unauthorized');
+});
+
+/** A client-facing thread with a Client's reply on it, then the prototype switched back to internal. */
+async function onInternalPrototype() {
+  const root = await review.add(studio, { body: 'For the client', anchor, audience: 'client' });
+  const reply = await review.reply(client, { prototype: anchor.prototype, thread: root.id, body: 'Seen' });
+  await review.setAudience(studio, anchor.prototype, 'internal');
+  return { root, reply };
+}
+
+test('a Client’s list of an internal prototype is empty, as if it had no comments, and so is Studio’s Client view', async () => {
+  await onInternalPrototype();
+  assert.deepEqual(await review.listComments(client, anchor.prototype), []);
+  assert.deepEqual(await review.listComments(client, anchor.prototype, 'studio'), []);
+  assert.deepEqual(await review.listComments(studio, anchor.prototype, 'client'), []);
+  // The same answer as a prototype nobody made.
+  assert.deepEqual(await review.listComments(client, 'no-such-thing'), []);
+  assert.equal((await review.listComments(studio, anchor.prototype)).length, 2);
+  assert.deepEqual(await review.allComments(client), []);
+  assert.equal((await review.allComments(studio)).length, 2);
+  // Client-facing again: the thread is back for them, with its reply.
+  await review.setAudience(studio, anchor.prototype, 'client');
+  assert.equal((await review.listComments(client, anchor.prototype)).length, 2);
+});
+
+test('a Client acting on a client-facing thread of an internal prototype is told it does not exist, by every op', async () => {
+  const { root, reply } = await onInternalPrototype();
+  const at = { prototype: anchor.prototype };
+  for (const id of [root.id, reply.id]) {
+    await rejects(review.reply(client, { ...at, thread: id, body: 'x' }), 'not_found');
+    await rejects(review.edit(client, { ...at, id, body: 'x' }), 'not_found');
+    await rejects(review.remove(client, { ...at, id }), 'not_found');
+    await rejects(review.resolve(client, { ...at, id, resolved: true }), 'not_found');
+    await rejects(review.resolve(client, { ...at, id, resolved: false }), 'not_found');
+    await rejects(review.retriage(client, { ...at, id, triage: { kind: 'bug' } }), 'forbidden');
+    assert.equal(await review.locate(client, id), null);
+    assert.ok(await review.locate(studio, id));
+  }
+  // The same answers as an id, and a prototype, that are not there at all.
+  await rejects(review.edit(client, { ...at, id: 'nope', body: 'x' }), 'not_found');
+  await rejects(review.edit(client, { prototype: 'no-such-thing', id: 'nope', body: 'x' }), 'not_found');
+  // A new thread there is refused the same way, and nothing is written or counted.
+  await rejects(review.add(client, { body: 'Hello?', anchor }), 'not_found');
+  await rejects(
+    review.add(client, { body: 'Hello?', anchor: { ...anchor, prototype: 'no-such-thing' } }),
+    'not_found',
+  );
+  const after = await review.listComments(studio, anchor.prototype);
+  assert.deepEqual(
+    after.map((c) => [c.body, c.status]),
+    [
+      ['For the client', 'open'],
+      ['Seen', 'open'],
+    ],
+  );
+  // Studio, writing as Studio from Client view, still works there.
+  assert.ok(await review.add(studio, { body: 'Internal note', anchor }));
+  assert.ok(await review.reply(studio, { ...at, thread: root.id, body: 'Studio reply' }));
 });

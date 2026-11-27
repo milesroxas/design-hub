@@ -160,7 +160,7 @@ test('a link POST signs one device in with the person cookie, to the access end'
   assert.equal(used.status, 303);
   assert.equal(used.headers.get('location'), '/');
   const cookie = used.headers.get('set-cookie') ?? '';
-  assert.match(cookie, /^__Host-hub_person=p3\./);
+  assert.match(cookie, /^__Host-hub_person=p4\./);
   assert.match(cookie, /HttpOnly; Secure; SameSite=Lax/);
   const maxAge = Number(cookie.match(/Max-Age=(\d+)/)?.[1]);
   assert.ok(maxAge > 88 * 86_400 && maxAge <= 92 * 86_400, String(maxAge));
@@ -242,7 +242,8 @@ test('while the store’s yes is fresh a request passes on the signature, with n
   globalThis.fetch = (() => {
     throw new Error('the store was asked');
   }) as unknown as typeof fetch;
-  const fresh = await proxy(bare('/sample-list/', cookie));
+  // A hub path: a Client's prototype path asks the store about the prototype on every request (below).
+  const fresh = await proxy(bare('/assets/index.js', cookie));
   assert.ok(passed(fresh));
   assert.equal(fresh.headers.get('set-cookie'), null);
   assert.ok(passed(await proxy(page('/', { cookie }))));
@@ -254,7 +255,7 @@ test('once stale, a current person passes with a re-issued cookie, whatever the 
   const asked = await proxy(bare('/assets/index.js', cookie));
   assert.ok(passed(asked));
   const renewed = cookieOf(asked);
-  assert.match(renewed, /^__Host-hub_person=p3\./);
+  assert.match(renewed, /^__Host-hub_person=p4\./);
   assert.notEqual(renewed, cookie);
   assert.match(asked.headers.get('set-cookie') ?? '', /HttpOnly; Secure; SameSite=Lax/);
   // The new stamp is fresh again: no store read for the next five minutes.
@@ -415,4 +416,231 @@ test('the dev preview renders each gate page with the same policy', async () => 
   // Names on Object.prototype fall back to the sign-in page instead of throwing.
   for (const name of ['__proto__', 'constructor', 'toString', 'hasOwnProperty'])
     assert.match((await gatePreview(name)).html, /data-gate="sign-in"/);
+});
+
+/** Records every store command the gate and the service send, by name and key. */
+function watchStore(): string[] {
+  const sent: string[] = [];
+  const healthy = globalThis.fetch;
+  globalThis.fetch = ((url: unknown, init?: RequestInit) => {
+    const [cmd, key] = JSON.parse(String(init?.body)) as string[];
+    sent.push(`${cmd} ${key}`);
+    return healthy(url as string, init);
+  }) as typeof fetch;
+  return sent;
+}
+const AUDIENCES_KEY = 'hub3:audiences';
+const PROTOTYPE_PATHS = [
+  '/secret-plan/',
+  '/secret-plan',
+  '/_p/secret-plan/entry.js',
+  '/_p/secret-plan/index-abc.js',
+];
+
+async function sameAnswer(a: Response, b: Response, what: string) {
+  assert.equal(a.status, b.status, what);
+  assert.equal(await a.clone().text(), await b.clone().text(), what);
+  assert.deepEqual([...a.headers], [...b.headers], what);
+}
+
+test('a Client is refused an internal prototype’s page and files, and /_p/all.js, with the answer an unknown one gets', async () => {
+  const { cookie } = await signIn();
+  for (const path of [...PROTOTYPE_PATHS, '/_p/all.js', '/_p/', '/_p/secret-plan/../all.js']) {
+    for (const r of [await proxy(page(path, { cookie })), await proxy(bare(path, cookie))]) {
+      assert.equal(r.status, 404, path);
+      assert.equal(await r.clone().text(), 'Not found.');
+      assert.equal(r.headers.get('set-cookie'), null);
+      assert.equal(r.headers.get('x-robots-tag'), 'noindex, nofollow');
+      assert.match(r.headers.get('cache-control') ?? '', /no-store/);
+    }
+  }
+  // An internal prototype and one that was never made answer byte for byte the same.
+  await sameAnswer(
+    await proxy(bare('/_p/secret-plan/entry.js', cookie)),
+    await proxy(bare('/_p/no-such-thing/entry.js', cookie)),
+    'file',
+  );
+  await sameAnswer(
+    await proxy(page('/secret-plan/', { cookie })),
+    await proxy(page('/no-such-thing/', { cookie })),
+    'page',
+  );
+  await sameAnswer(
+    await proxy(bare('/_p/all.js', cookie)),
+    await proxy(bare('/_p/secret-plan/entry.js', cookie)),
+    'all',
+  );
+});
+
+test('Studio’s switch reaches a Client’s next request, both ways, with no cache', async () => {
+  const { cookie } = await signIn();
+  const studio = (await review().addPerson(root, { name: 'Ed', team: 'Studio', kind: 'studio' })).person;
+  await review().setAudience(studio, 'secret-plan', 'client');
+  for (const path of PROTOTYPE_PATHS) {
+    const r = await proxy(bare(path, cookie));
+    assert.ok(passed(r), path);
+    assert.equal(r.headers.get('cache-control'), 'private, no-store');
+  }
+  assert.ok(passed(await proxy(page('/secret-plan/', { cookie }))));
+  // Only that prototype: another internal one, and Studio's list, stay refused.
+  assert.equal((await proxy(bare('/_p/other-plan/entry.js', cookie))).status, 404);
+  assert.equal((await proxy(bare('/_p/all.js', cookie))).status, 404);
+  await review().setAudience(studio, 'secret-plan', 'internal');
+  for (const path of PROTOTYPE_PATHS) assert.equal((await proxy(bare(path, cookie))).status, 404, path);
+});
+
+test('Studio passes every prototype path and /_p/all.js with no store read while fresh', async () => {
+  const { cookie } = await signIn({ name: 'Ed', team: 'Studio', kind: 'studio' });
+  globalThis.fetch = (() => {
+    throw new Error('the store was asked');
+  }) as unknown as typeof fetch;
+  for (const path of [...PROTOTYPE_PATHS, '/_p/all.js', '/_p/no-such-thing/entry.js', '/']) {
+    const r = await proxy(bare(path, cookie));
+    assert.ok(passed(r), path);
+    assert.equal(r.headers.get('set-cookie'), null);
+  }
+});
+
+test('a Client’s hub paths pass with no audience read; a prototype path asks on every request', async () => {
+  const { cookie } = await signIn();
+  const sent = watchStore();
+  for (const path of ['/', '/assets/x.js', '/api/review', '/guide/sample/', '/favicon.svg', '/index.html']) {
+    assert.ok(passed(await proxy(bare(path, cookie))), path);
+  }
+  assert.deepEqual(sent, []);
+  await proxy(bare('/_p/secret-plan/entry.js', cookie));
+  await proxy(bare('/_p/secret-plan/entry.js', cookie));
+  assert.deepEqual(sent, [`HGET ${AUDIENCES_KEY}`, `HGET ${AUDIENCES_KEY}`]);
+  // A name that can never be a prototype is refused without asking.
+  await proxy(bare('/_p/all.js', cookie));
+  assert.equal(sent.length, 2);
+});
+
+test('a store that does not answer gives a Client 503 on a prototype path, never a pass and never a sign out', async () => {
+  const { cookie } = await signIn();
+  globalThis.fetch = storeDown;
+  for (const path of ['/secret-plan/', '/_p/secret-plan/entry.js']) {
+    const r = await proxy(bare(path, cookie));
+    assert.equal(r.status, 503, path);
+    assert.equal(r.headers.get('retry-after'), '30');
+    assert.equal(r.headers.get('set-cookie'), null);
+  }
+  // The hub itself still passes on the fresh signature.
+  assert.ok(passed(await proxy(bare('/', cookie))));
+});
+
+test('once stale, a Client is asked about the session and the prototype, and re-issued only when let through', async () => {
+  const { cookie } = await signIn();
+  goStale();
+  const refused = await proxy(bare('/_p/secret-plan/entry.js', cookie));
+  assert.equal(refused.status, 404);
+  const hub = await proxy(bare('/', cookie));
+  assert.ok(passed(hub));
+  assert.match(cookieOf(hub), /^__Host-hub_person=p4\.[a-z0-9]+\.0\.client\./);
+});
+
+test('a valid p3 cookie from before the kind still passes, and comes back as p4', async () => {
+  const { person } = await review().addPerson(root, { name: 'Rae', team: 'Acme' });
+  const now = Math.floor(clock / 1000);
+  const expires = now + 86_400;
+  const sign = (message: string) => createHmac('sha256', SECRET).update(message).digest('base64url');
+  const p3 = `p3.${person.id}.0.${expires}.${now}.${sign(`p3\n${env.KV_REST_API_URL}\n${person.id}.0.${expires}.${now}`)}`;
+  // Stamped this second, and still asked: the store says who they are and the cookie is re-issued.
+  const sent = watchStore();
+  const r = await proxy(bare('/', `__Host-hub_person=${p3}`));
+  assert.ok(passed(r));
+  assert.ok(sent.some((c) => c.startsWith('HGET hub3:people')));
+  const renewed = cookieOf(r);
+  assert.match(renewed, new RegExp(`^__Host-hub_person=p4\\.${person.id}\\.0\\.client\\.`));
+  // The p3 cookie of a Client is held to the boundary too.
+  assert.equal((await proxy(bare('/_p/secret-plan/entry.js', `__Host-hub_person=${p3}`))).status, 404);
+  // The new one is fresh: no store read on the hub.
+  sent.length = 0;
+  assert.ok(passed(await proxy(bare('/', renewed))));
+  assert.deepEqual(sent, []);
+});
+
+test('a p3 cookie of a Studio person is re-issued as Studio and passes the boundary', async () => {
+  const { person } = await review().addPerson(root, { name: 'Ed', team: 'Studio', kind: 'studio' });
+  const now = Math.floor(clock / 1000);
+  const expires = now + 86_400;
+  const sign = (message: string) => createHmac('sha256', SECRET).update(message).digest('base64url');
+  const p3 = `p3.${person.id}.0.${expires}.${now}.${sign(`p3\n${env.KV_REST_API_URL}\n${person.id}.0.${expires}.${now}`)}`;
+  const r = await proxy(bare('/_p/all.js', `__Host-hub_person=${p3}`));
+  assert.ok(passed(r));
+  assert.match(cookieOf(r), /\.studio\./);
+});
+
+test('a Client cookie that claims Studio fails the signature and signs out', async () => {
+  const { cookie } = await signIn();
+  const forged = cookie.replace('.client.', '.studio.');
+  assert.notEqual(forged, cookie);
+  const r = await proxy(bare('/_p/all.js', forged));
+  assert.equal(r.status, 401);
+  assert.ok(cleared(r));
+  await assertSignInPage(await proxy(page('/secret-plan/', { cookie: forged })));
+});
+
+test('a path that could mean more than one file is refused to a Client, even beside a client-facing prototype', async () => {
+  const { cookie } = await signIn();
+  const studio = (await review().addPerson(root, { name: 'Ed', team: 'Studio', kind: 'studio' })).person;
+  await review().setAudience(studio, 'open-plan', 'client');
+  assert.ok(passed(await proxy(bare('/_p/open-plan/entry.js', cookie))));
+  for (const path of [
+    '/assets/..%2f_p/secret-plan/entry.js',
+    '/api/..%2f_p/secret-plan/entry.js',
+    '/_p/open-plan/..%2fsecret-plan/entry.js',
+    '/_p/open-plan/.%2fentry.js',
+    '/_P/secret-plan/entry.js',
+    '/%255Fp/secret-plan/entry.js',
+    '/_p%5csecret-plan%5centry.js',
+    '/assets%5c..%5c_p%5csecret-plan%5centry.js',
+    '//_p//secret-plan/entry.js',
+    '/_P/open-plan/entry.js',
+    '/_p;x/open-plan/entry.js',
+    '/_p./open-plan/entry.js',
+    '/_p%20/open-plan/entry.js',
+    '/_p%00/open-plan/entry.js',
+    '/＿p/open-plan/entry.js',
+    '/robots.txt',
+    '/Open-Plan/',
+    '/assets//x.js',
+    '/%E0%A4%A/',
+  ]) {
+    const r = await proxy(bare(path, cookie));
+    assert.equal(r.status, 404, path);
+    await sameAnswer(r, await proxy(bare('/_p/no-such-thing/entry.js', cookie)), path);
+  }
+  // An encoded space or letter in a file name is no trick.
+  for (const path of [
+    '/assets/a%20b.png',
+    '/assets/caf%C3%A9.png',
+    '/_p/open-plan/caf%C3%A9%20x.png',
+    '/open-plan/',
+  ])
+    assert.ok(passed(await proxy(bare(path, cookie))), path);
+  // Studio is not held to it.
+  const { cookie: ed } = await signIn({ name: 'Ed2', team: 'Studio', kind: 'studio' });
+  assert.ok(passed(await proxy(bare('/_p/open-plan/..%2fsecret-plan/entry.js', ed))));
+});
+
+test('a fresh Client on a prototype path with the store config missing gets 503, never a pass', async () => {
+  const { cookie } = await signIn();
+  delete process.env.KV_REST_API_TOKEN;
+  const r = await proxy(bare('/_p/secret-plan/entry.js', cookie));
+  assert.equal(r.status, 503);
+  assert.equal(r.headers.get('set-cookie'), null);
+  assert.ok(passed(await proxy(bare('/', cookie))));
+});
+
+test('a HEAD on a prototype path is held to the same rule as a GET', async () => {
+  const { cookie } = await signIn();
+  const head = (path: string) => new Request(`${site}${path}`, { method: 'HEAD', headers: { cookie } });
+  const refused = await proxy(head('/_p/secret-plan/entry.js'));
+  assert.equal(refused.status, 404);
+  assert.equal(await refused.text(), '');
+  assert.equal((await proxy(head('/_p/all.js'))).status, 404);
+  const studio = (await review().addPerson(root, { name: 'Ed', team: 'Studio', kind: 'studio' })).person;
+  await review().setAudience(studio, 'secret-plan', 'client');
+  assert.ok(passed(await proxy(head('/_p/secret-plan/entry.js'))));
 });

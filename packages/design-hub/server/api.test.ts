@@ -175,7 +175,7 @@ test('the deployed function answers JSON 503 when the store is down or missing, 
   Object.assign(process.env, env);
   try {
     globalThis.fetch = fakeUpstash();
-    const token = await issuePersonToken(gate, { id: 'abc123', epoch: 0 }, null);
+    const token = await issuePersonToken(gate, { id: 'abc123', epoch: 0, kind: 'client' }, null);
     const signedIn = new Request(`${origin}/api/review?op=me`, {
       headers: { cookie: `${PERSON_COOKIE}=${token}` },
     });
@@ -226,6 +226,8 @@ test('comments: a Client never receives an internal comment, and Studio’s Clie
     viewport: { width: 1, height: 1 },
   };
   const client = (await review.addPerson(studio, { name: 'Rae', team: 'Acme' })).person;
+  // The prototype is client-facing, so a Client reaches its comments.
+  await review.setAudience(studio, 'p', 'client');
   const internal = (await call(post({ op: 'comment.add', body: 'Ours', anchor }))).body.comment;
   assert.equal(internal.audience, 'internal');
   await call(post({ op: 'comment.reply', prototype: 'p', thread: internal.id, body: 'Still ours' }));
@@ -266,4 +268,79 @@ test('comments: a Client never receives an internal comment, and Studio’s Clie
     assert.equal(res.status, 404, body.op);
     assert.deepEqual(res.body, { error: 'No such comment.', problems: [] });
   }
+});
+
+test('prototypes: the index read takes viewAs as comments does, and a Client gets a Client’s view', async () => {
+  const client = (await review.addPerson(studio, { name: 'Rae', team: 'Acme' })).person;
+  assert.deepEqual((await call(get('prototypes'))).body, { view: 'studio', clientFacing: [] });
+  const set = await call(post({ op: 'prototype.audience', prototype: 'sample-list', audience: 'client' }));
+  assert.deepEqual(set, { status: 200, body: { prototype: 'sample-list', audience: 'client' } });
+  assert.deepEqual((await call(get('prototypes'))).body, { view: 'studio', clientFacing: ['sample-list'] });
+  assert.deepEqual((await call(get('prototypes', '&viewAs=client'))).body, {
+    view: 'client',
+    clientFacing: ['sample-list'],
+  });
+  assert.deepEqual((await call(get('prototypes', '&viewAs=studio'), client)).body, {
+    view: 'client',
+    clientFacing: ['sample-list'],
+  });
+  const bad = await call(get('prototypes', '&viewAs=everyone'));
+  assert.equal(bad.status, 422);
+  assert.deepEqual(bad.body.problems, ['viewAs: one of studio, client']);
+  assert.equal((await call(get('prototypes'), null)).status, 401);
+});
+
+test('prototype.audience: Studio only, the slug and value checked, internal unmarks', async () => {
+  const client = (await review.addPerson(studio, { name: 'Rae', team: 'Acme' })).person;
+  const op = (body: Record<string, unknown>, actor: Person | null = studio) =>
+    call(post({ op: 'prototype.audience', ...body }), actor);
+  assert.equal((await op({ prototype: 'sample-list', audience: 'client' }, client)).status, 403);
+  assert.equal((await op({ prototype: 'sample-list', audience: 'client' }, null)).status, 401);
+  const invalid = await op({ prototype: 'guide', audience: 'all' });
+  assert.equal(invalid.status, 422);
+  assert.deepEqual(invalid.body.problems, [
+    'prototype: a prototype slug',
+    'audience: one of internal, client',
+  ]);
+  await op({ prototype: 'sample-list', audience: 'client' });
+  assert.equal(await review.audienceOf('sample-list'), 'client');
+  assert.deepEqual((await op({ prototype: 'sample-list', audience: 'internal' })).body, {
+    prototype: 'sample-list',
+    audience: 'internal',
+  });
+  assert.equal(await memory.hget(KEY.audiences, 'sample-list'), null);
+  // A cross-site POST is refused before the op runs.
+  const cross = await handleReview(
+    post(
+      { op: 'prototype.audience', prototype: 'sample-list', audience: 'client' },
+      { 'sec-fetch-site': 'cross-site' },
+    ),
+    { review, actor: studio },
+  );
+  assert.equal(cross.status, 403);
+  assert.equal(await review.audienceOf('sample-list'), 'internal');
+});
+
+test('comments on an internal prototype: a Client gets an empty list and not_found, as for one with none', async () => {
+  const anchor = {
+    prototype: 'p',
+    feature: '',
+    url: '/p/',
+    dials: {},
+    target: null,
+    offset: null,
+    viewport: { width: 1, height: 1 },
+  };
+  const client = (await review.addPerson(studio, { name: 'Rae', team: 'Acme' })).person;
+  const shared = (await call(post({ op: 'comment.add', body: 'Theirs', anchor, audience: 'client' }))).body
+    .comment;
+  assert.deepEqual((await call(get('comments', '&prototype=p'), client)).body, { comments: [] });
+  assert.deepEqual((await call(get('comments', '&prototype=p&viewAs=client'))).body, { comments: [] });
+  assert.equal((await call(get('comments', '&prototype=p'))).body.comments.length, 1);
+  const added = await call(post({ op: 'comment.add', body: 'Hi', anchor }), client);
+  const unknown = await call(post({ op: 'comment.edit', prototype: 'p', id: 'nope', body: 'x' }), client);
+  assert.deepEqual([added.status, added.body], [404, { error: 'No such comment.', problems: [] }]);
+  assert.deepEqual([unknown.status, unknown.body], [404, { error: 'No such comment.', problems: [] }]);
+  const edited = await call(post({ op: 'comment.edit', prototype: 'p', id: shared.id, body: 'x' }), client);
+  assert.deepEqual([edited.status, edited.body], [unknown.status, unknown.body]);
 });

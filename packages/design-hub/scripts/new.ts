@@ -9,6 +9,7 @@ import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, wri
 import { dirname, join, relative } from 'node:path';
 import { featureTitle, guideHref, SLUG } from '../core/feature.ts';
 import { TRACKS, type Track, trackFor } from '../core/project.ts';
+import { isPrototypeSlug, RESERVED } from '../core/prototype.ts';
 import { devPort, readEnv } from '../server/env.ts';
 import { DOCS, PROTOTYPES, ROOT, TEMPLATES } from '../server/paths.ts';
 import { readProject } from '../server/project.ts';
@@ -127,7 +128,10 @@ export function kindFor(
 
 function prototype(slug: string, { flags }: Args<typeof spec>) {
   if (!SLUG.test(slug)) throw new CliError('The slug is kebab-case.', { got: slug });
-  if (slug === 'guide') throw new CliError('guide/ is the walkthrough route; pick another slug.');
+  if (!isPrototypeSlug(slug))
+    throw new CliError(`${slug}/ is the hub's own path (${RESERVED.join(', ')}); pick another slug.`, {
+      got: slug,
+    });
   const feature = flags.feature ?? '';
   if (feature && !SLUG.test(feature))
     throw new CliError('--feature takes a kebab-case slug.', { got: feature });

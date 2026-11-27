@@ -48,6 +48,8 @@ const TABLE: [Action, Audience, boolean, boolean, boolean, boolean][] = [
   ['triage', 'internal', true, true, false, false],
   ['people', 'client', true, true, false, false],
   ['people', 'internal', true, true, false, false],
+  ['audience', 'client', true, true, false, false],
+  ['audience', 'internal', true, true, false, false],
 ];
 
 const studio = person('s', 'studio');
@@ -72,12 +74,12 @@ for (const [action, audience, studioOwn, studioOther, clientOwn, clientOther] of
   });
 }
 
-test('with no thread, both kinds read and start one; only Studio triages and manages people', () => {
+test('with no thread, both kinds read and start one; only Studio triages, manages people and sets a prototype’s audience', () => {
   for (const action of ['read', 'comment'] as const) {
     assert.equal(can(studio, action), true);
     assert.equal(can(client, action), true);
   }
-  for (const action of ['triage', 'people'] as const) {
+  for (const action of ['triage', 'people', 'audience'] as const) {
     assert.equal(can(studio, action), true);
     assert.equal(can(client, action), false);
   }

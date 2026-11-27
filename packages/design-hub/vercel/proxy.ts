@@ -12,14 +12,18 @@
 // It carries when the store last said yes; after CHECK_SECONDS (5 minutes)
 // the gate asks the store again on the next request of any kind, so a revoke,
 // a sign out everywhere or a changed access end reaches every request within
-// minutes. A store that does not answer is 503, never a sign out. Without a session a
+// minutes. A store that does not answer is 503, never a sign out. A Client
+// asking for a prototype that is not client-facing, its page or any file
+// built from it under /_p/<slug>/, gets 404. Without a session a
 // page gets the sign-in page (401), which says what to do and has no form,
 // and anything else a plain-text 401. Without GATE_SECRET the gate fails
 // closed (503).
 import { next } from '@vercel/functions';
 import { base64, sha256 } from '../core/bytes.ts';
 import { escapeHtml } from '../core/html.ts';
+import { isPrototypeSlug, prototypeOfPath } from '../core/prototype.ts';
 import type { Person } from '../core/review/model.ts';
+import type { Review } from '../core/review/service.ts';
 import { deployedReview } from '../server/api.ts';
 import {
   clearedCookie,
@@ -208,6 +212,9 @@ async function page(request: Request, status: number, html: string, text: string
 }
 
 const unavailable = (request: Request, error: string) => plain(request, 503, error);
+/** One answer for a prototype a Client may not have, whether it is internal or not there at all. */
+const notFound = (request: Request) => plain(request, 404, NOT_FOUND);
+const NOT_FOUND = 'Not found.';
 /** The store did not answer: a 503 that passes, so it says when to try again. */
 const storeDown = (request: Request) => plain(request, 503, STORE_DOWN, { retryAfter: 30 });
 const STORE_DOWN = 'The review store did not answer. Try again in a minute.';
@@ -242,7 +249,8 @@ async function showLink(ctx: Ctx, token: string): Promise<Response> {
 
 /** The cookie for someone the store just said yes to, lasting to their access end. */
 async function sessionFor(gate: Gate, person: Person, at: Date): Promise<string> {
-  const token = await issuePersonToken(gate, { id: person.id, epoch: person.epoch }, person.accessEndsAt, at);
+  const claim = { id: person.id, epoch: person.epoch, kind: person.kind };
+  const token = await issuePersonToken(gate, claim, person.accessEndsAt, at);
   return sessionCookie(PERSON_COOKIE, token, sessionSeconds(person.accessEndsAt, at));
 }
 
@@ -282,19 +290,47 @@ const pass = (cookie?: string) =>
   next({ headers: { 'cache-control': 'private, no-store', ...(cookie ? { 'set-cookie': cookie } : {}) } });
 
 /**
+ * The prototype boundary, for a Client only: a path that belongs to a
+ * prototype (its page, or a file under /_p/<slug>/) passes when that
+ * prototype is client-facing, asked of the store on every request. Anything
+ * else is the same 404, for an internal prototype, one that does not exist and
+ * /_p/all.js alike, so the answer says nothing about what is there. A store
+ * that does not answer is 503. Hub paths pass with no store read.
+ */
+async function clientMay(ctx: Ctx, review: Review, slug: string): Promise<Response | null> {
+  if (!isPrototypeSlug(slug)) return notFound(ctx.request);
+  const audience = await ask(() => review.audienceOf(slug));
+  if (audience === undefined) return storeDown(ctx.request);
+  return audience === 'client' ? null : notFound(ctx.request);
+}
+
+/** Asks the store whether a stale session still holds: the person, or the answer that ends the request. */
+async function recheck(ctx: Ctx, review: Review, claim: SessionClaim): Promise<Person | Response> {
+  const current = await ask(() => review.sessionPerson(claim.id, claim.epoch));
+  if (current === undefined) return storeDown(ctx.request);
+  return current ?? (await signedOut(ctx, true));
+}
+
+/**
  * A signed session. While the store's last yes is fresh the signature is
  * enough. Once it is stale the store is asked, whatever the request says it
  * is (its headers are the client's to choose): yes passes with a fresh cookie
  * whose expiry follows the person's current access end; no signs out and
- * clears the cookie; no answer is 503 and the cookie stays.
+ * clears the cookie; no answer is 503 and the cookie stays. A p3 cookie,
+ * which carries no kind, is always stale, so its first request re-issues it.
+ * Then, for anyone but Studio, the prototype boundary on a prototype's path.
  */
 async function personSession(ctx: Ctx, gate: Gate, claim: SessionClaim): Promise<Response> {
-  if (isFresh(claim, ctx.at)) return pass();
+  const slug = prototypeOfPath(new URL(ctx.request.url).pathname);
+  const fresh = isFresh(claim, ctx.at);
+  if (fresh && (claim.kind === 'studio' || slug === null)) return pass();
   const setup = deployedReview(process.env, null, () => ctx.at);
   if ('error' in setup) return unavailable(ctx.request, setup.error);
-  const current = await ask(() => setup.review.sessionPerson(claim.id, claim.epoch));
-  if (current === undefined) return storeDown(ctx.request);
-  return current ? pass(await sessionFor(gate, current, ctx.at)) : signedOut(ctx, true);
+  const current = fresh ? null : await recheck(ctx, setup.review, claim);
+  if (current instanceof Response) return current;
+  const kind = current ? current.kind : claim.kind;
+  const refused = kind !== 'studio' && slug !== null ? await clientMay(ctx, setup.review, slug) : null;
+  return refused ?? pass(current ? await sessionFor(gate, current, ctx.at) : undefined);
 }
 
 export type ProxyOptions = {

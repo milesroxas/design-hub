@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { kindFor, templateFor } from './new.ts';
+import { kindFor, main, templateFor } from './new.ts';
 
 const none = () => undefined;
 const has = () => 'list-v1';
@@ -31,4 +31,13 @@ test("--app picks the track's shell; a project without tracks keeps the product 
   assert.equal(templateFor('website', false), 'space');
   assert.equal(templateFor('brand', false), 'brand');
   assert.equal(templateFor('brand', true), 'brand');
+});
+
+test('refuses a slug the hub owns, before anything is written', () => {
+  for (const slug of ['guide', 'api', 'assets'])
+    assert.throws(
+      () => main({ positionals: [slug], flags: {} } as never),
+      /the hub's own path \(guide, api, assets\)/,
+    );
+  assert.throws(() => main({ positionals: ['_p'], flags: {} } as never), /kebab-case/);
 });

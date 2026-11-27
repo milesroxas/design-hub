@@ -35,18 +35,32 @@ test('the gate needs only the secret, and fails closed on a short one', () => {
   assert.equal(readGate({ GATE_SECRET: 's'.repeat(32), UPSTASH_REDIS_REST_URL: SITE })?.site, SITE);
 });
 
-test('a person token names its person, epoch and when the store last said yes, and nothing forged verifies', async () => {
-  const token = await issuePersonToken(gate, { id: 'abc123', epoch: 2 }, null, T0);
-  assert.deepEqual(await readPersonToken(gate, token, T0), { id: 'abc123', epoch: 2, checkedAt: t0 });
-  const [version, id, , expires, checkedAt, sig] = token.split('.');
-  assert.equal(version, 'p3');
+test('a person token names its person, epoch, kind and when the store last said yes, and nothing forged verifies', async () => {
+  const token = await issuePersonToken(gate, { id: 'abc123', epoch: 2, kind: 'client' }, null, T0);
+  assert.deepEqual(await readPersonToken(gate, token, T0), {
+    id: 'abc123',
+    epoch: 2,
+    kind: 'client',
+    checkedAt: t0,
+  });
+  const [version, id, , kind, expires, checkedAt, sig] = token.split('.');
+  assert.equal(version, 'p4');
+  assert.equal(kind, 'client');
   const forged = (parts: (string | number)[]) => readPersonToken(gate, parts.join('.'), T0);
-  assert.equal(await forged([version, id, 3, expires, checkedAt, sig]), null);
-  assert.equal(await forged([version, id, 2, Number(expires) + 1, checkedAt, sig]), null);
-  assert.equal(await forged([version, id, 2, expires, Number(checkedAt) + 600, sig]), null);
+  assert.equal(await forged([version, id, 3, kind, expires, checkedAt, sig]), null);
+  assert.equal(await forged([version, id, 2, kind, Number(expires) + 1, checkedAt, sig]), null);
+  assert.equal(await forged([version, id, 2, kind, expires, Number(checkedAt) + 600, sig]), null);
+  // A Client's cookie that claims Studio fails the signature, and so does an unknown kind.
+  assert.equal(await forged([version, id, 2, 'studio', expires, checkedAt, sig]), null);
+  assert.equal(await forged([version, id, 2, 'admin', expires, checkedAt, sig]), null);
+  assert.equal(await forged([version, id, 2, '', expires, checkedAt, sig]), null);
+  // Dropping the kind does not turn the token into a p3.
+  assert.equal(await forged(['p3', id, 2, expires, checkedAt, sig]), null);
   assert.equal(await readPersonToken({ ...gate, secret: 't'.repeat(32) }, token, T0), null);
   assert.equal(await readPersonToken(gate, `${token}.x`, T0), null);
   assert.equal(await readPersonToken(gate, undefined, T0), null);
+  const studio = await issuePersonToken(gate, { id: 'abc123', epoch: 0, kind: 'studio' }, null, T0);
+  assert.equal((await readPersonToken(gate, studio, T0))?.kind, 'studio');
 });
 
 test('a token of another version or shape never verifies, even signed with the secret', async () => {
@@ -56,19 +70,45 @@ test('a token of another version or shape never verifies, even signed with the s
   assert.equal(await read(`abc123.0.${expires}.${sign(`p1.abc123.0.${expires}`)}`), null);
   // The unstamped p2 of the first slice-3 build.
   assert.equal(await read(`p2.abc123.0.${expires}.${sign(`p2.abc123.0.${expires}`)}`), null);
-  // The current prefix carrying an older version's signature, with and without a stamp.
+  // The p3 prefix carrying an older version's signature, with and without a stamp.
   assert.equal(await read(`p3.abc123.0.${expires}.${t0}.${sign(`p2.abc123.0.${expires}`)}`), null);
   assert.equal(await read(`p3.abc123.0.${expires}.${t0}.${sign(`p2.abc123.0.${expires}.${t0}`)}`), null);
   // The right message and signature, but an id the store never makes.
   assert.equal(await read(`p3.ABC.0.${expires}.${t0}.${sign(`p3\n${SITE}\nABC.0.${expires}.${t0}`)}`), null);
-  // The 0.6-shaped message under the current prefix, without the site.
+  // The 0.6-shaped message under the p3 prefix, without the site.
   assert.equal(await read(`p3.abc123.0.${expires}.${t0}.${sign(`p3.abc123.0.${expires}.${t0}`)}`), null);
-  const good = `p3.abc123.0.${expires}.${t0}.${sign(`p3\n${SITE}\nabc123.0.${expires}.${t0}`)}`;
-  assert.deepEqual(await read(good), { id: 'abc123', epoch: 0, checkedAt: t0 });
+  // A p4 signed over p3's message, or a p3 signed over p4's: each version verifies only its own.
+  assert.equal(
+    await read(`p4.abc123.0.client.${expires}.${t0}.${sign(`p3\n${SITE}\nabc123.0.${expires}.${t0}`)}`),
+    null,
+  );
+  assert.equal(
+    await read(`p3.abc123.0.${expires}.${t0}.${sign(`p4\n${SITE}\nabc123.0.client.${expires}.${t0}`)}`),
+    null,
+  );
+  assert.equal(
+    await read(
+      `p5.abc123.0.client.${expires}.${t0}.${sign(`p5\n${SITE}\nabc123.0.client.${expires}.${t0}`)}`,
+    ),
+    null,
+  );
+  assert.equal(await read(`__proto__.abc123.0.${expires}.${t0}.x`), null);
+});
+
+test('a valid p3 token from before the kind is still honoured, as stale, so nobody is signed out', async () => {
+  const expires = t0 + DAY;
+  const p3 = `p3.abc123.0.${expires}.${t0}.${sign(`p3\n${SITE}\nabc123.0.${expires}.${t0}`)}`;
+  const claim = await readPersonToken(gate, p3, T0);
+  assert.deepEqual(claim, { id: 'abc123', epoch: 0, kind: null, checkedAt: t0 });
+  assert.ok(claim);
+  // Stamped this very second, and still asked again: the store says who they are.
+  assert.equal(isFresh(claim, T0), false);
+  assert.equal(await readPersonToken(gate, p3, at(DAY)), null);
+  assert.equal(await readPersonToken({ ...gate, site: 'https://kv-b.test' }, p3, T0), null);
 });
 
 test('a token is bound to its site: the same secret on another store does not accept it', async () => {
-  const token = await issuePersonToken(gate, { id: 'abc123', epoch: 0 }, null, T0);
+  const token = await issuePersonToken(gate, { id: 'abc123', epoch: 0, kind: 'studio' }, null, T0);
   assert.ok(await readPersonToken(gate, token, T0));
   assert.equal(await readPersonToken({ ...gate, site: 'https://kv-b.test' }, token, T0), null);
   assert.equal(await readPersonToken({ ...gate, site: '' }, token, T0), null);
@@ -79,7 +119,7 @@ test('a token is bound to its site: the same secret on another store does not ac
 test('the store’s yes is trusted for CHECK_SECONDS, then asked again', async () => {
   const claim = await readPersonToken(
     gate,
-    await issuePersonToken(gate, { id: 'a1', epoch: 0 }, null, T0),
+    await issuePersonToken(gate, { id: 'a1', epoch: 0, kind: 'client' }, null, T0),
     T0,
   );
   assert.ok(claim);
@@ -98,15 +138,20 @@ test('a session lasts to the access end, capped at 400 days', async () => {
   assert.equal(sessionSeconds(inDays(-1), T0), 0);
   assert.equal(sessionSeconds('not a date', T0), 0);
   const expiresOf = async (endsAt: string | null) =>
-    Number((await issuePersonToken(gate, { id: 'a1', epoch: 0 }, endsAt, T0)).split('.')[3]) - t0;
+    Number((await issuePersonToken(gate, { id: 'a1', epoch: 0, kind: 'client' }, endsAt, T0)).split('.')[4]) -
+    t0;
   assert.equal(await expiresOf(inDays(90)), 90 * DAY);
   assert.equal(await expiresOf(null), 400 * DAY);
-  const token = await issuePersonToken(gate, { id: 'a1', epoch: 0 }, inDays(90), T0);
+  const token = await issuePersonToken(gate, { id: 'a1', epoch: 0, kind: 'client' }, inDays(90), T0);
   assert.ok(await readPersonToken(gate, token, at(90 * DAY - 1)));
   assert.equal(await readPersonToken(gate, token, at(90 * DAY)), null);
   // An access end that has passed makes a token that is already dead.
   assert.equal(
-    await readPersonToken(gate, await issuePersonToken(gate, { id: 'a1', epoch: 0 }, inDays(-1), T0), T0),
+    await readPersonToken(
+      gate,
+      await issuePersonToken(gate, { id: 'a1', epoch: 0, kind: 'client' }, inDays(-1), T0),
+      T0,
+    ),
     null,
   );
 });

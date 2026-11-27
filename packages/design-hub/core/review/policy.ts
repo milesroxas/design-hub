@@ -1,5 +1,6 @@
 // Who may do what. Studio runs the review: it adds and revokes people,
-// deletes any comment and corrects triage. A Client comments, replies, edits
+// deletes any comment, corrects triage and sets which prototypes are
+// client-facing. A Client comments, replies, edits
 // and deletes what they wrote, and resolves or reopens any client-facing
 // thread, because clients work alongside others in their own organisation.
 // An internal thread does not exist for a Client: every action on one is
@@ -7,7 +8,7 @@
 // nothing here.
 import type { Audience, Comment, Person, PersonKind } from './model.ts';
 
-export type Action = 'read' | 'comment' | 'edit' | 'delete' | 'resolve' | 'triage' | 'people';
+export type Action = 'read' | 'comment' | 'edit' | 'delete' | 'resolve' | 'triage' | 'people' | 'audience';
 
 /** Only what the rules read, so the browser's signed-in person (no epoch) is checked by the same rules. */
 type Actor = Pick<Person, 'id' | 'kind' | 'revokedAt'>;
@@ -36,6 +37,7 @@ export function can(actor: Actor | null, action: Action, root?: Comment, subject
       return own || studio;
     case 'triage':
     case 'people':
+    case 'audience':
       return studio;
   }
 }

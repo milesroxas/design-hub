@@ -35,6 +35,12 @@ export const KEY = {
   settings: `${PREFIX}settings`,
   prototypes: `${PREFIX}prototypes`,
   /**
+   * Which prototypes are client-facing: field `<slug>`, value `client`. Only
+   * client-facing is stored; internal is the field's absence, and any other
+   * value reads as internal too.
+   */
+  audiences: `${PREFIX}audiences`,
+  /**
    * The last thread number given on each prototype, only ever raised by HINCRBY: field
    * `<prototype>` counts client-facing threads, `<prototype>:internal` internal ones.
    */

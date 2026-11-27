@@ -5,6 +5,7 @@
 // person, per comment), so two people commenting at once never collide;
 // two edits of the same comment at once keep the last.
 import { base64url, hex, sha256 } from '../bytes.ts';
+import { isPrototypeSlug } from '../prototype.ts';
 import {
   type Access,
   type Anchor,
@@ -18,6 +19,7 @@ import {
   checkAudience,
   checkBody,
   checkPersonInput,
+  checkPrototypeAudience,
   checkStates,
   checkTriage,
   checkViewAs,
@@ -28,6 +30,7 @@ import {
   LINK_DAYS,
   type Link,
   type Person,
+  type PersonKind,
   readComment,
   type Triage,
 } from './model.ts';
@@ -219,6 +222,17 @@ export function createReview(kv: KV, overrides: Partial<Deps> = {}) {
   const saveComment = (prototype: string, c: Comment) =>
     kv.hset(KEY.comments(prototype), c.id, JSON.stringify(c));
 
+  const isClientFacing = async (prototype: string) =>
+    isPrototypeSlug(prototype) && (await kv.hget(KEY.audiences, prototype)) === 'client';
+
+  /**
+   * Whether a view reaches a prototype's comments at all. A Client's view
+   * reaches only a client-facing prototype: on any other, every op answers
+   * as if it had no comments, so no answer confirms an internal slug.
+   */
+  const reachable = async (view: PersonKind, prototype: string) =>
+    view === 'studio' || (await isClientFacing(prototype));
+
   /**
    * A comment and its thread's root, if `actor` may see both; else null. A
    * reply whose root is gone is not there either.
@@ -228,6 +242,7 @@ export function createReview(kv: KV, overrides: Partial<Deps> = {}) {
     prototype: string,
     id: string,
   ): Promise<{ comment: Comment; root: Comment } | null> {
+    if (!(await reachable(viewOf(actor), prototype))) return null;
     const comment = await commentAt(prototype, id);
     if (!comment) return null;
     const root = isRoot(comment) ? comment : await commentAt(prototype, comment.thread);
@@ -382,14 +397,17 @@ export function createReview(kv: KV, overrides: Partial<Deps> = {}) {
     async listComments(actor: Person | null, prototype: string, viewAs?: unknown): Promise<Comment[]> {
       allow(actor, 'read');
       const view = viewOf(actor, valid(checkViewAs(viewAs)));
+      if (!(await reachable(view, prototype))) return [];
       return visibleTo(view, await commentsOf(prototype));
     },
 
     /** Every comment on every prototype the actor may see, for the CLI (which acts as Studio). */
     async allComments(actor: Person | null): Promise<Comment[]> {
       allow(actor, 'read');
-      const prototypes = await kv.smembers(KEY.prototypes);
-      return visibleTo(viewOf(actor), (await Promise.all(prototypes.map(commentsOf))).flat());
+      const view = viewOf(actor);
+      const prototypes = [];
+      for (const p of await kv.smembers(KEY.prototypes)) if (await reachable(view, p)) prototypes.push(p);
+      return visibleTo(view, (await Promise.all(prototypes.map(commentsOf))).flat());
     },
 
     /**
@@ -407,6 +425,9 @@ export function createReview(kv: KV, overrides: Partial<Deps> = {}) {
         checkAnchor(input.anchor),
         checkAudience(input.audience),
       );
+      // A Client's thread on a prototype that is not client-facing: the answer an unknown id gets.
+      if (!(await reachable(viewOf(actor), anchor.prototype)))
+        throw new ReviewError('not_found', 'No such comment.');
       const id = newId();
       const triage = deps.triage
         ? await deps
@@ -506,6 +527,53 @@ export function createReview(kv: KV, overrides: Partial<Deps> = {}) {
       const next: Comment = { ...c, triage: { kind, state, by: 'person', confidence: null } };
       await saveComment(input.prototype, next);
       return next;
+    },
+
+    /**
+     * Marks a prototype client-facing or internal. Only client-facing is
+     * stored, so internal deletes the field and a prototype nobody marked is
+     * internal. Studio only.
+     */
+    async setAudience(actor: Person | null, prototype: unknown, audience: unknown): Promise<Audience> {
+      allow(actor, 'audience');
+      const [slug, value] = validAll<[string, Audience]>(
+        isPrototypeSlug(prototype)
+          ? { ok: true, value: prototype }
+          : { ok: false, problems: ['prototype: a prototype slug'] },
+        checkPrototypeAudience(audience),
+      );
+      if (value === 'client') await kv.hset(KEY.audiences, slug, 'client');
+      else await kv.hdel(KEY.audiences, slug);
+      return value;
+    },
+
+    /**
+     * Who a prototype is for, asked by the gate with no actor. Absent, or any
+     * value but `client`, is internal; a name that cannot be a prototype is
+     * internal without asking the store.
+     */
+    async audienceOf(prototype: string): Promise<Audience> {
+      return (await isClientFacing(prototype)) ? 'client' : 'internal';
+    },
+
+    /**
+     * What the index is built from: the view the actor gets (Client view for
+     * Studio with `viewAs: 'client'`) and every client-facing slug. The
+     * server keeps no list of internal ones: Studio's view reads the build's
+     * own list, which the gate refuses to a Client.
+     */
+    async visiblePrototypes(
+      actor: Person | null,
+      viewAs?: unknown,
+    ): Promise<{ view: PersonKind; clientFacing: string[] }> {
+      allow(actor, 'read');
+      const view = viewOf(actor, valid(checkViewAs(viewAs)));
+      const all = await kv.hgetall(KEY.audiences);
+      const clientFacing = Object.entries(all)
+        .filter(([slug, value]) => value === 'client' && isPrototypeSlug(slug))
+        .map(([slug]) => slug)
+        .sort();
+      return { view, clientFacing };
     },
 
     /** Where a comment lives, for the CLI, which has an id and no prototype; null when the actor may not see it. */

@@ -234,6 +234,13 @@ export function checkAudience(input: unknown): Checked<Audience | null> {
     : { ok: false, problems: [`audience: one of ${AUDIENCES.join(', ')}`] };
 }
 
+/** A prototype's audience as Studio sets it: one of AUDIENCES, required. */
+export function checkPrototypeAudience(input: unknown): Checked<Audience> {
+  return AUDIENCES.includes(input as Audience)
+    ? { ok: true, value: input as Audience }
+    : { ok: false, problems: [`audience: one of ${AUDIENCES.join(', ')}`] };
+}
+
 /** Whose view of the comments is asked for: a person kind, or null for the caller's own. */
 export function checkViewAs(input: unknown): Checked<PersonKind | null> {
   if (input === undefined || input === null) return { ok: true, value: null };

@@ -6,13 +6,14 @@
 // lasts until their access ends, at most 400 days (the longest a browser
 // keeps a cookie). HMAC-SHA256 with GATE_SECRET.
 //
-// It also carries when the store last said yes (checkedAt). For CHECK_SECONDS
+// It also carries the person's kind, and when the store last said yes (checkedAt). For CHECK_SECONDS
 // after that the gate trusts the signature; then it asks the store again and
 // issues a fresh cookie, so a revoke, a sign out everywhere or a changed
 // access end reaches every request within CHECK_SECONDS, whatever it claims to be.
 // Every function that reads the clock takes `at`, so tests need not wait.
 
 import { base64url } from '../core/bytes.ts';
+import { PERSON_KINDS, type PersonKind } from '../core/review/model.ts';
 
 export const PERSON_COOKIE = '__Host-hub_person';
 const MAX_SESSION_SECONDS = 60 * 60 * 24 * 400;
@@ -67,18 +68,33 @@ export function sessionSeconds(endsAt: string | null, at = new Date()): number {
   return Number.isFinite(left) ? Math.max(0, Math.min(MAX_SESSION_SECONDS, left)) : 0;
 }
 
-// A person session token: p3.<id>.<epoch>.<expires>.<checkedAt>.<sig>. The
-// version is in the token and in the signed message, so a token of any other
-// shape or version (0.6's `p1`, the unstamped `p2`) never verifies.
-export type PersonClaim = { id: string; epoch: number };
-export type SessionClaim = PersonClaim & { checkedAt: number };
+// A person session token: p4.<id>.<epoch>.<kind>.<expires>.<checkedAt>.<sig>.
+// The kind (studio or client) is signed in, so the gate tells a Client's
+// request from Studio's without asking the store while the stamp is fresh.
+// The version is in the token and in the signed message, so a token of any
+// other shape or version (0.6's `p1`, the unstamped `p2`) never verifies.
+// The `p3` before it carried no kind. A valid one is still honoured, so this
+// release signs nobody out (links work once): it reads as stale, so the gate
+// asks the store on its next request and re-issues it as p4.
+export type PersonClaim = { id: string; epoch: number; kind: PersonKind };
+/** `kind` is null for a p3 token, which never counts as fresh. */
+export type SessionClaim = Omit<PersonClaim, 'kind'> & { kind: PersonKind | null; checkedAt: number };
 
-const VERSION = 'p3';
+const VERSION = 'p4';
+const OLD_VERSION = 'p3';
 // The site is signed, never written into the token; a newline cannot occur in a URL, so the parts cannot run together.
-const personMessage = (site: string, id: string, epoch: number, expires: number, checkedAt: number) =>
-  `${VERSION}\n${site}\n${id}.${epoch}.${expires}.${checkedAt}`;
-const tokenText = (id: string, epoch: number, expires: number, checkedAt: number) =>
-  `${VERSION}.${id}.${epoch}.${expires}.${checkedAt}`;
+const personMessage = (
+  site: string,
+  id: string,
+  epoch: number,
+  kind: PersonKind,
+  expires: number,
+  checkedAt: number,
+) => `${VERSION}\n${site}\n${id}.${epoch}.${kind}.${expires}.${checkedAt}`;
+const oldMessage = (site: string, id: string, epoch: number, expires: number, checkedAt: number) =>
+  `${OLD_VERSION}\n${site}\n${id}.${epoch}.${expires}.${checkedAt}`;
+const tokenText = (id: string, epoch: number, kind: PersonKind, expires: number, checkedAt: number) =>
+  `${VERSION}.${id}.${epoch}.${kind}.${expires}.${checkedAt}`;
 
 /** A token for someone the store said yes to at `at`, lasting to their access end. */
 export async function issuePersonToken(
@@ -89,21 +105,38 @@ export async function issuePersonToken(
 ): Promise<string> {
   const checkedAt = seconds(at);
   const expires = checkedAt + sessionSeconds(endsAt, at);
-  const message = personMessage(gate.site, claim.id, claim.epoch, expires, checkedAt);
-  return `${tokenText(claim.id, claim.epoch, expires, checkedAt)}.${await hmac(gate.secret, message)}`;
+  const message = personMessage(gate.site, claim.id, claim.epoch, claim.kind, expires, checkedAt);
+  return `${tokenText(claim.id, claim.epoch, claim.kind, expires, checkedAt)}.${await hmac(gate.secret, message)}`;
 }
 
 const isCount = (n: number) => Number.isInteger(n) && n >= 0;
+const isKind = (k: string | undefined): k is PersonKind => PERSON_KINDS.includes(k as PersonKind);
 
-const wellFormed = (parts: string[]) => {
-  const [version, id, epoch, expires, checkedAt, sig, extra] = parts;
-  return (
-    version === VERSION &&
-    /^[a-z0-9]+$/.test(id ?? '') &&
-    [epoch, expires, checkedAt].every((n) => isCount(Number(n))) &&
-    !!sig &&
-    extra === undefined
-  );
+/** A token's parts, by version: what it claims and the message its signature must match. */
+type Parsed = { claim: SessionClaim; expires: number; sig: string; message: (site: string) => string };
+
+function parseCurrent(parts: string[]): Parsed | null {
+  const [, id, epoch, kind, expires, checkedAt, sig, extra] = parts;
+  if (!/^[a-z0-9]+$/.test(id ?? '') || !isKind(kind) || !sig || extra !== undefined) return null;
+  if (![epoch, expires, checkedAt].every((n) => isCount(Number(n)))) return null;
+  const claim = { id, epoch: Number(epoch), kind, checkedAt: Number(checkedAt) };
+  const message = (site: string) =>
+    personMessage(site, id, claim.epoch, kind, Number(expires), claim.checkedAt);
+  return { claim, expires: Number(expires), sig, message };
+}
+
+function parseOld(parts: string[]): Parsed | null {
+  const [, id, epoch, expires, checkedAt, sig, extra] = parts;
+  if (!/^[a-z0-9]+$/.test(id ?? '') || !sig || extra !== undefined) return null;
+  if (![epoch, expires, checkedAt].every((n) => isCount(Number(n)))) return null;
+  const claim = { id, epoch: Number(epoch), kind: null, checkedAt: Number(checkedAt) };
+  const message = (site: string) => oldMessage(site, id, claim.epoch, Number(expires), claim.checkedAt);
+  return { claim, expires: Number(expires), sig, message };
+}
+
+const PARSERS: Record<string, (parts: string[]) => Parsed | null> = {
+  [VERSION]: parseCurrent,
+  [OLD_VERSION]: parseOld,
 };
 
 /** The person a token names when its signature and expiry hold; the caller decides whether to ask the store. */
@@ -113,17 +146,15 @@ export async function readPersonToken(
   at = new Date(),
 ): Promise<SessionClaim | null> {
   const parts = (token ?? '').split('.');
-  if (!wellFormed(parts)) return null;
-  const [, id, epoch, expires, checkedAt, sig] = parts;
-  if (Number(expires) <= seconds(at)) return null;
-  const message = personMessage(gate.site, id, Number(epoch), Number(expires), Number(checkedAt));
-  return sameText(sig, await hmac(gate.secret, message))
-    ? { id, epoch: Number(epoch), checkedAt: Number(checkedAt) }
-    : null;
+  const parse = Object.hasOwn(PARSERS, parts[0]) ? PARSERS[parts[0]] : null;
+  const parsed = parse?.(parts);
+  if (!parsed || parsed.expires <= seconds(at)) return null;
+  return sameText(parsed.sig, await hmac(gate.secret, parsed.message(gate.site))) ? parsed.claim : null;
 }
 
 /** Whether the store's yes in this claim is recent enough to trust without asking again. */
 export function isFresh(claim: SessionClaim, at = new Date()): boolean {
+  if (claim.kind === null) return false;
   const age = seconds(at) - claim.checkedAt;
   return age >= 0 && age < CHECK_SECONDS;
 }
