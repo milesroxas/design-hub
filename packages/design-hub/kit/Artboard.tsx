@@ -9,7 +9,8 @@ import {
 } from 'react';
 import { FORMATS, type Format, type FormatName, sizeLabel, zoomFor } from '../core/formats.ts';
 import { client, restoreDials, useDials } from './dials';
-import { ViewTools } from './ViewTools';
+import { pinAppearance, urlAppearance } from './prefs';
+import { ViewScope } from './ViewTools';
 import './artboard.css';
 
 export { FORMAT_NAMES, FORMATS, type FormatName } from '../core/formats.ts';
@@ -54,6 +55,8 @@ function useRoom() {
   return { ref, room };
 }
 
+const NO_VIEW: readonly never[] = [];
+
 type BoardProps = { title: string; lede?: ReactNode; children: ReactNode };
 
 /**
@@ -65,7 +68,7 @@ export function Board({ title, lede, children }: BoardProps) {
   const view = useDials(
     'Board',
     {
-      // How a person looks at the boards, not the design: a Client's from the start, like the View tools.
+      // How a person looks at the boards, not the design: a Client's from the start. They are a board's only viewing tools.
       zoom: client({ type: 'select', options: ZOOMS, default: 'fit' }),
       guides: client(true),
     },
@@ -82,6 +85,13 @@ export function Board({ title, lede, children }: BoardProps) {
     if (exporting) void settleForExport();
   }, []);
 
+  // Collateral has one look: light, or the one ?theme= names, which is what export writes.
+  // A person's own dark theme never recolours a piece that ships light.
+  useEffect(() => {
+    pinAppearance(urlAppearance() ?? 'light');
+    return () => pinAppearance(null);
+  }, []);
+
   if (exporting)
     return (
       <BoardView.Provider value={{ zoom: '100%', guides: false, room }}>
@@ -96,10 +106,12 @@ export function Board({ title, lede, children }: BoardProps) {
           <h1 className="board-title">{title}</h1>
           {lede ? <p className="board-lede">{lede}</p> : null}
         </header>
-        <div className="board-grid" ref={ref}>
-          {children}
-        </div>
-        <ViewTools />
+        {/* No View panel on a board: a still file has no motion to slow and no theme to flip. */}
+        <ViewScope.Provider value={NO_VIEW}>
+          <div className="board-grid" ref={ref}>
+            {children}
+          </div>
+        </ViewScope.Provider>
       </main>
     </BoardView.Provider>
   );

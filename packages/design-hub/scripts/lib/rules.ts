@@ -11,6 +11,7 @@ export const RULE = {
   abstraction: 'No abstraction for later',
   handling: 'No handling a fixture cannot reach',
   state: 'Every state is in the README',
+  view: 'View tools fit what the prototype is',
 } as const;
 
 export type SemanticRule = 'fetching' | 'abstraction' | 'handling' | 'state';

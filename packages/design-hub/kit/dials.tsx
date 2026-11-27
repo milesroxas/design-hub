@@ -20,8 +20,9 @@ import {
   readConfig,
   withDefaults,
 } from '../core/controls.ts';
-import { markControl, useControls } from './audience';
+import { isStudioPerson, markControl, useControls } from './audience';
 import { type IconName, iconMarkup } from './Icon';
+import { isClientView, setClientView } from './prefs';
 
 export { client } from '../core/controls.ts';
 
@@ -108,30 +109,65 @@ function retitle(root: HTMLElement) {
   if (title && title.textContent !== DIALS_TITLE) title.textContent = DIALS_TITLE;
 }
 
-type PanelLink = { key: string; href: string; label: string; icon: IconName; newTab?: boolean };
+type PanelLink = {
+  key: string;
+  label: string;
+  icon: IconName;
+  href?: string;
+  newTab?: boolean;
+  /** A row that does something here instead of going somewhere. */
+  act?: () => void;
+};
 
-// The panel's last rows, under every group: the hub's list of every prototype,
-// then the feature's walkthrough when it has one, which stays the very last.
-function panelLinks(): PanelLink[] {
-  const home: PanelLink = { key: 'home', href: '/', label: 'All prototypes', icon: 'grid-01' };
-  if (!guide) return [home];
-  return [
-    home,
-    { key: 'guide', href: guide, label: 'Open the walkthrough', icon: 'arrow-up-right', newTab: true },
-  ];
+// Studio's way into Client view and back: the page as a client gets it, beside
+// the dials it changes. The page loads again, so the comments, the dials and
+// the prototype itself all start as a client's would.
+function clientViewRow(): PanelLink {
+  const on = isClientView();
+  return {
+    key: 'client-view',
+    label: on ? 'Leave Client view' : 'Client view',
+    icon: 'briefcase-01',
+    act: () => {
+      setClientView(!on);
+      location.reload();
+    },
+  };
 }
 
-function makeLink({ key, href, label, icon, newTab }: PanelLink) {
-  const link = document.createElement('a');
-  link.className = 'dial-link';
-  link.dataset.dialLink = key;
-  link.href = href;
-  if (newTab) {
-    link.target = '_blank';
-    link.rel = 'noopener';
+// The panel's last rows, under every group: Client view for Studio, the hub's
+// list of every prototype, then the feature's walkthrough when it has one,
+// which stays the very last.
+function panelLinks(): PanelLink[] {
+  const rows: PanelLink[] = isStudioPerson() ? [clientViewRow()] : [];
+  rows.push({ key: 'home', href: '/', label: 'All prototypes', icon: 'grid-01' });
+  if (guide)
+    rows.push({
+      key: 'guide',
+      href: guide,
+      label: 'Open the walkthrough',
+      icon: 'arrow-up-right',
+      newTab: true,
+    });
+  return rows;
+}
+
+function makeLink({ key, href, label, icon, newTab, act }: PanelLink) {
+  const row = document.createElement(act ? 'button' : 'a');
+  row.className = 'dial-link';
+  row.dataset.dialLink = key;
+  if (row instanceof HTMLButtonElement) {
+    row.type = 'button';
+    row.addEventListener('click', () => act?.());
+  } else {
+    row.href = href ?? '/';
+    if (newTab) {
+      row.target = '_blank';
+      row.rel = 'noopener';
+    }
   }
-  link.innerHTML = `<span>${label}</span>${iconMarkup(icon, 16)}`;
-  return link;
+  row.innerHTML = `<span>${label}</span>${iconMarkup(icon, 16)}`;
+  return row;
 }
 
 // DialKit remounts the content on open and adds groups as panels register, so
@@ -141,7 +177,7 @@ function placeLinks(root: HTMLElement) {
   const content = root.querySelector('.dialkit-folder-root > .dialkit-folder-content');
   if (!content) return;
   const rows = panelLinks().map(
-    (l) => content.querySelector<HTMLAnchorElement>(`:scope > [data-dial-link="${l.key}"]`) ?? makeLink(l),
+    (l) => content.querySelector<HTMLElement>(`:scope > [data-dial-link="${l.key}"]`) ?? makeLink(l),
   );
   const tail = Array.from(content.children).slice(-rows.length);
   if (rows.every((row, i) => tail[i] === row)) return;

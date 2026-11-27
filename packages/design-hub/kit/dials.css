@@ -31,6 +31,10 @@
 /* The panel's last rows, All prototypes and the walkthrough: drawn as DialKit's
    own buttons so they read as part of the panel. The walkthrough's arrow says new tab. */
 .dial-link {
+  width: 100%;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: space-between;

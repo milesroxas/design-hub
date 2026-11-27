@@ -43,8 +43,18 @@ export function useControls() {
   const s = useSyncExternalStore(subscribe, () => state);
   const clientView = useClientView();
   const studio = s.studio && !clientView;
-  return { studio, canMark: studio && s.save !== null, marks: s.marks, failed: s.failed };
+  return {
+    studio,
+    canMark: studio && s.save !== null,
+    marks: s.marks,
+    failed: s.failed,
+    /** A Studio person, in Client view or not: who the way in and out of Client view is for. */
+    person: s.studio,
+  };
 }
+
+/** Whether the signed-in person is Studio, whatever view they are in. For code outside React. */
+export const isStudioPerson = () => state.studio;
 
 const WORD: Record<ControlAudience, string> = { client: 'client-facing', internal: 'internal' };
 

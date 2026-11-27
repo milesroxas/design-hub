@@ -21,6 +21,16 @@ A piece of collateral here is a template, not a picture: one component that hold
 - **Safe areas.** A story keeps type, buttons and the logo out of its top and bottom 250px; the Board shades them (Controls → Board → Guides). Other formats keep a margin of at least 64px at 1080 wide.
 - **One template, many formats.** Draw the content once as a component and place it in one `<Artboard>` per format, adjusting per format with `[data-format="story"] .x { … }` in CSS. Never a second copy of the markup per format.
 
+## Still, and one look
+
+Collateral is a file: a PNG or a PDF. Nothing in it moves and it has no dark mode, so a board has no View panel. Its viewing tools are the Board's own **Zoom** and **Guides**.
+
+- **No motion.** No `transition`, `animation`, `@keyframes` or `motion/react` in a brand prototype, and no reduce-motion or speed control. Export turns motion off, so anything that moves on the board is not what ships. The guard warns on it.
+- **No theme.** A board is held to the look it exports in: light, whatever theme the person looking has. Never style collateral with `.dark-mode`, `prefers-color-scheme`, `useDark` or `useAppearance`, and never mount `ViewTools`. A dark or inverse version is a `tone` dial on the piece, so it is a state a reviewer can see and an export can name.
+- **A piece that moves is not collateral here.** An animated story, a logo sting or a transition between slides is a `Space` prototype (`pnpm new <slug> --feature <feature>`), where View has the motion tools and nothing is exported. Say so to the user instead of animating an artboard.
+- **A slide deck is stills.** One artboard per slide, no builds or slide transitions.
+- **Collateral beside a product or a site.** A mock of a screen inside a post is drawn still, as a picture of that screen. It does not make the board a product prototype.
+
 ## Dials are the template's slots
 
 Every slot an editor will change is a dial or a fixture, never a hard-coded string:
@@ -30,7 +40,7 @@ Every slot an editor will change is a dial or a fixture, never a hard-coded stri
 | Copy (kicker, headline, subhead, call to action) | `fixtures.json`, one item per post; `text` names headline and subhead so `longest` stresses them |
 | Which post | A `post` select over the set |
 | Layout (photo, type only, quote) | A `layout` select; each option a state in the README |
-| Tone (brand, light, inverse) | A `tone` select |
+| Tone (brand, light, inverse, dark) | A `tone` select. This is the only way a piece has a dark version: the board ignores the theme. |
 
 The README's States table lists every combination a reviewer must see: each fixture set, each layout, each tone. `empty` and `missing` are real states here too: a post with no image is the one that runs on a busy day.
 

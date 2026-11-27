@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { KIT, PROTOTYPES, ROOT } from '../server/paths.ts';
-import { changeFromHook, codeFindings, featureOf, hookOutput } from './guard.ts';
+import { changeFromHook, codeFindings, featureOf, hookOutput, standsOnBoard, viewFindings } from './guard.ts';
 
 const at = (...p: string[]) => join(PROTOTYPES, ...p);
 const write = (file: string, added: string, removed = '') => ({ file, added, removed, whole: !removed });
@@ -92,4 +92,55 @@ test('Jev findings: warn at warnAt, block at blockAt, nothing below; only for co
     await jevFindings(write(at('sample-list', 'styles.css'), 'a{}'), 'sample-list', ask({ fetching: 1 })),
     [],
   );
+});
+
+test('a prototype never mounts the View tools itself, whatever it stands on', () => {
+  const code = "import { ViewTools } from '@kit/ViewTools';";
+  for (const board of [false, true]) {
+    const [f] = viewFindings(write(at('a', 'index.tsx'), code), board);
+    assert.equal(f.level, 'block');
+    assert.equal(f.rule, 'View tools fit what the prototype is');
+  }
+  assert.deepEqual(
+    viewFindings(write(at('a', 'index.tsx'), "import { Space } from '@kit/Space';"), false),
+    [],
+  );
+});
+
+test('a board holds no motion and no theme styles; anywhere else both pass', () => {
+  const moving = [
+    '.piece { transition: transform 200ms ease; }',
+    '.piece { animation: rise 1s both; }',
+    '.piece { transition-duration: 200ms; }',
+    '@keyframes rise { from { opacity: 0; } }',
+    "import { motion } from 'motion/react';",
+  ];
+  const themed = [
+    '.dark-mode .piece { color: white; }',
+    '@media (prefers-color-scheme: dark) {}',
+    'const dark = useDark();',
+  ];
+  for (const added of [...moving, ...themed]) {
+    const css = write(at('a', 'styles.css'), added);
+    assert.equal(viewFindings(css, true)[0]?.level, 'warn', added);
+    assert.deepEqual(viewFindings(css, false), [], added);
+  }
+  assert.match(viewFindings(write(at('a', 'styles.css'), moving[0]), true)[0].note, /Space prototype/);
+  assert.match(viewFindings(write(at('a', 'styles.css'), themed[0]), true)[0].note, /Tone dial/);
+  // Turning motion off is not motion, and a word in prose is not a declaration.
+  for (const still of [
+    '.piece { transition: none; animation: none; }',
+    '/* no transition here */',
+    '.transitional { color: red; }',
+  ])
+    assert.deepEqual(viewFindings(write(at('a', 'styles.css'), still), true), [], still);
+});
+
+test('a prototype stands on a board when its change or its own index imports the Artboard', () => {
+  assert.equal(
+    standsOnBoard(write(at('a', 'index.tsx'), "import { Board } from '@kit/Artboard';"), 'a'),
+    true,
+  );
+  // A stylesheet is judged by its feature's index.tsx; with none on disk, it is not a board.
+  assert.equal(standsOnBoard(write(at('never-made', 'styles.css'), '.x {}'), 'never-made'), false);
 });

@@ -154,6 +154,10 @@
   transition: opacity 200ms var(--ease-out), translate 200ms var(--ease-out);
 }
 @starting-style { .index-viewing { opacity: 0; translate: -50% 4px; } }
+/* On a prototype's page: at the top, over the page, clear of the picker and the comment bar. */
+.index-viewing[data-at="top"] { z-index: 2147483646; top: max(16px, env(safe-area-inset-top)); bottom: auto; }
+/* The comment bar says the same while it is open: one note at a time. */
+body:has(.rv-viewing) .index-viewing[data-at="top"] { display: none; }
 .index-viewing .icon { flex: none; color: var(--harness-fg-muted); }
 .index-viewing .btn.index-viewing-act { height: 28px; padding: 0 8px; }
 

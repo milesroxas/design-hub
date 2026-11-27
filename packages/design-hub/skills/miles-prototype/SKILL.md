@@ -83,12 +83,42 @@ Is it a value CSS consumes (duration, distance, scale, colour)?
 ```
 
 - Every dial carries a hint: one sentence, the unit named. A reviewer never guesses what a slider does.
-- Panels register in the order a reviewer reaches for them: Review (fixtures, role, scenarios) first, then the feature's own numbers, then Motion. View is mounted by the shell.
+- Panels register in the order a reviewer reaches for them: Review (fixtures, role, scenarios) first, then the feature's own numbers, then Motion. View is mounted by what the prototype stands on (see View tools).
 - Slider defaults are the comp's values. The decision is the number the user settles on; copy it into the README's Decision with the rejected range.
 - Every dial is internal: a client's panel has the View tools and nothing else until a dial is marked client-facing. `client(...)` from `@kit/dials` marks one where it is declared (`density: client({ type: 'select', ... })`, or around a folder for every dial in it); use it only when the user asks for clients to have that dial. Studio can also mark any dial with the eye beside its row, per deployed site, and that overrules the code. Fixtures, roles and scenarios stay internal.
 - A client reads an internal dial at its default, so the default is the value to present, not a test value.
 - The picker is Studio's until marked: a client gets the first variant and no picker, unless Studio marks variants with the picker's eye. Put the direction to present first.
 - Never a control inside the product chrome. A sidebar item or a sheet that switches fixtures is a testing aid wearing the product's clothes.
+
+## View tools
+
+### View tools fit what the prototype is
+
+The **View** panel holds only what changes something on the prototype in front of the reviewer. What a prototype stands on decides it; you never mount `ViewTools` yourself (the guard blocks it).
+
+| It stands on | View holds | Why |
+| --- | --- | --- |
+| `AppShell`, `SiteShell` | Theme, Reduce motion, Speed | A product or a site has themes and things that move. |
+| `Space` | Theme, Reduce motion, Speed, unless narrowed | One thing alone may have neither. |
+| `Board` (brand collateral) | Nothing: no View panel | A still file has no motion to slow, and one look. Zoom and Guides are its viewing tools. |
+
+Narrow a `Space` when a tool would do nothing there:
+
+```
+Does anything in it move (a transition, an animation, a hover or press response)?
+├── No  → drop motion:  <Space tools={['theme']}>
+└── Yes → keep it
+Does it have a light and a dark look (the project's tokens do, unless DESIGN.md says one theme)?
+├── No  → drop theme:   <Space tools={['motion']}>
+└── Yes → keep it
+Neither → <Space tools={false}>
+```
+
+- Decide from what is on the page now, and change `tools` when that changes: adding the first transition to a Space that had `['theme']` puts motion back.
+- A kit component that animates counts as motion: a toast, a menu, a dialog, a press response on a `Button`.
+- A project with one theme narrows it once, in its own `kit/AppShell.tsx` and `kit/SiteShell.tsx` (`<ViewTools tools={['motion']} />`), not in each prototype.
+- A person's own reduced-motion setting is still honoured everywhere, whatever View holds. Removing the dial removes a test control, not the behaviour: `:root[data-motion="reduce"]` rules stay in every prototype that moves.
+- Never add a reduce-motion or speed control of your own to a prototype that has none in View. If you think it needs one, it stands on the wrong thing.
 
 ## Motion, accessibility, performance
 

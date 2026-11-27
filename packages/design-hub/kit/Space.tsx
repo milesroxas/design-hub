@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react';
 import './space.css';
-import { ViewTools } from './ViewTools';
+import { type ViewTool, ViewTools } from './ViewTools';
 
 type Props = {
   title: string;
   lede?: ReactNode;
   width?: 'narrow' | 'wide' | 'full';
-  tools?: boolean;
+  /** The View tools: all of them, none (`false`), or only the ones that change something here. */
+  tools?: boolean | readonly ViewTool[];
   children: ReactNode;
 };
 
@@ -19,7 +20,7 @@ export function Space({ title, lede, width = 'wide', tools = true, children }: P
         {lede ? <p className="space-lede">{lede}</p> : null}
       </header>
       {children}
-      {tools ? <ViewTools /> : null}
+      {tools ? <ViewTools tools={tools === true ? undefined : tools} /> : null}
     </main>
   );
 }

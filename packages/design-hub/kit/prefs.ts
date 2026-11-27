@@ -22,6 +22,7 @@ const COMMENTS_KEY = 'proto:comments';
 const CLIENT_VIEW_KEY = 'proto:client-view';
 
 let appearance: Appearance = readAppearance();
+let pinned: 'light' | 'dark' | null = null;
 let commentsHidden = readStored(COMMENTS_KEY) === 'hidden';
 let clientView = readStored(CLIENT_VIEW_KEY) === 'on';
 let forceReduce = false;
@@ -61,7 +62,8 @@ function subscribe(fn: () => void) {
 }
 
 function applyTheme() {
-  const dark = appearance === 'dark' || (appearance === 'system' && darkQuery.matches);
+  const shown = pinned ?? appearance;
+  const dark = shown === 'dark' || (shown === 'system' && darkQuery.matches);
   // The browser chrome and native controls follow the app's theme, not the OS: the class decides.
   root.style.colorScheme = dark ? 'dark' : 'light';
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#0c0e12' : '#ffffff');
@@ -75,6 +77,24 @@ function applyMotion() {
   if (motionQuery.matches || urlReduce || forceReduce) root.dataset.motion = 'reduce';
   else delete root.dataset.motion;
 }
+
+/**
+ * Holds the page to one look whatever the person's own theme is, without
+ * changing or storing that choice; null lets it go. A `Board` pins the look
+ * its files export in, so what is on screen is what `pnpm export` writes.
+ */
+export function pinAppearance(next: 'light' | 'dark' | null) {
+  if (next === pinned) return;
+  pinned = next;
+  applyTheme();
+  emit();
+}
+
+/** The look `?theme=` asks for, when it names one: what an export of this page is written in. */
+export const urlAppearance = (): 'light' | 'dark' | null => {
+  const asked = params.get('theme');
+  return asked === 'light' || asked === 'dark' ? asked : null;
+};
 
 export function setAppearance(next: Appearance) {
   if (next === appearance) return;

@@ -51,6 +51,49 @@ export function featureOf(file: string): string | null {
   return top;
 }
 
+/**
+ * Whether a prototype stands on a Board: brand collateral, written to still
+ * files. Read from the change itself, else from the feature's own index.tsx,
+ * so its stylesheet is judged by what its markup stands on.
+ */
+export function standsOnBoard(change: Change, feature: string): boolean {
+  if (change.added.includes('@kit/Artboard')) return true;
+  const index = join(PROTOTYPES, feature, 'index.tsx');
+  return existsSync(index) && readFileSync(index, 'utf8').includes('@kit/Artboard');
+}
+
+/** What a board must not hold, each with what to do instead. `none` values turn motion off, so they pass. */
+const ON_BOARD: { test: RegExp; note: string }[] = [
+  {
+    test: /@keyframes|\b(?:animation|transition)(?:-[a-z-]+)?\s*:\s*(?!\s|none\b|0s\b)|from\s+['"]motion\/react['"]/,
+    note: 'adds motion to collateral, which exports as a still file; a piece that moves is a Space prototype, where View has the motion tools',
+  },
+  {
+    test: /\.dark-mode\b|prefers-color-scheme|\buseDark\b|\buseAppearance\b/,
+    note: 'styles collateral by theme, but a board is held to the look it exports in; a light or dark version is a Tone dial on the piece',
+  },
+];
+
+/**
+ * The View tools are set by what a prototype stands on, never by hand: the
+ * shells and Space mount them, and a Board has none.
+ */
+export function viewFindings(change: Change, board: boolean): Finding[] {
+  const file = relative(ROOT, change.file);
+  const out: Finding[] = [];
+  if (/from\s+['"]@kit\/ViewTools['"]/.test(change.added))
+    out.push({
+      file,
+      rule: RULE.view,
+      level: 'block',
+      note: 'mounts ViewTools; the shell or Space mounts it. Narrow it with <Space tools={[...]}>; a Board has none',
+    });
+  if (!board) return out;
+  for (const { test, note } of ON_BOARD)
+    if (test.test(change.added)) out.push({ file, rule: RULE.view, level: 'warn', note });
+  return out;
+}
+
 const DEPENDENCY_LINE = /^\s*"[^"]+":\s*"[\^~>=<\d]/gm;
 
 export function codeFindings(change: Change): Finding[] {
@@ -101,6 +144,7 @@ export function codeFindings(change: Change): Finding[] {
       level: 'block',
       note: `imports ${crossing.join(', ')}; a prototype imports only @kit/* and its own folder`,
     });
+  out.push(...viewFindings(change, standsOnBoard(change, feature)));
   return out;
 }
 
