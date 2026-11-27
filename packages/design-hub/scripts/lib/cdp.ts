@@ -61,6 +61,9 @@ export async function launch(chrome: string): Promise<Browser> {
       `--user-data-dir=${profile}`,
       '--no-first-run',
       '--no-default-browser-check',
+      // No component updates or background fetches: an export needs neither, and their fetcher leaves a temp folder.
+      '--disable-component-update',
+      '--disable-background-networking',
       '--hide-scrollbars',
       '--mute-audio',
       '--force-color-profile=srgb',
@@ -71,7 +74,9 @@ export async function launch(chrome: string): Promise<Browser> {
   const exited = new Promise<void>((resolve) => child.once('exit', () => resolve()));
   // The profile goes once Chrome has let go of it; a leftover temp folder is not worth failing an export over.
   const cleanup = async () => {
-    if (child.exitCode === null) child.kill('SIGKILL');
+    // Let Chrome exit on its own first: killed, it leaves its temp folders behind.
+    await within(exited, CLOSE_TIMEOUT_MS);
+    if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
     await within(exited, CLOSE_TIMEOUT_MS);
     try {
       rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
