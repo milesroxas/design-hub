@@ -24,7 +24,7 @@ A finding with a log id (`log 3f9a…`) was Jev's. When the user says it was wro
 
 ### Low gravity
 
-A prototype imports only `@kit/*` and files in its own folder. Never another prototype, never the hub's own code in `node_modules/@milesroxas/design-hub`. Why: the moment two prototypes share a file, deleting one breaks the other, and a prototype that cannot be deleted is production.
+A prototype imports only `@kit/*` and files in its own folder. Never another prototype, never the hub's own code in `node_modules/@milesroxas/design-hub`. Why: the moment two prototypes share a file, deleting one breaks the other, and a prototype that cannot be deleted is production. The build refuses an import from another prototype's folder, naming both files: copy the file in, or promote it to `kit/`.
 
 ### Fork, don't flex
 
@@ -53,6 +53,19 @@ A user-visible state the README's `## States` table does not list does not exist
 ### Scope, said in the prototype's voice
 
 Anything a control would do that the prototype does not build says so: `notInPrototype('Model history')` or `toast(message, { kind: 'scope' })`. Never a product toast with a green check for something that did not happen. Why: a reviewer who sees a success they did not get stops trusting the ones they did.
+
+## Who sees it
+
+A new prototype is **Internal**: only Studio can open it, until a Studio person marks it **Client-facing** with the switch beside it on the hub's index (no command reads or sets it). Never tell the user a new prototype is ready for the client before that. Everything in `prototypes/<slug>/` (code, README, styles, fixtures, images) ships only to people who may see that prototype: the deployed site refuses its page and files to a Client while it is internal. Why: an internal prototype stays inside the studio only because nothing of it leaves its folder.
+
+- Never reach into another prototype's folder: an import, a CSS `@import` or `url()`, a `new URL(…, import.meta.url)`. The build refuses each, naming both files: copy the file in, or promote it to `kit/`. A link to another prototype's page is fine; reading its files is not. And nothing in `kit/` may point into a prototype's folder: the build refuses that too.
+- No web worker in a prototype (`new Worker`, `?worker`, `?worker&inline`): Vite builds it outside the prototype's folder, so the build refuses it. Run the work on the main thread, or build the worker from `kit/` files that use no prototype's.
+- Write styles in plain CSS (or `.pcss`). Sass, Less and Stylus are refused in prototypes and in `kit/`, in `pnpm dev` and `pnpm build`, naming the file. Why: their own `@import` and `@use` resolve inside the preprocessor, where no check can see a reach into another prototype.
+- The build also reads what it wrote, as a backstop for a whole file copied out of the folder: a file outside a prototype's folder that is one of its files whole (the same bytes, a `data:` URI of it, or its whole text as a string in a script) fails it, naming both files. It does not look for a part of a file, so shared lines, rules or snippets build.
+- Limits: a `new URL` whose path is built at run time is not seen, until its content lands outside the folder. `pnpm dev` checks less than `pnpm build` (no read or output check). Nothing directly in `prototypes/`, or in a folder there without a README: shared code belongs in `kit/`, and the build refuses the rest. Run `pnpm build` before sharing.
+- A prototype's small images and SVGs are built as files of their own, never inlined as `data:` URIs, so the site can refuse them to a Client while the prototype is internal.
+- `kit/` is shared with every signed-in person, the client included, so nothing client-secret goes there: no unreleased product name, internal note or real data that only one prototype may show.
+- Walkthrough text (`docs/sprints/<feature>/guide.md`) and feature names go to every signed-in person, clients included, whether or not the feature's prototypes are client-facing. A walkthrough must not name or describe internal work until the client may see it.
 
 ## DialKit patterns
 

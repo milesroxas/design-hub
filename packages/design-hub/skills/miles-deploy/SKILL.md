@@ -85,6 +85,23 @@ A signed-in device stays signed in until the person's access ends: 3 months, 6 m
 - One person: `pnpm people access <id> --access 3m|6m|open`, counted from today, or `--access` on `pnpm people add`.
 - When someone's access ends their links stop working at once, and every device signs out within five minutes. A changed access length reaches their signed-in devices within five minutes too. Change their access to let them back in, then send a new link.
 
+## Internal and client-facing prototypes
+
+Every prototype is **Internal** until a Studio person marks it **Client-facing** with the switch beside it on the deployed site's **Prototypes** page; only then can a Client open it or see it listed. No command reads or sets it: to check one, open the site's index signed in as Studio and look at its switch, or turn on **Client view** there to see the index as a client gets it. A switch flipped under `pnpm dev` writes the local store only; the deployed site has its own. A new prototype is internal, and so is every prototype on a site upgraded to the release that brought this: after that upgrade, tell the user once that clients see nothing until they switch on the prototypes the client should see. Before sending a handover, ask the user to check that the prototype it names is switched on. Walkthroughs and feature names reach every signed-in person whatever the switches say, so a walkthrough that describes internal work must wait.
+
+The same upgrade changes what a build accepts and writes. Tell the user once, and when a build fails fix the file it names; never work around the check:
+
+- A stylesheet that does not parse (an unclosed block) fails `pnpm build` and stops `pnpm dev` (the page answers 500), naming file and line, where both worked before: every stylesheet is now read for reaches into a prototype's folder.
+- A prototype that reaches into another prototype's folder fails in `pnpm dev` and `pnpm build`, naming both files: an import (any query), a CSS `@import` or `url()`, or a `new URL('…', import.meta.url)`. Copy the file into the prototype that uses it, or move it into `kit/`.
+- Importing a file that sits directly in `prototypes/`, or in a folder there with no `README.md`, fails in `pnpm dev` and `pnpm build`: nothing in `prototypes/` is shared. Move shared code into `kit/`.
+- A `kit/` file that imports or references anything in a prototype's folder fails in `pnpm dev` and `pnpm build`: the kit never reads a prototype. Move what it needs into `kit/`.
+- A web worker in a prototype fails `pnpm build`. Run the work on the main thread, or build the worker from `kit/` files only.
+- Sass, Less and Stylus are refused: importing a `.scss`, `.sass`, `.less`, `.styl` or `.stylus` file from a prototype or from `kit/` fails in `pnpm dev` and `pnpm build`, naming the file. Rewrite it as plain CSS or `.pcss`.
+- Stylesheet ties resolve in source import order, as in `pnpm dev`: when a prototype imports a kit sheet and then its own, a rule of equal weight in its own sheet wins, where a build could put the kit's last before.
+- A prototype's small images and SVGs are separate requests from its own folder, no longer inlined as `data:` URIs.
+- A build fails when a file outside a prototype's folder is one of that prototype's files whole (the same bytes, a `data:` URI of it, or its whole text as a string), naming both files.
+- `postcss` is a direct dependency of the hub, and Vite is pinned to 8.3 (it was any 8.x from 8.3.5): the project's next install may move its Vite to any 8.3 patch, never 8.4. Nothing to do.
+
 ## A project that shared before one-time links
 
 A project that shared with a password (before one-time links) needs this once, before its next `pnpm share`. The pre-flight `gate` step stops the share until the store is there, so production is never replaced by a gate nobody can pass.

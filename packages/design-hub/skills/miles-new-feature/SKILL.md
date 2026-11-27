@@ -34,7 +34,7 @@ One feature is one slug used in two places: `docs/sprints/<slug>/` and the `feat
 
 ## The walkthrough
 
-`docs/sprints/<feature>/guide.md` is for the reviewer who has a sign-in link and not the repo. It is written from the States table: one section per workflow, then "Every state, and how to reach it" copied from the README, then what the prototype does not do, then what the review must settle. Screenshots go in `assets/guide/` beside it, named in order (`01-list.jpg`); a missing file fails the build. Write it before the share link goes out (`miles-deploy` checks it exists for a sprint).
+`docs/sprints/<feature>/guide.md` is for the reviewer who has a sign-in link and not the repo. It is written from the States table: one section per workflow, then "Every state, and how to reach it" copied from the README, then what the prototype does not do, then what the review must settle. Screenshots go in `assets/guide/` beside it, named in order (`01-list.jpg`); a missing file fails the build. Write it before the share link goes out (`miles-deploy` checks it exists for a sprint). It goes to every signed-in person, clients included, even while the feature's prototypes are internal, and so does the feature's name: never name or describe internal work in it until the client may see it.
 
 ## When done means decided
 
