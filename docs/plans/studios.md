@@ -1,6 +1,6 @@
 # Studios: one hub per client, on any provider
 
-Status: proposed. Starts once slice 5 of `collaboration.md` is released, and builds on what that slice decided (its section 12). Collaboration slice 6 (dials) is independent of this plan. Collaboration slice 7 (email sign-in) waits for it, so it is built once, on studio people. Four points stay open (section 8).
+Status: proposed. Slice 5 of `collaboration.md` shipped in 0.9.0, so this can start; it builds on what that slice decided (its section 12). Collaboration slice 6 (dials) is independent of this plan. Collaboration slice 7 (email sign-in) waits for it, so it is built once, on studio people. Four points stay open (section 8).
 
 ## 1. Problem and success
 
@@ -106,7 +106,7 @@ Each slice works end to end and ships as its own release, as in `collaboration.m
 | # | Delivers | Deterministic check | Files |
 | --- | --- | --- | --- |
 | 1 | Learning tests, output kept: how a project's build reaches the studio site (Q1, both options); a wildcard domain on a Vercel DNS apex; a per-host domain on Cloudflare through its API. | None; the findings settle Q1 and are recorded here | scratch projects in `sas-team` |
-| 2 | The scoped store and rules: `hub4:` keys, `Scope` on every service method, `Person.client`, `inScope`, the `p5` token signed to the client. One client and one project per site still, so nothing else changes yet. | `policy` table with the scope row; `service.test.ts`: every op from a client-A actor on a client-B scope answers like an unknown id; `session.test.ts`: A's token fails on B; a `KV` conformance suite | `core/review/*`, `server/{api,session,local}.ts` |
+| 2 | The scoped store and rules: `hub4:` keys, `Scope` on every service method, `Person.client`, `inScope`, the `p5` token signed to the client. Every first path segment the gate answers (`invite`, `api`, `_gate`, `assets`, `guide`) reserved as a prototype and project slug in `RESERVED`. One client and one project per site still, so nothing else changes yet. | `policy` table with the scope row; `design-hub new invite` is refused and the registry skips an `invite` folder; `service.test.ts`: every op from a client-A actor on a client-B scope answers like an unknown id; `session.test.ts`: A's token fails on B; a `KV` conformance suite | `core/review/*`, `core/prototype.ts`, `server/{api,session,local}.ts` |
 | 3 | The studio site: the gate by host, each client's hub listing their projects, projects served under `/<project>/`, the review API scoped by host. One studio on `sas-team` with a test client. | `proxy.test.ts`: unknown host is 404, a cross-client cookie is the sign-in page, a project of another client is 404; a build under a base path passes slice 5's build checks | `vercel/*`, `core/prototype.ts`, `shell/*`, `vite/*` |
 | 4 | Studio setup and the CLI: `studio create`, `client add`, `project link`, `share` into a studio, the local studio registry, the DNS adapters (Vercel wildcard, Cloudflare, manual). Carbon Signal is shared again into the Suits & Sandals studio, starting clean (S11). | `bootstrap.test.ts`-style tests per command with a fake host and DNS; `release-check` | `scripts/*`, `scripts/lib/*`, `skills/miles-deploy`, `template/`, `docs/guide/sharing.md` |
 | 5 | The studio hub on `studio.<apex>`: every client, their people and projects, and the handoff to a client host. The People tab per client. | `proxy.test.ts`: a handoff works once and only for its client host; a Client cookie on `studio.<apex>` is the sign-in page | `shell/*`, `vercel/*`, `server/session.ts` |
@@ -135,7 +135,7 @@ Read from slice 5's build, before it is released:
 - **The hub assumes `/`.** `API = '/api/review'` (`shell/review/client.ts`), `/_p/` in `core/prototype.ts` and the registry's base `/` all need to become relative to a base path before projects can sit under `/<project>/`.
 - **The token's `site` is the store URL.** That separates sites today because each site has its own store. With one store per studio it no longer separates clients, so `p5` signs the client too (slice 2).
 - **`hub3:audiences` is per site.** It moves under the project scope. So does `_p/all.js`, Studio's list of slugs, which stays one file per project.
-- **`invite` is not reserved** (in slice 5's backlog). At a client host, project slugs share the first path segment with `invite`, `api`, `_gate` and `assets`, so the reserved list must cover every gate route before slice 3.
+- **`invite` is not reserved.** 0.9.0 shipped `RESERVED` as `guide`, `api`, `assets`. At a client host, project slugs share the first path segment with `invite`, `api`, `_gate` and `assets`, so slice 2 reserves every gate route, before slice 3 puts projects there.
 - **Store reads per request.** A Client's prototype page already costs one store read per file (slice 5's backlog). The host-to-client lookup adds one more unless the client list is cached briefly; budget it in slice 3.
 - **Deleted things keep their marks.** A deleted prototype's client-facing mark stays in the store (slice 5's backlog). The same goes for a deleted project or client, so archiving one must remove its keys.
 
