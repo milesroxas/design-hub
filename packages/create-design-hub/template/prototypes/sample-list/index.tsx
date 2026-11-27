@@ -1,5 +1,5 @@
 import { AppShell, PageHead } from '@kit/AppShell';
-import { DialVars, useDials } from '@kit/dials';
+import { client, DialVars, useDials } from '@kit/dials';
 import { type FixtureSets, fixtureSets, SET_NAMES, type SetName } from '@kit/fixtures';
 import { fmtDate, plural } from '@kit/format';
 import { useHashRoute } from '@kit/hooks';
@@ -36,7 +36,8 @@ function ItemsPage() {
     'Review',
     {
       fixtures: { type: 'select', options: [...SET_NAMES], default: 'real' },
-      density: { type: 'select', options: ['comfortable', 'compact'], default: 'comfortable' },
+      // client(): a client gets this dial too. Every other dial is internal until Studio's eye marks it.
+      density: client({ type: 'select', options: ['comfortable', 'compact'], default: 'comfortable' }),
     },
     {
       hints: {
