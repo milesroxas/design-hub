@@ -1,6 +1,6 @@
 # Collaboration: people, access and what clients see
 
-Status: slice 1 shipped in 0.6.0 (section 9 records what was decided in review), slice 2 in 0.6.2 and slice 3 in 0.7.0 (section 10 records what was decided in the build and its two second reads); slice 4 in 0.8.0 (section 11 records what was decided in the build); slice 5 is built and not yet released (section 12 records what was decided in the build); slices 6 and 7 are planned. Sections 3 to 7 are a proposed design for the decisions in section 2. Two points stay open (section 8); both are answered by the exploration in slice 6 and block nothing before it.
+Status: slice 1 shipped in 0.6.0 (section 9 records what was decided in review), slice 2 in 0.6.2 and slice 3 in 0.7.0 (section 10 records what was decided in the build and its two second reads); slice 4 in 0.8.0 (section 11 records what was decided in the build); slice 5 in 0.9.0 (section 12 records what was decided in the build); slices 6 and 7 are planned. Sections 3 to 7 are a proposed design for the decisions in section 2. Two points stay open (section 8); both are answered by the exploration in slice 6 and block nothing before it.
 
 ## 1. Problem and success
 
