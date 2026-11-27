@@ -104,9 +104,9 @@ One slug in two places: `docs/sprints/<feature>/` and the `feature:` line of eve
 | Import | What |
 | --- | --- |
 | `@kit/shell` | `BRAND`, `PRODUCT` (nav, workspace, user), `SITE` (nav, footer): the one place the chrome is written. |
-| `@kit/AppShell`, `@kit/SiteShell` | The disposable shells. Mount the dialog, sheet and toast hosts and the View dials. `PageHead({ title, desc, back, actions })`. |
-| `@kit/Space` | `<Space title lede width>`: the low-gravity canvas. |
-| `@kit/Artboard` | `<Board title lede>` holding `<Artboard format name>`s: collateral at real pixel size, scaled to fit on screen, written to files by `pnpm export`. `FORMATS` lists the sizes. |
+| `@kit/AppShell`, `@kit/SiteShell` | The disposable shells. Mount the dialog, sheet and toast hosts and the View dials (theme, reduce motion, speed). A prototype never mounts `ViewTools` itself. `PageHead({ title, desc, back, actions })`. |
+| `@kit/Space` | `<Space title lede width tools?>`: the low-gravity canvas. `tools` narrows the View panel to what changes something here: `['theme']` when nothing moves, `['motion']` when there is one theme, `false` for neither. |
+| `@kit/Artboard` | `<Board title lede>` holding `<Artboard format name>`s: collateral at real pixel size, scaled to fit on screen, written to files by `pnpm export`. `FORMATS` lists the sizes. A board has no View panel and is held to the light look it exports in: no motion, no theme styles, no `ViewTools`; a dark version is a `tone` dial. |
 | `@kit/ui` | `Button`, `Chevron`, `Segmented`, `Badge`, `Checkbox`, `useMenu`, `Select`, `openDialog`, `confirmDialog`, `openSheet`, `toast()`, `notInPrototype(what)`. Card, table and empty-state classes in `ui.css`. |
 | `@kit/fixtures` | `fixtureSets({ real, missing }, { max, text })` returns `{ real, longest, empty, max, missing }`; `SET_NAMES` for the dial. |
 | `@kit/Variants` | `<Variants options={{ Quiet, Editorial }}>`: the picker. Keys 1-N, arrows, R; `?v=N`. A client gets only the variants Studio marks with the picker's eye, the first when none is marked, and no picker when there is one. |
