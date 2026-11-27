@@ -1,6 +1,6 @@
 # Studios: one hub per client, on any provider
 
-Status: proposed. Starts once slice 5 of `collaboration.md` is released, and builds on what that slice decided (its section 12). Collaboration slice 6 (dials) is independent of this plan. Collaboration slice 7 (email sign-in) waits for it, so it is built once, on studio people. Five points stay open (section 8).
+Status: proposed. Starts once slice 5 of `collaboration.md` is released, and builds on what that slice decided (its section 12). Collaboration slice 6 (dials) is independent of this plan. Collaboration slice 7 (email sign-in) waits for it, so it is built once, on studio people. Four points stay open (section 8).
 
 ## 1. Problem and success
 
@@ -34,6 +34,7 @@ Today one prototype project is one Vercel project, one site, one Upstash store a
 | S8 | One database per studio, not per project. | About $0 a month for a studio, whatever its number of clients. |
 | S9 | A client's subdomain is public when the DNS is per host: each certificate is logged in public certificate logs. Setup says so and offers a codename. A wildcard (Vercel DNS) logs only `*.<apex>`. | Confidential clients must not be listed by the setup itself. |
 | S10 | A client host never serves a hub path that lists other clients. A host that is not a known client gets the same 404 as an unknown path. | A guessed subdomain confirms nothing. |
+| S11 | Start clean, as D20 did: Carbon Signal (`carbon-signal-design`) and the test site `hub-e2e` keep none of their links, sign-ins, people or comments. Carbon Signal is shared again into the Suits & Sandals studio and its people are added again. | Miles: no need for either to survive the move. No migration code to write or test. |
 
 ## 3. Architecture
 
@@ -107,7 +108,7 @@ Each slice works end to end and ships as its own release, as in `collaboration.m
 | 1 | Learning tests, output kept: how a project's build reaches the studio site (Q1, both options); a wildcard domain on a Vercel DNS apex; a per-host domain on Cloudflare through its API. | None; the findings settle Q1 and are recorded here | scratch projects in `sas-team` |
 | 2 | The scoped store and rules: `hub4:` keys, `Scope` on every service method, `Person.client`, `inScope`, the `p5` token signed to the client. One client and one project per site still, so nothing else changes yet. | `policy` table with the scope row; `service.test.ts`: every op from a client-A actor on a client-B scope answers like an unknown id; `session.test.ts`: A's token fails on B; a `KV` conformance suite | `core/review/*`, `server/{api,session,local}.ts` |
 | 3 | The studio site: the gate by host, each client's hub listing their projects, projects served under `/<project>/`, the review API scoped by host. One studio on `sas-team` with a test client. | `proxy.test.ts`: unknown host is 404, a cross-client cookie is the sign-in page, a project of another client is 404; a build under a base path passes slice 5's build checks | `vercel/*`, `core/prototype.ts`, `shell/*`, `vite/*` |
-| 4 | Studio setup and the CLI: `studio create`, `client add`, `project link`, `share` into a studio, the local studio registry, the DNS adapters (Vercel wildcard, Cloudflare, manual). Carbon Signal moves into the Suits & Sandals studio. | `bootstrap.test.ts`-style tests per command with a fake host and DNS; `release-check` | `scripts/*`, `scripts/lib/*`, `skills/miles-deploy`, `template/`, `docs/guide/sharing.md` |
+| 4 | Studio setup and the CLI: `studio create`, `client add`, `project link`, `share` into a studio, the local studio registry, the DNS adapters (Vercel wildcard, Cloudflare, manual). Carbon Signal is shared again into the Suits & Sandals studio, starting clean (S11). | `bootstrap.test.ts`-style tests per command with a fake host and DNS; `release-check` | `scripts/*`, `scripts/lib/*`, `skills/miles-deploy`, `template/`, `docs/guide/sharing.md` |
 | 5 | The studio hub on `studio.<apex>`: every client, their people and projects, and the handoff to a client host. The People tab per client. | `proxy.test.ts`: a handoff works once and only for its client host; a Client cookie on `studio.<apex>` is the sign-in page | `shell/*`, `vercel/*`, `server/session.ts` |
 | 6 | The ports opened: `gate` split from `@vercel/functions`, the host port in `scripts/`, the Postgres adapter (Neon, Supabase). The personal studio on `milesroxas.com` proves two studios share nothing. | The `KV` conformance, gate and service suites pass on Postgres; the success row "two studios share nothing" checked by listing both studios' env vars | `server/stores/*`, `vercel/*`, `scripts/lib/*` |
 
@@ -120,7 +121,7 @@ Then collaboration slice 7 (email sign-in), on studio people.
 | 1 | The learning test output, and the Q1 choice |
 | 2 | All of `policy.ts` and every service read path, for a missed scope |
 | 3 | All of the gate's host and path handling: this is the new client boundary |
-| 4 | The commands' JSON, and Carbon Signal working after its move |
+| 4 | The commands' JSON, and Carbon Signal working in the studio |
 | 5 | The handoff in `session.ts` and the gate |
 | 6 | The Postgres adapter against the conformance suite |
 
@@ -143,7 +144,6 @@ Read from slice 5's build, before it is released:
 | # | Question | Recommendation |
 | --- | --- | --- |
 | Q1 | How does a project's build reach the studio site? (A) Each project keeps a deployment, locked by the host, and the studio site proxies to it with a secret. (B) `share` uploads the build to the studio's private object storage and the studio site serves it. | Decide from slice 1. Leaning B: one deployment per studio, and it works the same on any host. |
-| Q2 | Must Carbon Signal's current links and signed-in devices keep working through the move? | Leaning no: redirect old paths to `/design/…` and add its people again, as D20 did. Miles decides. |
 | Q3 | Which Vercel account and plan does the personal studio use? Hobby is for non-commercial use only. | A Pro team for paid side-project clients. Miles decides. |
 | Q4 | Is a client's default access length set per studio or per client? | A studio default with a per-client override, and per-person as today. |
 | Q5 | Does a client's hub show anything before sign-in beyond "open the link you were sent"? | No, the same page as today, so a guessed client host confirms nothing. |
