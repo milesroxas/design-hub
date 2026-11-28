@@ -43,7 +43,7 @@ class ApiError extends Error {
   }
 }
 
-const API = '/api/review';
+const API = `${import.meta.env.BASE_URL}api/review`;
 
 /** For a click handler: the store shows every failure in the panel, so the handler has nothing left to do with one. */
 export const act = (pending: Promise<unknown>) => void pending.catch(() => {});

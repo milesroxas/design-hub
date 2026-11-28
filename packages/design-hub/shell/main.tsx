@@ -36,7 +36,16 @@ if (import.meta.env.DEV && !exporting && params.get('a11y') !== '0') {
 // /<slug>/ is a prototype; /guide/<feature>/ is that feature's walkthrough.
 // `invite`, `api`, `_gate`, `_p`, `assets`, `guide`, `index.html` and `favicon.svg`
 // belong to the hub (RESERVED in core/prototype.ts; new.ts refuses them).
-const [slug, sub] = location.pathname.split('/').filter(Boolean);
+// All of it below the build's base (vite/plugin.ts). Each `BASE_URL === '/'`
+// test here and in Index.tsx and Guide.tsx is settled when Vite builds, so a
+// hub built at `/` is byte for byte the one built before there was a base.
+const [slug, sub] = (
+  import.meta.env.BASE_URL === '/'
+    ? location.pathname
+    : location.pathname.slice(import.meta.env.BASE_URL.length - 1)
+)
+  .split('/')
+  .filter(Boolean);
 const Guide = lazy(() => import('./Guide'));
 
 /**
@@ -84,7 +93,12 @@ if (slug === 'guide') {
     pageEntry(slug),
     exporting ? exportControls() : loadControls(slug),
   ]);
-  if (entry?.feature && guides.has(entry.feature)) setGuide(guideHref(entry.feature));
+  if (entry?.feature && guides.has(entry.feature))
+    setGuide(
+      import.meta.env.BASE_URL === '/'
+        ? guideHref(entry.feature)
+        : `${import.meta.env.BASE_URL}guide/${entry.feature}/`,
+    );
   page = hidden ? (
     <HiddenInClientView name={slug} />
   ) : (

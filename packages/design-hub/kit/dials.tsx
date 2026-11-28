@@ -140,7 +140,7 @@ function clientViewRow(): PanelLink {
 // which stays the very last.
 function panelLinks(): PanelLink[] {
   const rows: PanelLink[] = isStudioPerson() ? [clientViewRow()] : [];
-  rows.push({ key: 'home', href: '/', label: 'All prototypes', icon: 'grid-01' });
+  rows.push({ key: 'home', href: import.meta.env.BASE_URL, label: 'All prototypes', icon: 'grid-01' });
   if (guide)
     rows.push({
       key: 'guide',
@@ -160,7 +160,7 @@ function makeLink({ key, href, label, icon, newTab, act }: PanelLink) {
     row.type = 'button';
     row.addEventListener('click', () => act?.());
   } else {
-    row.href = href ?? '/';
+    row.href = href ?? import.meta.env.BASE_URL;
     if (newTab) {
       row.target = '_blank';
       row.rel = 'noopener';

@@ -28,6 +28,7 @@ import { dirname, join, relative } from 'node:path';
 import { after, before, test } from 'node:test';
 import { build, type Plugin } from 'vite';
 import type { Track } from '../core/project.ts';
+import { RESERVED } from '../core/prototype.ts';
 import { PACKAGE, TEMPLATES } from '../server/paths.ts';
 import { hubConfig } from './plugin.ts';
 
@@ -185,13 +186,13 @@ let warnings: string[] = [];
 
 /**
  * What a row adds to the hub's config: a test-only plugin, the aliases a
- * project's own vite.config.ts might set, or the names of the hub's own
- * plugins to leave out.
+ * project's own vite.config.ts might set, the names of the hub's own
+ * plugins to leave out, or the base the hub is built under.
  */
-type Extra = { plugins?: Plugin[]; alias?: Record<string, string>; without?: string[] };
+type Extra = { plugins?: Plugin[]; alias?: Record<string, string>; without?: string[]; base?: string };
 
-const quiet = (root: string, { plugins = [], alias, without = [] }: Extra = {}) => {
-  const config = hubConfig({ root }, 'build');
+const quiet = (root: string, { plugins = [], alias, without = [], base }: Extra = {}) => {
+  const config = hubConfig({ root, base }, 'build');
   const flat = (p: unknown): unknown[] => (Array.isArray(p) ? p.flatMap(flat) : [p]);
   const own = flat(config.plugins ?? []).filter(
     (p) => !(p && typeof p === 'object' && 'name' in p && without.includes(String(p.name))),
@@ -835,12 +836,21 @@ const REFUSED: {
   },
 ];
 
-for (const row of REFUSED)
-  test(`refused: ${row.name}`, async () => {
-    const { error } = await buildRow(row.files, row.links, row.extra);
-    assert.ok(error, 'the build failed');
-    assert.match(error.message, row.message);
-  });
+/** Every table runs at the default base and below one, as a studio serves a project at `/<project>/`. */
+const BASES = ['/', '/x/'] as const;
+const at = (base: string) => (base === '/' ? '' : ` (base ${base})`);
+/** A row's own additions to the config, built under `base`. */
+const under_ =
+  (base: string, extra: (root: string) => Extra = () => ({})) =>
+  (root: string): Extra => ({ ...extra(root), base });
+
+for (const base of BASES)
+  for (const row of REFUSED)
+    test(`refused${at(base)}: ${row.name}`, async () => {
+      const { error } = await buildRow(row.files, row.links, under_(base, row.extra));
+      assert.ok(error, 'the build failed');
+      assert.match(error.message, row.message);
+    });
 
 /** Whether this disk folds letter case: `Prototypes/` and `prototypes/` are then one folder. */
 const foldsCase = (() => {
@@ -962,12 +972,13 @@ const LEAKS: {
   },
 ];
 
-for (const row of LEAKS)
-  test(`refused at the output: ${row.name}`, async () => {
-    const { error } = await buildRow(row.files, {}, inliner(row.target, row.wrap));
-    assert.ok(error, 'the build failed');
-    assert.match(error.message, row.message);
-  });
+for (const base of BASES)
+  for (const row of LEAKS)
+    test(`refused at the output${at(base)}: ${row.name}`, async () => {
+      const { error } = await buildRow(row.files, {}, under_(base, inliner(row.target, row.wrap)));
+      assert.ok(error, 'the build failed');
+      assert.match(error.message, row.message);
+    });
 
 const sheets = (dist: Map<string, Buffer>) => [...dist].filter(([n]) => n.endsWith('.css'));
 const holdingIn = (dist: Map<string, Buffer>, text: string) =>
@@ -1429,13 +1440,65 @@ const BUILDS: {
   },
 ];
 
-for (const row of BUILDS)
-  test(`builds: ${row.name}`, async () => {
-    const { dist, error } = await buildRow(row.files, {}, row.extra, row.setup, row.teardown);
-    assert.ifError(error);
-    assert.ok(dist);
-    row.check(dist);
-  });
+for (const base of BASES)
+  for (const row of BUILDS)
+    test(`builds${at(base)}: ${row.name}`, async () => {
+      const { dist, error } = await buildRow(row.files, {}, under_(base, row.extra), row.setup, row.teardown);
+      assert.ifError(error);
+      assert.ok(dist);
+      row.check(dist);
+    });
+
+/**
+ * Every path in a built page, script or stylesheet that starts at the host's
+ * root, outside `base`: one the hub serves itself (RESERVED: the API, `_p/`,
+ * `assets/`, the walkthroughs, the favicon) or a prototype's page, a link to
+ * the bare root, and a template that builds one from the root (`` `/${slug}/` ``). A path inside `base` (`/x/api/…`) and a relative
+ * one (`../assets/…`) are not.
+ */
+function rooted(dist: Map<string, Buffer>, base: string): string[] {
+  const slugs = [...dist.keys()].flatMap((n) => n.match(/^_p\/([^/]+)\/entry\.js$/)?.[1] ?? []);
+  const first = [...RESERVED, ...slugs].map((s) => s.replace(/\./g, '\\.')).join('|');
+  const path = new RegExp(`(?<![\\w./-])/(?:${first})(?![\\w.-])`, 'g');
+  const root = /(?:href\s*[=:]\s*|\?\?\s*)([`"'])\/\1|`\/\$\{/g;
+  return [...dist]
+    .filter(([n]) => /\.(html|js|css)$/.test(n))
+    .flatMap(([n, bytes]) => {
+      const text = bytes.toString().replaceAll(base, '\0');
+      return [...text.matchAll(path), ...text.matchAll(root)].map((m) => `${n}: ${m[0]}`);
+    });
+}
+
+/** A walkthrough, so the hub's guide pages and links are in the build, and a prototype on dials, so the kit's are. */
+const GUIDE = {
+  'docs/sprints/alpha/guide.md':
+    '---\ntype: guide\nfeature: alpha\ndate: 2030-01-01\n---\n\n# Alpha\n\n## One\n\nText.\n',
+  [`${A}/README.md`]: README('alpha-proto').replace("feature: ''", 'feature: alpha'),
+  [`${A}/index.tsx`]: `import { useDials } from '@kit/dials';\n${INDEX.replace('return null;', "useDials('Look', { size: 1 }); return null;")}`,
+};
+
+test('under base /x/, the hub asks for and links to nothing outside /x/', async () => {
+  const { dist: x, error } = await buildRow(GUIDE, {}, () => ({ base: '/x/' }));
+  assert.ifError(error);
+  assert.ok(x);
+  assert.deepEqual(rooted(x, '/x/'), []);
+  const all = [...x.values()].map((b) => b.toString()).join('\n');
+  for (const want of ['/x/api/review', '/x/_p/all.js', '/x/_p/', '/x/assets/', '/x/favicon.svg', '/x/guide/'])
+    assert.ok(all.includes(want), `${want} is in the build`);
+  // The same scan, on the same project built at /, finds every one of them at the root: it is not blind.
+  const { dist: plain } = await buildRow(GUIDE);
+  assert.ok(plain);
+  const found = rooted(plain, '/x/').join('\n');
+  for (const want of ['/api', '/_p', '/assets', '/favicon.svg', '/guide', 'href:`/`', '??`/`', '`/${'])
+    assert.ok(found.includes(want), `the scan finds ${want} in a / build:\n${found}`);
+});
+
+test('a base that is not / or one project slug is refused', () => {
+  for (const base of ['', 'x/', '/x', '//x/', '/x/y/', '/api/', '/_p/', '/X/', 'https://cdn.example/', './'])
+    assert.throws(() => hubConfig({ root: TEMPLATE_PROJECT, base }, 'build'), /base must be/, base);
+  assert.equal(hubConfig({ root: TEMPLATE_PROJECT, base: '/x/' }, 'build').base, '/x/');
+  assert.equal(hubConfig({ root: TEMPLATE_PROJECT }, 'build').base, '/');
+});
 
 /** The stylesheets index.html links, in order. */
 const linked = (dist: Map<string, Buffer>) =>

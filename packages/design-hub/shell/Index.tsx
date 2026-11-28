@@ -51,7 +51,11 @@ const groupsOf = (list: Entry[]): Group[] => {
       return {
         id: `feature-${f}`,
         title: featureTitle(f),
-        guide: guides.has(f) ? guideHref(f) : undefined,
+        guide: guides.has(f)
+          ? import.meta.env.BASE_URL === '/'
+            ? guideHref(f)
+            : `${import.meta.env.BASE_URL}guide/${f}/`
+          : undefined,
         items: primary ? [primary] : alternates,
         alternates: primary ? alternates : [],
         explorations: own.filter((e) => e.kind === 'exploration'),
@@ -305,7 +309,7 @@ function IndexList({
       <li key={e.slug} className="index-rise" style={rise(from + i)}>
         <a
           className="index-row"
-          href={`/${e.slug}/`}
+          href={`${import.meta.env.BASE_URL}${e.slug}/`}
           data-kind={e.kind}
           data-chosen={leaving === e.slug || undefined}
           onClick={(ev) => onOpen(ev, e.slug)}
@@ -449,7 +453,7 @@ function Explorations({
             <li key={e.slug} className="index-rise" style={rise(at + 1 + i)}>
               <a
                 className="index-card"
-                href={`/${e.slug}/`}
+                href={`${import.meta.env.BASE_URL}${e.slug}/`}
                 data-chosen={leaving === e.slug || undefined}
                 onClick={(ev) => onOpen(ev, e.slug)}
               >

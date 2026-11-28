@@ -7,7 +7,7 @@ export function Notice({ title, body, detail }: { title: string; body: string; d
       <h1>{title}</h1>
       <p>{body}</p>
       {detail ? <pre>{detail}</pre> : null}
-      <a href="/">All prototypes</a>
+      <a href={import.meta.env.BASE_URL}>All prototypes</a>
     </main>
   );
 }

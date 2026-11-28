@@ -10,6 +10,7 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import react from '@vitejs/plugin-react';
 import { type InlineConfig, type Plugin, type PluginOption, searchForWorkspaceRoot } from 'vite';
+import { isProjectSlug } from '../core/prototype.ts';
 import { devReview } from '../server/dev.ts';
 import { devPort, readEnv } from '../server/env.ts';
 import { PACKAGE, PACKAGE_KIT, SHELL } from '../server/paths.ts';
@@ -55,7 +56,19 @@ function gateFont(): Plugin {
 export type HubOptions = {
   /** The project: the folder with prototypes/, kit/ and docs/. */
   root: string;
+  /**
+   * The path the hub is served under: `/` (the default), or `/<project>/`
+   * when a studio serves the build below a client's host. Every path the hub
+   * asks for or links to starts with it.
+   */
+  base?: string;
 };
+
+/** The base itself, or an error: `/`, or one project slug between slashes, nothing that leaves the host. */
+function baseOf(base = '/'): string {
+  if (base === '/' || isProjectSlug(base.match(/^\/(.*)\/$/)?.[1])) return base;
+  throw new Error(`base must be / or /<project>/ with a project slug, not ${JSON.stringify(base)}.`);
+}
 
 /** Every plugin the hub needs, for a project that writes its own vite.config.ts. */
 export function designHub({ root }: HubOptions): PluginOption[] {
@@ -78,7 +91,7 @@ export function designHub({ root }: HubOptions): PluginOption[] {
  * than drifting to the next one, because a fallback silently serves the wrong
  * project. A build needs no port, so Vercel builds without a .env.
  */
-export function hubConfig({ root }: HubOptions, command: 'serve' | 'build'): InlineConfig {
+export function hubConfig({ root, base }: HubOptions, command: 'serve' | 'build'): InlineConfig {
   const port = devPort(readEnv(root));
   if (command === 'serve' && port === undefined)
     throw new Error(
@@ -86,6 +99,7 @@ export function hubConfig({ root }: HubOptions, command: 'serve' | 'build'): Inl
     );
   return {
     configFile: false,
+    base: baseOf(base),
     root: SHELL,
     publicDir: join(SHELL, 'public'),
     envDir: root,

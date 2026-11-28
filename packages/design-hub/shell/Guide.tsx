@@ -71,14 +71,20 @@ function GuideList() {
         <ul>
           {[...guides.keys()].map((f) => (
             <li key={f}>
-              <a href={guideHref(f)}>{featureTitle(f)}</a>
+              <a
+                href={
+                  import.meta.env.BASE_URL === '/' ? guideHref(f) : `${import.meta.env.BASE_URL}guide/${f}/`
+                }
+              >
+                {featureTitle(f)}
+              </a>
             </li>
           ))}
         </ul>
       ) : (
         <p>No walkthrough yet. Start one with pnpm new:guide &lt;feature&gt;.</p>
       )}
-      <a href="/">All prototypes</a>
+      <a href={import.meta.env.BASE_URL}>All prototypes</a>
     </main>
   );
 }
@@ -128,7 +134,7 @@ function GuidePage({ feature }: { feature: string }) {
     <main className="doc">
       <div className="doc-layout">
         <header className="doc-head">
-          <a className="doc-back" href="/">
+          <a className="doc-back" href={import.meta.env.BASE_URL}>
             <Icon name="arrow-left" size={16} />
             Prototypes
           </a>
@@ -142,7 +148,7 @@ function GuidePage({ feature }: { feature: string }) {
             {prototype ? (
               <a
                 className="btn btn-primary btn-md"
-                href={`/${prototype.slug}/`}
+                href={`${import.meta.env.BASE_URL}${prototype.slug}/`}
                 target="_blank"
                 rel="noreferrer"
               >
@@ -167,7 +173,7 @@ function GuidePage({ feature }: { feature: string }) {
         {/* biome-ignore lint/security/noDangerouslySetInnerHtml: compiled at build time from a Markdown file in this repo */}
         <article className="doc-body" dangerouslySetInnerHTML={{ __html: html }} />
         <footer className="doc-foot">
-          <a href="/">All prototypes</a>
+          <a href={import.meta.env.BASE_URL}>All prototypes</a>
         </footer>
       </div>
     </main>
