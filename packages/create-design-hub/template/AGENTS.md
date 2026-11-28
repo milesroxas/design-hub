@@ -91,7 +91,7 @@ The README's `## States` table lists every state the prototype holds and how to 
 - `kit/` is shared with every signed-in person, clients included: nothing client-secret goes there, and nothing in it may point into a prototype's folder (the build refuses it). A link from one prototype's page to another's is fine.
 - A dial is **Internal** too: a client's Controls panel has only the View tools until a dial is marked client-facing. Mark one in code with `client(...)` from `@kit/dials` only when the user asks for clients to have it; otherwise leave it, and Studio marks it with the eye beside its row in the Controls panel, which overrules the code on that site. Never mark fixtures, roles or scenarios: they are how the studio tests. An internal dial's name, range and default are still in the page's code a client's browser loads, so a dial's name never says what a client must not read. A client reads an internal dial's default, so the default is the value to present.
 - Walkthrough text (`docs/sprints/<feature>/guide.md`) and feature names go to every signed-in person, clients included, whether or not the feature's prototypes are client-facing: a walkthrough must not name or describe internal work until the client may see it.
-- `guide`, `api` and `assets` are the hub's paths, never a slug (`pnpm new` refuses them).
+- `invite`, `api`, `_gate`, `_p`, `assets`, `guide`, `index.html` and `favicon.svg` are the hub's paths: a prototype may not be named any of them (`pnpm new` refuses them).
 
 ## A feature
 
