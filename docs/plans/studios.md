@@ -120,12 +120,14 @@ Shipped: slice 1. All three tests passed on paid teams; the record is `studios-f
 
 ## 6. How it is built
 
-One orchestrator (Fable 5.2, medium) runs one slice at a time and writes no product code itself.
+One orchestrator (Fable 5.2, medium) runs one slice at a time and writes no product code itself. It starts by pulling main, so the plan and the code are current, and it tells Miles one line at each phase: build, each review round, fixes, commit.
 
 1. **Build.** Spawn one builder (Opus 5.5, high) with: this file, the slice's row, and the sections of `collaboration.md` it changes. The builder runs the three checks and reports what it built and what it could not.
-2. **Review.** Spawn one reviewer (Fable 5.2, high) in fresh context with the slice's diff and this file, not the builder's report. It hunts for the slice's risk below and reports findings ranked by harm, each with a failing input.
-3. **Fix.** For each real finding, spawn a fixer (Opus 5.5) with that finding alone. Each fix adds a test that failed before it.
-4. **Review again** until a round finds nothing that crosses a boundary. Slices 2, 4 and 6 need two clean rounds. Then commit.
+2. **Review.** Spawn one reviewer (Fable 5.2, high) in fresh context with the slice's diff and this file, not the builder's report. It hunts for the slice's risk below and reports two lists. **Findings:** only what crosses a client or security boundary, or fails one of the slice's checks in section 5, ranked by harm, each with a failing input. **Notes:** everything else, one line each.
+3. **Fix.** For each finding, spawn a fixer (Opus 5.5, high) with that finding alone. Fixers that touch the same file run one after another. Each fix adds a test that failed before it. Notes go to one fixer in one batch, or are dropped. A note never starts a new round.
+4. **Review again**, in fresh context, reading only what changed since the round before. Slices 2, 4 and 6 are first read in full a second time, by a second fresh reviewer. A slice is done when its last round has no findings. At most 2 rounds for a slice, 3 for slices 2, 4 and 6. If that limit is reached with a finding still open, stop and ask Miles one question (section 7). Then commit.
+
+**Simple first.** The builder takes the simplest build that is correct and keeps clients apart. A change made only for speed or cost, which no check in section 5 and no boundary needs, is not built or reviewed until Miles has chosen it: one question, saying what it buys.
 
 **UI work.** Slices 4 and 6 build new screens (the client hub, the studio hub, the People tab per client), and slice 3 touches the hub's links. Any builder or fixer that adds or changes UI loads Emil's skills before writing it (`emil-design-foundations`, `emil-component-design`, `emil-ui-polish`, and whichever others fit), and the reviewer runs `emil-ui-review` on the result beside its security hunt. An agent unsure which skill fits loads `emil-ask-emil`, which routes to the right one. The orchestrator says this in every brief for a slice with UI. New screens are built on `kit/ui` and the hub's own system look, as `shell/` is today.
 
@@ -143,7 +145,7 @@ One orchestrator (Fable 5.2, medium) runs one slice at a time and writes no prod
 - Every question to Miles goes through the question UI, never as prose. At most two per stop, the recommended option first.
 - Write each question for someone who does not know the code: say what he will notice and what it costs, in one or two short sentences. No file names, function names or product plumbing words.
 - Never ask Miles to read code, a diff or a long report. A report to him is three lines: is it done, is it safe, what is needed from him.
-- Make engineering choices without asking. Ask only for: spending money, creating or deleting anything on an account, a domain or DNS change, publishing a release, and anything that changes what a client or Miles sees on screen.
+- Make engineering choices without asking. Ask only for: spending money, creating or deleting anything on an account, a domain or DNS change, publishing a release, anything that changes what a client or Miles sees on screen, a change made only for speed or cost (section 6, "Simple first"), and a slice that reaches its review limit with a finding open.
 - A secret or login only Miles has (the Cloudflare token for `suits-sandals.com`, an npm publish confirmation) is asked for through the secret prompt, at the slice that needs it.
 - Anything found that is outside the current slice goes to the backlog with the `design-hub-capture` skill, then work continues. One line reports it.
 - No dates in anything written.
