@@ -2,14 +2,18 @@ import assert from 'node:assert/strict';
 import { createHash, createHmac } from 'node:crypto';
 import { afterEach, beforeEach, test } from 'node:test';
 import type { Person } from '../core/review/model.ts';
+import { keyOf } from '../core/review/store.ts';
 import { deployedReview } from '../server/api.ts';
 import { fakeUpstash } from '../server/fake-upstash.ts';
+import { issuePersonToken, readGate, SITE_SCOPE } from '../server/session.ts';
 import { createProxy, gatePreview } from './proxy.ts';
 
 // The gate's clock: tests move it past CHECK_SECONDS instead of waiting.
 let clock = Date.now();
 const proxy = createProxy({ siteName: 'Acme <Hub>', now: () => new Date(clock) });
 const STALE_MS = 5 * 60 * 1000;
+/** The site's one scope, which the gate and the API run every op in. */
+const S = SITE_SCOPE;
 /** Moves the gate's clock past the store's last yes, so the next request asks the store again. */
 const goStale = () => {
   clock += STALE_MS;
@@ -28,6 +32,7 @@ const root = {
   name: 'CLI',
   team: 'Studio',
   kind: 'studio',
+  client: null,
   email: null,
   accessEndsAt: null,
   createdAt: '',
@@ -79,7 +84,7 @@ const review = () => {
 
 /** Adds a person and signs one device in with their link; returns its cookie. */
 async function signIn(input: Record<string, unknown> = { name: 'Rae', team: 'Acme' }) {
-  const { person, token } = await review().addPerson(root, input);
+  const { person, token } = await review().addPerson(S, root, input);
   const used = await proxy(form(`/invite/${token}`));
   assert.equal(used.status, 303);
   return { person, token, cookie: cookieOf(used) };
@@ -135,7 +140,7 @@ test('an anonymous POST anywhere but a link is a plain 401, never a pass', async
 });
 
 test('a link shows who it is for on GET, escaped, and uses nothing up', async () => {
-  const { token } = await review().addPerson(root, { name: 'Rae <b>', team: 'Acme & Co' });
+  const { token } = await review().addPerson(S, root, { name: 'Rae <b>', team: 'Acme & Co' });
   for (let i = 0; i < 3; i++) {
     const shown = await proxy(page(`/invite/${token}`));
     assert.equal(shown.status, 200);
@@ -155,12 +160,12 @@ test('a link shows who it is for on GET, escaped, and uses nothing up', async ()
 });
 
 test('a link POST signs one device in with the person cookie, to the access end', async () => {
-  const { token } = await review().addPerson(root, { name: 'Rae', team: 'Acme', access: '3m' });
+  const { token } = await review().addPerson(S, root, { name: 'Rae', team: 'Acme', access: '3m' });
   const used = await proxy(form(`/invite/${token}`));
   assert.equal(used.status, 303);
   assert.equal(used.headers.get('location'), '/');
   const cookie = used.headers.get('set-cookie') ?? '';
-  assert.match(cookie, /^__Host-hub_person=p4\./);
+  assert.match(cookie, /^__Host-hub_person=p5\./);
   assert.match(cookie, /HttpOnly; Secure; SameSite=Lax/);
   const maxAge = Number(cookie.match(/Max-Age=(\d+)/)?.[1]);
   assert.ok(maxAge > 88 * 86_400 && maxAge <= 92 * 86_400, String(maxAge));
@@ -181,13 +186,13 @@ test('a used link is 404 on POST and on GET', async () => {
 });
 
 test('two POSTs of one link at once sign in one device', async () => {
-  const { token } = await review().addPerson(root, { name: 'Rae', team: 'Acme' });
+  const { token } = await review().addPerson(S, root, { name: 'Rae', team: 'Acme' });
   const both = await Promise.all([proxy(form(`/invite/${token}`)), proxy(form(`/invite/${token}`))]);
   assert.deepEqual(both.map((r) => r.status).sort(), [303, 404]);
 });
 
 test('a cross-site link POST is refused and uses nothing up', async () => {
-  const { token } = await review().addPerson(root, { name: 'Rae', team: 'Acme' });
+  const { token } = await review().addPerson(S, root, { name: 'Rae', team: 'Acme' });
   assert.equal((await proxy(form(`/invite/${token}`, { 'sec-fetch-site': 'cross-site' }))).status, 403);
   assert.equal(
     (await proxy(form(`/invite/${token}`, { 'sec-fetch-site': '', origin: 'https://evil.example' }))).status,
@@ -204,14 +209,14 @@ test('an unknown or malformed link is 404, and other methods on a link are 405',
 });
 
 test('a link for a revoked person, or one whose access has ended, is 404', async () => {
-  const gone = await review().addPerson(root, { name: 'Rae', team: 'Acme' });
-  const { token: second } = await review().newLink(root, gone.person.id);
-  await review().revoke(root, gone.person.id);
+  const gone = await review().addPerson(S, root, { name: 'Rae', team: 'Acme' });
+  const { token: second } = await review().newLink(S, root, gone.person.id);
+  await review().revoke(S, root, gone.person.id);
   assert.equal((await proxy(page(`/invite/${second}`))).status, 404);
   // Three months of access; a link made near the end outlives it.
-  const ended = await review().addPerson(root, { name: 'Oz', team: 'Acme', access: '3m' });
+  const ended = await review().addPerson(S, root, { name: 'Oz', team: 'Acme', access: '3m' });
   clock += 85 * DAY_MS;
-  const { token: late } = await review().newLink(root, ended.person.id);
+  const { token: late } = await review().newLink(S, root, ended.person.id);
   assert.equal((await proxy(page(`/invite/${late}`))).status, 200);
   clock += 7 * DAY_MS;
   assert.equal((await proxy(page(`/invite/${late}`))).status, 404);
@@ -219,7 +224,7 @@ test('a link for a revoked person, or one whose access has ended, is 404', async
 });
 
 test('a link unused for 14 days is 404', async () => {
-  const { token } = await review().addPerson(root, { name: 'Rae', team: 'Acme', access: 'open' });
+  const { token } = await review().addPerson(S, root, { name: 'Rae', team: 'Acme', access: 'open' });
   clock += 14 * DAY_MS - 1000;
   assert.equal((await proxy(page(`/invite/${token}`))).status, 200);
   clock += 1000;
@@ -255,7 +260,7 @@ test('once stale, a current person passes with a re-issued cookie, whatever the 
   const asked = await proxy(bare('/assets/index.js', cookie));
   assert.ok(passed(asked));
   const renewed = cookieOf(asked);
-  assert.match(renewed, /^__Host-hub_person=p4\./);
+  assert.match(renewed, /^__Host-hub_person=p5\./);
   assert.notEqual(renewed, cookie);
   assert.match(asked.headers.get('set-cookie') ?? '', /HttpOnly; Secure; SameSite=Lax/);
   // The new stamp is fresh again: no store read for the next five minutes.
@@ -268,13 +273,13 @@ test('once stale, a current person passes with a re-issued cookie, whatever the 
 });
 
 for (const [what, end] of [
-  ['a revoke', (id: string) => review().revoke(root, id)],
-  ['a sign out everywhere', (id: string) => review().signOutEverywhere(root, id)],
+  ['a revoke', (id: string) => review().revoke(S, root, id)],
+  ['a sign out everywhere', (id: string) => review().signOutEverywhere(S, root, id)],
   [
     'the access end',
     async (id: string) => {
       // Shortened to three months after an open-ended sign-in, then three months pass: the cookie still holds, the store says no.
-      await review().setAccess(root, id, '3m');
+      await review().setAccess(S, root, id, '3m');
       clock += 92 * DAY_MS;
     },
   ],
@@ -306,12 +311,12 @@ test('an extended or shortened access end reaches a signed-in cookie when it is 
   goStale();
   const before = maxAgeOf(await proxy(bare('/', cookie)));
   assert.ok(before < 93 * 86_400, String(before));
-  await review().setAccess(root, person.id, 'open');
+  await review().setAccess(S, root, person.id, 'open');
   const longer = await proxy(bare('/', cookie));
   assert.ok(passed(longer));
   assert.equal(maxAgeOf(longer), 400 * 86_400);
   // Shortened again: the open-ended cookie is cut back at its next check.
-  await review().setAccess(root, person.id, '3m');
+  await review().setAccess(S, root, person.id, '3m');
   goStale();
   const shorter = await proxy(bare('/', cookieOf(longer)));
   assert.ok(passed(shorter));
@@ -320,7 +325,7 @@ test('an extended or shortened access end reaches a signed-in cookie when it is 
 
 test('a store that fails is 503 and keeps the cookie: an outage signs nobody out', async () => {
   const { cookie, token } = await signIn();
-  const { token: unused } = await review().addPerson(root, { name: 'Oz', team: 'Acme' });
+  const { token: unused } = await review().addPerson(S, root, { name: 'Oz', team: 'Acme' });
   goStale();
   const healthy = globalThis.fetch;
   globalThis.fetch = storeDown;
@@ -340,7 +345,7 @@ test('a store that fails is 503 and keeps the cookie: an outage signs nobody out
 });
 
 test('an old cookie gets the sign-in page: 0.6 person and gate tokens, and an unstamped p2', async () => {
-  const { person } = await review().addPerson(root, { name: 'Rae', team: 'Acme' });
+  const { person } = await review().addPerson(S, root, { name: 'Rae', team: 'Acme' });
   const expires = Math.floor(Date.now() / 1000) + 86_400;
   const sign = (message: string) => createHmac('sha256', SECRET).update(message).digest('base64url');
   const p1 = await proxy(
@@ -429,7 +434,7 @@ function watchStore(): string[] {
   }) as typeof fetch;
   return sent;
 }
-const AUDIENCES_KEY = 'hub3:audiences';
+const AUDIENCES_KEY = keyOf(S, 'audiences');
 const PROTOTYPE_PATHS = [
   '/secret-plan/',
   '/secret-plan',
@@ -474,8 +479,8 @@ test('a Client is refused an internal prototype’s page and files, and /_p/all.
 
 test('Studio’s switch reaches a Client’s next request, both ways, with no cache', async () => {
   const { cookie } = await signIn();
-  const studio = (await review().addPerson(root, { name: 'Ed', team: 'Studio', kind: 'studio' })).person;
-  await review().setAudience(studio, 'secret-plan', 'client');
+  const studio = (await review().addPerson(S, root, { name: 'Ed', team: 'Studio', kind: 'studio' })).person;
+  await review().setAudience(S, studio, 'secret-plan', 'client');
   for (const path of PROTOTYPE_PATHS) {
     const r = await proxy(bare(path, cookie));
     assert.ok(passed(r), path);
@@ -485,7 +490,7 @@ test('Studio’s switch reaches a Client’s next request, both ways, with no ca
   // Only that prototype: another internal one, and Studio's list, stay refused.
   assert.equal((await proxy(bare('/_p/other-plan/entry.js', cookie))).status, 404);
   assert.equal((await proxy(bare('/_p/all.js', cookie))).status, 404);
-  await review().setAudience(studio, 'secret-plan', 'internal');
+  await review().setAudience(S, studio, 'secret-plan', 'internal');
   for (const path of PROTOTYPE_PATHS) assert.equal((await proxy(bare(path, cookie))).status, 404, path);
 });
 
@@ -536,39 +541,44 @@ test('once stale, a Client is asked about the session and the prototype, and re-
   assert.equal(refused.status, 404);
   const hub = await proxy(bare('/', cookie));
   assert.ok(passed(hub));
-  assert.match(cookieOf(hub), /^__Host-hub_person=p4\.[a-z0-9]+\.0\.client\./);
+  assert.match(cookieOf(hub), /^__Host-hub_person=p5\.[a-z0-9]+\.0\.client\.site\./);
 });
 
-test('a valid p3 cookie from before the kind still passes, and comes back as p4', async () => {
-  const { person } = await review().addPerson(root, { name: 'Rae', team: 'Acme' });
+test('a valid p4 cookie from before the client signs nobody in: it is cleared, as any cookie that does not hold', async () => {
+  const { person } = await review().addPerson(S, root, { name: 'Rae', team: 'Acme' });
   const now = Math.floor(clock / 1000);
   const expires = now + 86_400;
   const sign = (message: string) => createHmac('sha256', SECRET).update(message).digest('base64url');
-  const p3 = `p3.${person.id}.0.${expires}.${now}.${sign(`p3\n${env.KV_REST_API_URL}\n${person.id}.0.${expires}.${now}`)}`;
-  // Stamped this second, and still asked: the store says who they are and the cookie is re-issued.
-  const sent = watchStore();
-  const r = await proxy(bare('/', `__Host-hub_person=${p3}`));
-  assert.ok(passed(r));
-  assert.ok(sent.some((c) => c.startsWith('HGET hub3:people')));
-  const renewed = cookieOf(r);
-  assert.match(renewed, new RegExp(`^__Host-hub_person=p4\\.${person.id}\\.0\\.client\\.`));
-  // The p3 cookie of a Client is held to the boundary too.
-  assert.equal((await proxy(bare('/_p/secret-plan/entry.js', `__Host-hub_person=${p3}`))).status, 404);
-  // The new one is fresh: no store read on the hub.
-  sent.length = 0;
-  assert.ok(passed(await proxy(bare('/', renewed))));
-  assert.deepEqual(sent, []);
+  for (const kind of ['client', 'studio']) {
+    const text = `${person.id}.0.${kind}.${expires}.${now}`;
+    const p4 = `__Host-hub_person=p4.${text}.${sign(`p4\n${env.KV_REST_API_URL}\n${text}`)}`;
+    const r = await proxy(bare('/', p4));
+    assert.equal(r.status, 401, kind);
+    assert.ok(cleared(r), kind);
+    await assertSignInPage(await proxy(page('/', { cookie: p4 })));
+  }
 });
 
-test('a p3 cookie of a Studio person is re-issued as Studio and passes the boundary', async () => {
-  const { person } = await review().addPerson(root, { name: 'Ed', team: 'Studio', kind: 'studio' });
-  const now = Math.floor(clock / 1000);
-  const expires = now + 86_400;
-  const sign = (message: string) => createHmac('sha256', SECRET).update(message).digest('base64url');
-  const p3 = `p3.${person.id}.0.${expires}.${now}.${sign(`p3\n${env.KV_REST_API_URL}\n${person.id}.0.${expires}.${now}`)}`;
-  const r = await proxy(bare('/_p/all.js', `__Host-hub_person=${p3}`));
-  assert.ok(passed(r));
-  assert.match(cookieOf(r), /\.studio\./);
+test('a cookie signed to another client is the sign-in page, and the cookie is cleared', async () => {
+  const { person } = await review().addPerson(S, root, { name: 'Rae', team: 'Acme' });
+  const here = readGate(process.env);
+  assert.ok(here);
+  for (const kind of ['client', 'studio'] as const) {
+    const other = await issuePersonToken(
+      { ...here, client: 'bravo' },
+      { ...person, kind },
+      null,
+      new Date(clock),
+    );
+    const cookie = `__Host-hub_person=${other}`;
+    await assertSignInPage(await proxy(page('/', { cookie })));
+    const r = await proxy(bare('/_p/all.js', cookie));
+    assert.equal(r.status, 401, kind);
+    assert.ok(cleared(r), kind);
+  }
+  // The same person's cookie signed to this site's client passes.
+  const own = await issuePersonToken(here, person, null, new Date(clock));
+  assert.ok(passed(await proxy(bare('/', `__Host-hub_person=${own}`))));
 });
 
 test('a Client cookie that claims Studio fails the signature and signs out', async () => {
@@ -583,8 +593,8 @@ test('a Client cookie that claims Studio fails the signature and signs out', asy
 
 test('a path that could mean more than one file is refused to a Client, even beside a client-facing prototype', async () => {
   const { cookie } = await signIn();
-  const studio = (await review().addPerson(root, { name: 'Ed', team: 'Studio', kind: 'studio' })).person;
-  await review().setAudience(studio, 'open-plan', 'client');
+  const studio = (await review().addPerson(S, root, { name: 'Ed', team: 'Studio', kind: 'studio' })).person;
+  await review().setAudience(S, studio, 'open-plan', 'client');
   assert.ok(passed(await proxy(bare('/_p/open-plan/entry.js', cookie))));
   for (const path of [
     '/assets/..%2f_p/secret-plan/entry.js',
@@ -640,7 +650,7 @@ test('a HEAD on a prototype path is held to the same rule as a GET', async () =>
   assert.equal(refused.status, 404);
   assert.equal(await refused.text(), '');
   assert.equal((await proxy(head('/_p/all.js'))).status, 404);
-  const studio = (await review().addPerson(root, { name: 'Ed', team: 'Studio', kind: 'studio' })).person;
-  await review().setAudience(studio, 'secret-plan', 'client');
+  const studio = (await review().addPerson(S, root, { name: 'Ed', team: 'Studio', kind: 'studio' })).person;
+  await review().setAudience(S, studio, 'secret-plan', 'client');
   assert.ok(passed(await proxy(head('/_p/secret-plan/entry.js'))));
 });

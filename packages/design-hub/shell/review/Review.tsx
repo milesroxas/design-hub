@@ -14,7 +14,7 @@ import { can, viewOf } from '../../core/review/policy';
 import { captureAnchor, currentUrl, openAnchor, pinPoint, resumeAnchor } from './anchor';
 import { Bar } from './Bar';
 import { Card } from './Card';
-import { createReviewStore, type ReviewStore, useReviewState } from './client';
+import { createReviewStore, ownScope, type ReviewStore, useReviewState } from './client';
 import { Field } from './Field';
 import { Launcher } from './Launcher';
 import { People } from './People';
@@ -300,7 +300,7 @@ function ModeBar({
       }}
       resolved={v.resolved}
       resolvedCount={roots.filter((c) => c.status === 'resolved').length}
-      canManagePeople={can(s.me, 'people')}
+      canManagePeople={can(s.me, ownScope(s.me), 'people')}
       canFilter={lens.asStudio}
       filter={v.filter}
       filterNote={filterNote(v)}

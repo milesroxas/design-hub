@@ -2,13 +2,22 @@
 // and commands (POST { op, ... }). One handler serves the Vercel function
 // (vercel/review.ts) and the Vite dev server (server/dev.ts); only how each
 // finds the store and the signed-in person differs. A single endpoint keeps
-// the routing in code and out of vercel.json rewrites.
+// the routing in code and out of vercel.json rewrites. Every op runs in the
+// scope the adapter gives it, never one the request names.
 import type { Checks } from '../core/checks.ts';
 import { SLUG } from '../core/feature.ts';
-import type { Person } from '../core/review/model.ts';
+import type { Person, Scope } from '../core/review/model.ts';
 import { createReview, type Review, ReviewError } from '../core/review/service.ts';
 import { jevTriager } from '../core/review/triage.ts';
-import { type Gate, PERSON_COOKIE, readCookie, readGate, readPersonToken, sameOrigin } from './session.ts';
+import {
+  type Gate,
+  PERSON_COOKIE,
+  readCookie,
+  readGate,
+  readPersonToken,
+  SITE_SCOPE,
+  sameOrigin,
+} from './session.ts';
 import { storeConfig, upstashKV } from './upstash.ts';
 
 export const API_PATH = '/api/review';
@@ -38,9 +47,14 @@ function prototypeOf(v: unknown): string {
   return s;
 }
 
-export type ApiContext = { review: Review; actor: Person | null };
+/** One request: the service, who is signed in, and the scope every op runs in. */
+export type ApiContext = { review: Review; actor: Person | null; scope: Scope };
 
-async function query(op: string, params: URLSearchParams, { review, actor }: ApiContext): Promise<unknown> {
+async function query(
+  op: string,
+  params: URLSearchParams,
+  { review, actor, scope }: ApiContext,
+): Promise<unknown> {
   switch (op) {
     case 'me':
       return { person: actor ? visible(actor) : null };
@@ -48,6 +62,7 @@ async function query(op: string, params: URLSearchParams, { review, actor }: Api
       // viewAs=client is Studio's Client view; the service checks the value and never widens a Client's view.
       return {
         comments: await review.listComments(
+          scope,
           actor,
           prototypeOf(params.get('prototype')),
           params.get('viewAs') ?? undefined,
@@ -55,14 +70,14 @@ async function query(op: string, params: URLSearchParams, { review, actor }: Api
       };
     case 'prototypes':
       // The index's read: the view the caller gets and the client-facing slugs. viewAs is checked as comments checks it.
-      return await review.visiblePrototypes(actor, params.get('viewAs') ?? undefined);
+      return await review.visiblePrototypes(scope, actor, params.get('viewAs') ?? undefined);
     case 'controls':
       // A prototype page's read: the caller's view, and what Studio marked on its dials and variants.
-      return await review.controlsOf(actor, params.get('prototype'));
+      return await review.controlsOf(scope, actor, params.get('prototype'));
     case 'people':
-      return { people: (await review.listPeople(actor)).map(visible) };
+      return { people: (await review.listPeople(scope, actor)).map(visible) };
     case 'access':
-      return { access: await review.defaultAccess(actor) };
+      return { access: await review.defaultAccess(scope, actor) };
     default:
       return undefined;
   }
@@ -77,35 +92,35 @@ const link = (r: { person: Person; token: string }) => ({
 async function peopleCommand(
   op: string,
   b: Record<string, unknown>,
-  { review, actor }: ApiContext,
+  { review, actor, scope }: ApiContext,
 ): Promise<unknown> {
   switch (op) {
     case 'people.add':
       return link(
-        await review.addPerson(actor, { name: b.name, team: b.team, kind: b.kind, access: b.access }),
+        await review.addPerson(scope, actor, { name: b.name, team: b.team, kind: b.kind, access: b.access }),
       );
     case 'people.link':
-      return link(await review.newLink(actor, str(b.id)));
+      return link(await review.newLink(scope, actor, str(b.id)));
     case 'people.signOut':
-      return link(await review.signOutEverywhere(actor, str(b.id)));
+      return link(await review.signOutEverywhere(scope, actor, str(b.id)));
     case 'people.revoke':
-      return { person: visible(await review.revoke(actor, str(b.id))) };
+      return { person: visible(await review.revoke(scope, actor, str(b.id))) };
     case 'people.access':
-      return { person: visible(await review.setAccess(actor, str(b.id), b.access)) };
+      return { person: visible(await review.setAccess(scope, actor, str(b.id), b.access)) };
     case 'access.set':
-      return { access: await review.setDefaultAccess(actor, b.access) };
+      return { access: await review.setDefaultAccess(scope, actor, b.access) };
     default:
       return undefined;
   }
 }
 
 async function command(op: string, b: Record<string, unknown>, ctx: ApiContext): Promise<unknown> {
-  const { review, actor } = ctx;
+  const { review, actor, scope } = ctx;
   const at = () => ({ prototype: prototypeOf(b.prototype), id: str(b.id) });
   switch (op) {
     case 'comment.add':
       return {
-        comment: await review.add(actor, {
+        comment: await review.add(scope, actor, {
           body: b.body,
           anchor: b.anchor,
           states: b.states,
@@ -114,29 +129,31 @@ async function command(op: string, b: Record<string, unknown>, ctx: ApiContext):
       };
     case 'comment.reply':
       return {
-        comment: await review.reply(actor, {
+        comment: await review.reply(scope, actor, {
           prototype: prototypeOf(b.prototype),
           thread: str(b.thread),
           body: b.body,
         }),
       };
     case 'comment.edit':
-      return { comment: await review.edit(actor, { ...at(), body: b.body }) };
+      return { comment: await review.edit(scope, actor, { ...at(), body: b.body }) };
     case 'comment.remove':
-      return { removed: await review.remove(actor, at()) };
+      return { removed: await review.remove(scope, actor, at()) };
     case 'comment.resolve':
-      return { comment: await review.resolve(actor, { ...at(), resolved: b.resolved === true }) };
+      return { comment: await review.resolve(scope, actor, { ...at(), resolved: b.resolved === true }) };
     case 'comment.triage':
-      return { comment: await review.retriage(actor, { ...at(), triage: b.triage, states: b.states }) };
+      return {
+        comment: await review.retriage(scope, actor, { ...at(), triage: b.triage, states: b.states }),
+      };
     case 'prototype.audience':
       return {
         prototype: b.prototype,
-        audience: await review.setAudience(actor, b.prototype, b.audience),
+        audience: await review.setAudience(scope, actor, b.prototype, b.audience),
       };
     case 'control.audience':
       return {
         prototype: b.prototype,
-        ...(await review.setControl(actor, {
+        ...(await review.setControl(scope, actor, {
           prototype: b.prototype,
           kind: b.kind,
           id: b.id,
@@ -186,10 +203,15 @@ export async function handleReview(request: Request, ctx: ApiContext): Promise<R
   }
 }
 
-/** The person a request's signed cookie names, while they may still sign in. */
-export async function actorFrom(request: Request, review: Review, gate: Gate): Promise<Person | null> {
+/** The person a request's signed cookie names, while they may still sign in, in `scope`. */
+export async function actorFrom(
+  request: Request,
+  review: Review,
+  gate: Gate,
+  scope: Scope,
+): Promise<Person | null> {
   const claim = await readPersonToken(gate, readCookie(request, PERSON_COOKIE));
-  return claim ? review.sessionPerson(claim.id, claim.epoch) : null;
+  return claim ? review.sessionPerson(scope, claim.id, claim.epoch) : null;
 }
 
 export type Deployed = { review: Review; gate: Gate } | { error: string };
@@ -224,12 +246,12 @@ export async function deployedHandler(request: Request, checks: Checks | null): 
   if ('error' in setup) return json(503, { error: setup.error });
   let actor: Person | null;
   try {
-    actor = await actorFrom(request, setup.review, setup.gate);
+    actor = await actorFrom(request, setup.review, setup.gate, SITE_SCOPE);
   } catch (error) {
     // The store is down: say so in JSON, as every other answer here is, so the panel can retry.
     console.error('[review]', error);
     // Retry-After tells the panel this passes, unlike a 503 for a site with no store.
     return json(503, { error: STORE_DOWN }, { 'retry-after': '30' });
   }
-  return handleReview(request, { review: setup.review, actor });
+  return handleReview(request, { review: setup.review, actor, scope: SITE_SCOPE });
 }

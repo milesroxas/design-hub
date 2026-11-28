@@ -6,7 +6,7 @@
 import type { ServerResponse } from 'node:http';
 import type { Connect, Plugin } from 'vite';
 import { createReview } from '../core/review/service.ts';
-import { KEY } from '../core/review/store.ts';
+import { keyOf } from '../core/review/store.ts';
 import { jevTriager } from '../core/review/triage.ts';
 import { API_PATH, handleReview } from './api.ts';
 import { checks } from './checks.ts';
@@ -14,6 +14,7 @@ import { readEnv } from './env.ts';
 import { fileKV } from './file-kv.ts';
 import { LOCAL_STORE, localStudio } from './local.ts';
 import { ROOT } from './paths.ts';
+import { SITE_SCOPE } from './session.ts';
 
 // Connect strips the mount path from req.url; originalUrl keeps the query the handler reads.
 async function toRequest(req: Connect.IncomingMessage): Promise<Request> {
@@ -49,10 +50,10 @@ export function devReview(): Plugin {
       });
       const actor = localStudio();
       // The local Studio person is in the people list like anyone else, so the people panel shows them.
-      void kv.hset(KEY.people, actor.id, JSON.stringify(actor));
+      void kv.hset(keyOf('studio', 'people'), actor.id, JSON.stringify(actor));
       server.middlewares.use(API_PATH, (req, res, nextMiddleware) => {
         toRequest(req)
-          .then((request) => handleReview(request, { review, actor }))
+          .then((request) => handleReview(request, { review, actor, scope: SITE_SCOPE }))
           .then((response) => send(res, response))
           .catch(nextMiddleware);
       });

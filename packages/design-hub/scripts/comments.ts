@@ -14,7 +14,7 @@ import { readEnv } from '../server/env.ts';
 import { DOCS, ROOT } from '../server/paths.ts';
 import { prototypes } from './lib/catalog.ts';
 import { type Args, CliError, type CommandSpec } from './lib/cli.ts';
-import { type CliReview, cliActor, cliReview } from './lib/review.ts';
+import { type CliReview, cliActor, cliReview, cliScope } from './lib/review.ts';
 
 export const spec = {
   name: 'comments',
@@ -138,9 +138,9 @@ async function setStatus({ review, store }: Context, id: string | undefined, res
     throw new CliError(`Name the comment: pnpm comments ${action} <id>.`, {
       fix: 'pnpm comments pull lists ids.',
     });
-  const found = await review.locate(cliActor(), id);
+  const found = await review.locate(cliScope, cliActor(), id);
   if (!found) throw new CliError('No comment has that id.', { id });
-  const comment = await review.resolve(cliActor(), { prototype: found.prototype, id, resolved });
+  const comment = await review.resolve(cliScope, cliActor(), { prototype: found.prototype, id, resolved });
   return { store, comment: { id: comment.id, status: comment.status } };
 }
 
@@ -157,7 +157,12 @@ async function triage({ review, store, roots }: Context) {
     const states = statesOf.get(c.anchor.prototype) ?? [];
     const t = await triager({ body: c.body, prototype: c.anchor.prototype, url: c.anchor.url, states });
     if (!t) continue;
-    await review.retriage(cliActor(), { prototype: c.anchor.prototype, id: c.id, triage: t, states });
+    await review.retriage(cliScope, cliActor(), {
+      prototype: c.anchor.prototype,
+      id: c.id,
+      triage: t,
+      states,
+    });
     sorted.push(c.id);
   }
   return { store, sorted };
@@ -165,7 +170,7 @@ async function triage({ review, store, roots }: Context) {
 
 export async function main({ positionals: [action = 'summary', id], flags }: Args<typeof spec>) {
   const { review, store } = cliReview(flags.local);
-  const all = await review.allComments(cliActor());
+  const all = await review.allComments(cliScope, cliActor());
   const ctx: Context = { review, store, all, roots: all.filter(isRoot) };
   switch (action) {
     case 'summary':

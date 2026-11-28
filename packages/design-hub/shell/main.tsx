@@ -34,7 +34,8 @@ if (import.meta.env.DEV && !exporting && params.get('a11y') !== '0') {
 }
 
 // /<slug>/ is a prototype; /guide/<feature>/ is that feature's walkthrough.
-// `guide`, `api` and `assets` belong to the hub (core/prototype.ts; new.ts refuses them).
+// `invite`, `api`, `_gate`, `_p`, `assets`, `guide`, `index.html` and `favicon.svg`
+// belong to the hub (RESERVED in core/prototype.ts; new.ts refuses them).
 const [slug, sub] = location.pathname.split('/').filter(Boolean);
 const Guide = lazy(() => import('./Guide'));
 

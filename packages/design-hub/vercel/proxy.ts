@@ -17,7 +17,8 @@
 // built from it under /_p/<slug>/, gets 404. Without a session a
 // page gets the sign-in page (401), which says what to do and has no form,
 // and anything else a plain-text 401. Without GATE_SECRET the gate fails
-// closed (503).
+// closed (503). Every store call runs in the site's one scope (SITE_SCOPE),
+// and a cookie verifies only for the client it was signed to.
 import { next } from '@vercel/functions';
 import { base64, sha256 } from '../core/bytes.ts';
 import { escapeHtml } from '../core/html.ts';
@@ -35,6 +36,7 @@ import {
   readGate,
   readPersonToken,
   type SessionClaim,
+  SITE_SCOPE,
   sameOrigin,
   sessionCookie,
   sessionSeconds,
@@ -240,7 +242,7 @@ async function showLink(ctx: Ctx, token: string): Promise<Response> {
   const { siteName, request } = ctx;
   const setup = deployedReview(process.env, null, () => ctx.at);
   if ('error' in setup) return unavailable(request, setup.error);
-  const person = await ask(() => setup.review.peekLink(token));
+  const person = await ask(() => setup.review.peekLink(SITE_SCOPE, token));
   if (person === undefined) return storeDown(request);
   return person
     ? page(request, 200, linkPage(siteName, person), OPEN_IN_BROWSER, { referrer: 'same-origin' })
@@ -259,7 +261,7 @@ async function signInWithLink(ctx: Ctx, token: string): Promise<Response> {
   if (!sameOrigin(request)) return plain(request, 403, 'Forbidden');
   const setup = deployedReview(process.env, null, () => ctx.at);
   if ('error' in setup) return unavailable(request, setup.error);
-  const person = await ask(() => setup.review.useLink(token));
+  const person = await ask(() => setup.review.useLink(SITE_SCOPE, token));
   if (person === undefined) return storeDown(request);
   if (!person) return page(request, 404, usedPage(siteName), USED);
   const headers = gateHeaders('text/plain; charset=utf-8', {
@@ -299,14 +301,14 @@ const pass = (cookie?: string) =>
  */
 async function clientMay(ctx: Ctx, review: Review, slug: string): Promise<Response | null> {
   if (!isPrototypeSlug(slug)) return notFound(ctx.request);
-  const audience = await ask(() => review.audienceOf(slug));
+  const audience = await ask(() => review.audienceOf(SITE_SCOPE, slug));
   if (audience === undefined) return storeDown(ctx.request);
   return audience === 'client' ? null : notFound(ctx.request);
 }
 
 /** Asks the store whether a stale session still holds: the person, or the answer that ends the request. */
 async function recheck(ctx: Ctx, review: Review, claim: SessionClaim): Promise<Person | Response> {
-  const current = await ask(() => review.sessionPerson(claim.id, claim.epoch));
+  const current = await ask(() => review.sessionPerson(SITE_SCOPE, claim.id, claim.epoch));
   if (current === undefined) return storeDown(ctx.request);
   return current ?? (await signedOut(ctx, true));
 }
@@ -316,9 +318,8 @@ async function recheck(ctx: Ctx, review: Review, claim: SessionClaim): Promise<P
  * enough. Once it is stale the store is asked, whatever the request says it
  * is (its headers are the client's to choose): yes passes with a fresh cookie
  * whose expiry follows the person's current access end; no signs out and
- * clears the cookie; no answer is 503 and the cookie stays. A p3 cookie,
- * which carries no kind, is always stale, so its first request re-issues it.
- * Then, for anyone but Studio, the prototype boundary on a prototype's path.
+ * clears the cookie; no answer is 503 and the cookie stays. Then, for
+ * anyone but Studio, the prototype boundary on a prototype's path.
  */
 async function personSession(ctx: Ctx, gate: Gate, claim: SessionClaim): Promise<Response> {
   const slug = prototypeOfPath(new URL(ctx.request.url).pathname);

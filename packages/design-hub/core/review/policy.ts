@@ -5,13 +5,25 @@
 // thread, because clients work alongside others in their own organisation.
 // An internal thread does not exist for a Client: every action on one is
 // refused. A revoked person, or a visitor who is not signed in, may do
-// nothing here.
-import type { Audience, Comment, Person, PersonKind } from './model.ts';
+// nothing here. Nor may anyone outside the op's scope: a Client works only in
+// their own client, and the service answers anything outside it as not found.
+import type { Audience, Comment, Person, PersonKind, Scope } from './model.ts';
 
 export type Action = 'read' | 'comment' | 'edit' | 'delete' | 'resolve' | 'triage' | 'people' | 'audience';
 
 /** Only what the rules read, so the browser's signed-in person (no epoch) is checked by the same rules. */
-type Actor = Pick<Person, 'id' | 'kind' | 'revokedAt'>;
+type Actor = Pick<Person, 'id' | 'kind' | 'revokedAt' | 'client'>;
+
+/**
+ * Whether an op in `scope` is the actor's at all: Studio works in every
+ * client, a Client only in their own. A person whose kind and client
+ * disagree (Studio with a client, a Client with none) is in no scope, and
+ * so is every op on a scope that names no client: it fails closed here.
+ */
+export function inScope(actor: Pick<Person, 'kind' | 'client'>, scope: Scope): boolean {
+  if (typeof scope.client !== 'string' || scope.client === '') return false;
+  return actor.kind === 'studio' ? actor.client === null : actor.client === scope.client;
+}
 
 /** Whether a comment reaches a Client. Only the exact value counts, so a record without one stays inside. */
 const clientFacing = (c: Pick<Comment, 'audience'>) => c.audience === 'client';
@@ -21,8 +33,14 @@ const clientFacing = (c: Pick<Comment, 'audience'>) => c.audience === 'client';
  * reply (edit or delete one); without `subject`, the root is the subject.
  * Without a root, the action is on no thread: listing, or a new thread.
  */
-export function can(actor: Actor | null, action: Action, root?: Comment, subject?: Comment): boolean {
-  if (!actor || actor.revokedAt) return false;
+export function can(
+  actor: Actor | null,
+  scope: Scope,
+  action: Action,
+  root?: Comment,
+  subject?: Comment,
+): boolean {
+  if (!actor || actor.revokedAt || !inScope(actor, scope)) return false;
   const studio = actor.kind === 'studio';
   if (!studio && [root, subject].some((c) => c && !clientFacing(c))) return false;
   const own = (subject ?? root)?.author.id === actor.id;

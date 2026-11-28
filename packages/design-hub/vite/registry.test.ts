@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, test } from 'node:test';
+import { RESERVED } from '../core/prototype.ts';
 import { allSource, entrySource, guideFeatures, prototypeSlugs, registrySource } from './registry.ts';
 
 /** Every project a test makes, removed when the file is done. */
@@ -21,7 +22,7 @@ function project() {
   };
   proto('sample-list');
   proto('no-code', false);
-  for (const reserved of ['guide', 'api', 'assets']) proto(reserved);
+  for (const reserved of RESERVED) proto(reserved);
   mkdirSync(join(root, 'prototypes', '_private'), { recursive: true });
   mkdirSync(join(root, 'prototypes', 'no-readme'), { recursive: true });
   mkdirSync(join(root, 'docs', 'sprints', 'sample'), { recursive: true });
@@ -30,7 +31,7 @@ function project() {
   return root;
 }
 
-test('only kebab-case folders with a README are prototypes, and guide, api and assets never are', () => {
+test('only kebab-case folders with a README are prototypes, and a reserved name never is', () => {
   const root = project();
   assert.deepEqual(prototypeSlugs(join(root, 'prototypes')), ['no-code', 'sample-list']);
   assert.deepEqual(guideFeatures(join(root, 'docs', 'sprints')), ['sample']);

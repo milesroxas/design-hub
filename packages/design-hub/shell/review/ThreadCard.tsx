@@ -11,7 +11,7 @@ import { type KeyboardEvent, useEffect, useState } from 'react';
 import { type Audience, type Comment, KINDS, type Kind, LIMITS, threadLabel } from '../../core/review/model';
 import { can } from '../../core/review/policy';
 import { Action, Card } from './Card';
-import { act, type Me, type ReviewStore } from './client';
+import { act, type Me, ownScope, type ReviewStore } from './client';
 import { Field, useTextBox } from './Field';
 
 const KIND_LABEL: Record<Kind, string> = { bug: 'Bug', taste: 'Taste', copy: 'Copy' };
@@ -169,7 +169,7 @@ function Entry({
       <div className="rv-msg-main">
         <EntryHead
           comment={comment}
-          canEdit={can(me, 'edit', root, comment) && !editing}
+          canEdit={can(me, ownScope(me), 'edit', root, comment) && !editing}
           onEdit={() => setEditing(true)}
         />
         {editing ? (
@@ -484,9 +484,9 @@ export function ThreadCard({
         index={index}
         total={total}
         states={states}
-        canResolve={can(me, 'resolve', root)}
-        canTriage={can(me, 'triage', root)}
-        canDelete={can(me, 'delete', root)}
+        canResolve={can(me, ownScope(me), 'resolve', root)}
+        canTriage={can(me, ownScope(me), 'triage', root)}
+        canDelete={can(me, ownScope(me), 'delete', root)}
         onStep={onStep}
         onClose={onClose}
         onShow={onShow}

@@ -9,13 +9,14 @@ import {
   readCookie,
   readGate,
   readPersonToken,
+  SITE_SCOPE,
   sameOrigin,
   sessionCookie,
   sessionSeconds,
 } from './session.ts';
 
 const SITE = 'https://kv-a.test';
-const gate = { secret: 's'.repeat(32), site: SITE };
+const gate = { secret: 's'.repeat(32), site: SITE, client: 'acme' };
 const DAY = 86_400;
 const T0 = new Date('2030-01-01T00:00:00Z');
 const at = (seconds: number) => new Date(T0.getTime() + seconds * 1000);
@@ -23,19 +24,21 @@ const t0 = T0.getTime() / 1000;
 const inDays = (days: number) => at(days * DAY).toISOString();
 const sign = (message: string) => createHmac('sha256', gate.secret).update(message).digest('base64url');
 
-test('the gate needs only the secret, and fails closed on a short one', () => {
+test('the gate needs only the secret, fails closed on a short one, and serves the site’s one client', () => {
   assert.equal(readGate({}), null);
   assert.equal(readGate({ GATE_SECRET: 'short' }), null);
+  const client = SITE_SCOPE.client;
   // Without a store the site is empty: the gate still answers, and its 503 paths say why nobody can sign in.
-  assert.deepEqual(readGate({ GATE_SECRET: 's'.repeat(32) }), { secret: 's'.repeat(32), site: '' });
+  assert.deepEqual(readGate({ GATE_SECRET: 's'.repeat(32) }), { secret: 's'.repeat(32), site: '', client });
   assert.deepEqual(readGate({ GATE_SECRET: 's'.repeat(32), KV_REST_API_URL: `${SITE}/` }), {
     secret: 's'.repeat(32),
     site: SITE,
+    client,
   });
   assert.equal(readGate({ GATE_SECRET: 's'.repeat(32), UPSTASH_REDIS_REST_URL: SITE })?.site, SITE);
 });
 
-test('a person token names its person, epoch, kind and when the store last said yes, and nothing forged verifies', async () => {
+test('a person token names its person, epoch, kind, client and when the store last said yes, and nothing forged verifies', async () => {
   const token = await issuePersonToken(gate, { id: 'abc123', epoch: 2, kind: 'client' }, null, T0);
   assert.deepEqual(await readPersonToken(gate, token, T0), {
     id: 'abc123',
@@ -43,19 +46,20 @@ test('a person token names its person, epoch, kind and when the store last said 
     kind: 'client',
     checkedAt: t0,
   });
-  const [version, id, , kind, expires, checkedAt, sig] = token.split('.');
-  assert.equal(version, 'p4');
+  const [version, id, , kind, client, expires, checkedAt, sig] = token.split('.');
+  assert.equal(version, 'p5');
   assert.equal(kind, 'client');
+  assert.equal(client, 'acme');
   const forged = (parts: (string | number)[]) => readPersonToken(gate, parts.join('.'), T0);
-  assert.equal(await forged([version, id, 3, kind, expires, checkedAt, sig]), null);
-  assert.equal(await forged([version, id, 2, kind, Number(expires) + 1, checkedAt, sig]), null);
-  assert.equal(await forged([version, id, 2, kind, expires, Number(checkedAt) + 600, sig]), null);
+  assert.equal(await forged([version, id, 3, kind, client, expires, checkedAt, sig]), null);
+  assert.equal(await forged([version, id, 2, kind, client, Number(expires) + 1, checkedAt, sig]), null);
+  assert.equal(await forged([version, id, 2, kind, client, expires, Number(checkedAt) + 600, sig]), null);
   // A Client's cookie that claims Studio fails the signature, and so does an unknown kind.
-  assert.equal(await forged([version, id, 2, 'studio', expires, checkedAt, sig]), null);
-  assert.equal(await forged([version, id, 2, 'admin', expires, checkedAt, sig]), null);
-  assert.equal(await forged([version, id, 2, '', expires, checkedAt, sig]), null);
-  // Dropping the kind does not turn the token into a p3.
-  assert.equal(await forged(['p3', id, 2, expires, checkedAt, sig]), null);
+  assert.equal(await forged([version, id, 2, 'studio', client, expires, checkedAt, sig]), null);
+  assert.equal(await forged([version, id, 2, 'admin', client, expires, checkedAt, sig]), null);
+  assert.equal(await forged([version, id, 2, '', client, expires, checkedAt, sig]), null);
+  // Dropping the client does not turn the token into a p4.
+  assert.equal(await forged(['p4', id, 2, kind, expires, checkedAt, sig]), null);
   assert.equal(await readPersonToken({ ...gate, secret: 't'.repeat(32) }, token, T0), null);
   assert.equal(await readPersonToken(gate, `${token}.x`, T0), null);
   assert.equal(await readPersonToken(gate, undefined, T0), null);
@@ -63,27 +67,50 @@ test('a person token names its person, epoch, kind and when the store last said 
   assert.equal((await readPersonToken(gate, studio, T0))?.kind, 'studio');
 });
 
-test('a token of another version or shape never verifies, even signed with the secret', async () => {
+test('a token signed to one client fails on another, Studio’s included, and on the studio’s own host', async () => {
+  const onB = { ...gate, client: 'bravo' };
+  const onStudio = { ...gate, client: 'studio' };
+  for (const kind of ['client', 'studio'] as const) {
+    const token = await issuePersonToken(gate, { id: 'abc123', epoch: 0, kind }, null, T0);
+    assert.ok(await readPersonToken(gate, token, T0), kind);
+    assert.equal(await readPersonToken(onB, token, T0), null, `${kind} on B`);
+    assert.equal(await readPersonToken(onStudio, token, T0), null, `${kind} on the studio host`);
+    const [version, id, epoch, k, , expires, checkedAt, sig] = token.split('.');
+    // Naming B in the token, with A's signature, fails on either.
+    const renamed = [version, id, epoch, k, 'bravo', expires, checkedAt, sig].join('.');
+    assert.equal(await readPersonToken(onB, renamed, T0), null, `${kind} renamed, on B`);
+    assert.equal(await readPersonToken(gate, renamed, T0), null, `${kind} renamed, on A`);
+  }
+  // B's own token is B's alone.
+  const bees = await issuePersonToken(onB, { id: 'bee1', epoch: 0, kind: 'client' }, null, T0);
+  assert.ok(await readPersonToken(onB, bees, T0));
+  assert.equal(await readPersonToken(gate, bees, T0), null);
+});
+
+test('p4 and every older token never verify, even signed with the secret', async () => {
   const expires = t0 + DAY;
   const read = (token: string) => readPersonToken(gate, token, T0);
   // 0.6: <id>.<epoch>.<expires>.<sig> over p1.<id>.<epoch>.<expires>.
   assert.equal(await read(`abc123.0.${expires}.${sign(`p1.abc123.0.${expires}`)}`), null);
   // The unstamped p2 of the first slice-3 build.
   assert.equal(await read(`p2.abc123.0.${expires}.${sign(`p2.abc123.0.${expires}`)}`), null);
-  // The p3 prefix carrying an older version's signature, with and without a stamp.
-  assert.equal(await read(`p3.abc123.0.${expires}.${t0}.${sign(`p2.abc123.0.${expires}`)}`), null);
-  assert.equal(await read(`p3.abc123.0.${expires}.${t0}.${sign(`p2.abc123.0.${expires}.${t0}`)}`), null);
-  // The right message and signature, but an id the store never makes.
-  assert.equal(await read(`p3.ABC.0.${expires}.${t0}.${sign(`p3\n${SITE}\nABC.0.${expires}.${t0}`)}`), null);
-  // The 0.6-shaped message under the p3 prefix, without the site.
-  assert.equal(await read(`p3.abc123.0.${expires}.${t0}.${sign(`p3.abc123.0.${expires}.${t0}`)}`), null);
-  // A p4 signed over p3's message, or a p3 signed over p4's: each version verifies only its own.
+  // A valid p3, the version before the kind: once honoured as stale, now never.
   assert.equal(
-    await read(`p4.abc123.0.client.${expires}.${t0}.${sign(`p3\n${SITE}\nabc123.0.${expires}.${t0}`)}`),
+    await read(`p3.abc123.0.${expires}.${t0}.${sign(`p3\n${SITE}\nabc123.0.${expires}.${t0}`)}`),
     null,
   );
+  // A valid p4, the version before the client.
   assert.equal(
-    await read(`p3.abc123.0.${expires}.${t0}.${sign(`p4\n${SITE}\nabc123.0.client.${expires}.${t0}`)}`),
+    await read(
+      `p4.abc123.0.client.${expires}.${t0}.${sign(`p4\n${SITE}\nabc123.0.client.${expires}.${t0}`)}`,
+    ),
+    null,
+  );
+  // p4's message under the p5 prefix, with and without the client in the token.
+  assert.equal(
+    await read(
+      `p5.abc123.0.client.acme.${expires}.${t0}.${sign(`p4\n${SITE}\nabc123.0.client.${expires}.${t0}`)}`,
+    ),
     null,
   );
   assert.equal(
@@ -92,19 +119,34 @@ test('a token of another version or shape never verifies, even signed with the s
     ),
     null,
   );
+  // The right message and signature, but an id the store never makes, or a client that is no slug.
+  assert.equal(
+    await read(
+      `p5.ABC.0.client.acme.${expires}.${t0}.${sign(`p5\n${SITE}\nABC.0.client.acme.${expires}.${t0}`)}`,
+    ),
+    null,
+  );
+  // The message without the site.
+  assert.equal(
+    await read(
+      `p5.abc123.0.client.acme.${expires}.${t0}.${sign(`p5.abc123.0.client.acme.${expires}.${t0}`)}`,
+    ),
+    null,
+  );
+  // A version after this one, signed its way.
+  assert.equal(
+    await read(
+      `p6.abc123.0.client.acme.${expires}.${t0}.${sign(`p6\n${SITE}\nabc123.0.client.acme.${expires}.${t0}`)}`,
+    ),
+    null,
+  );
   assert.equal(await read(`__proto__.abc123.0.${expires}.${t0}.x`), null);
-});
-
-test('a valid p3 token from before the kind is still honoured, as stale, so nobody is signed out', async () => {
-  const expires = t0 + DAY;
-  const p3 = `p3.abc123.0.${expires}.${t0}.${sign(`p3\n${SITE}\nabc123.0.${expires}.${t0}`)}`;
-  const claim = await readPersonToken(gate, p3, T0);
-  assert.deepEqual(claim, { id: 'abc123', epoch: 0, kind: null, checkedAt: t0 });
-  assert.ok(claim);
-  // Stamped this very second, and still asked again: the store says who they are.
-  assert.equal(isFresh(claim, T0), false);
-  assert.equal(await readPersonToken(gate, p3, at(DAY)), null);
-  assert.equal(await readPersonToken({ ...gate, site: 'https://kv-b.test' }, p3, T0), null);
+  // What this version signs, built by hand, does verify: the rows above fail on their version alone.
+  assert.ok(
+    await read(
+      `p5.abc123.0.client.acme.${expires}.${t0}.${sign(`p5\n${SITE}\nabc123.0.client.acme.${expires}.${t0}`)}`,
+    ),
+  );
 });
 
 test('a token is bound to its site: the same secret on another store does not accept it', async () => {
@@ -138,7 +180,7 @@ test('a session lasts to the access end, capped at 400 days', async () => {
   assert.equal(sessionSeconds(inDays(-1), T0), 0);
   assert.equal(sessionSeconds('not a date', T0), 0);
   const expiresOf = async (endsAt: string | null) =>
-    Number((await issuePersonToken(gate, { id: 'a1', epoch: 0, kind: 'client' }, endsAt, T0)).split('.')[4]) -
+    Number((await issuePersonToken(gate, { id: 'a1', epoch: 0, kind: 'client' }, endsAt, T0)).split('.')[5]) -
     t0;
   assert.equal(await expiresOf(inDays(90)), 90 * DAY);
   assert.equal(await expiresOf(null), 400 * DAY);

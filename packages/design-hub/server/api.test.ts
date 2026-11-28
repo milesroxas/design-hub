@@ -2,13 +2,15 @@ import assert from 'node:assert/strict';
 import { beforeEach, test } from 'node:test';
 import type { Person } from '../core/review/model.ts';
 import { createReview, type Review } from '../core/review/service.ts';
-import { KEY, type KV, memoryKV } from '../core/review/store.ts';
+import { type KV, keyOf, memoryKV } from '../core/review/store.ts';
 import { actorFrom, deployedHandler, handleReview } from './api.ts';
 import { fakeUpstash } from './fake-upstash.ts';
-import { issuePersonToken, PERSON_COOKIE } from './session.ts';
+import { issuePersonToken, PERSON_COOKIE, SITE_SCOPE } from './session.ts';
+
+const S = SITE_SCOPE;
 
 const origin = 'https://hub.example';
-const gate = { secret: 's'.repeat(32), site: 'https://kv-a.test' };
+const gate = { secret: 's'.repeat(32), site: 'https://kv-a.test', client: SITE_SCOPE.client };
 let review: Review;
 let memory: KV;
 let studio: Person;
@@ -27,7 +29,7 @@ const post = (body: unknown, headers: Record<string, string> = {}) =>
     body: JSON.stringify(body),
   });
 const call = async (r: Request, actor: Person | null = studio) => {
-  const res = await handleReview(r, { review, actor });
+  const res = await handleReview(r, { review, actor, scope: S });
   return { status: res.status, body: (await res.json()) as Record<string, any> };
 };
 
@@ -39,13 +41,14 @@ beforeEach(async () => {
     name: 'CLI',
     team: 'Studio',
     kind: 'studio',
+    client: null,
     email: null,
     accessEndsAt: null,
     createdAt: '',
     revokedAt: null,
     epoch: 0,
   } as Person;
-  studio = (await review.addPerson(root, { name: 'Ed', team: 'Studio', kind: 'studio' })).person;
+  studio = (await review.addPerson(S, root, { name: 'Ed', team: 'Studio', kind: 'studio' })).person;
 });
 
 test('me says who is signed in, without the epoch', async () => {
@@ -65,8 +68,8 @@ test('adding a person returns a one-time link that signs that person in', async 
   const named = await call(post({ op: 'people.add', name: 'Sam', team: 'Studio', kind: 'studio' }));
   assert.equal(named.body.person.accessEndsAt, null);
   const token = body.link.split('/').pop();
-  assert.equal((await review.useLink(token))?.name, 'Rae');
-  assert.equal(await review.useLink(token), null);
+  assert.equal((await review.useLink(S, token))?.name, 'Rae');
+  assert.equal(await review.useLink(S, token), null);
   const bad = await call(post({ op: 'people.add', name: 'Oz', team: 'Acme', access: '1y' }));
   assert.equal(bad.status, 422);
   assert.deepEqual(bad.body.problems, ['access: one of 3m, 6m, open']);
@@ -77,7 +80,7 @@ test('the project default is read and set by Studio only', async () => {
   assert.deepEqual((await call(post({ op: 'access.set', access: 'open' }))).body, { access: 'open' });
   const added = (await call(post({ op: 'people.add', name: 'Rae', team: 'Acme' }))).body.person;
   assert.equal(added.accessEndsAt, null);
-  const client = await review.person(added.id);
+  const client = await review.person(S, added.id);
   assert.equal((await call(get('access'), client)).status, 403);
   assert.equal((await call(post({ op: 'access.set', access: '6m' }), client)).status, 403);
   assert.equal((await call(post({ op: 'people.link', id: added.id }), client)).status, 403);
@@ -110,18 +113,46 @@ test('the cookie names the actor until sign out everywhere or the access end', a
       headers: { cookie: `${PERSON_COOKIE}=${await issuePersonToken(gate, p, p.accessEndsAt)}` },
     });
   const withCookie = await cookieFor(studio);
-  assert.equal((await actorFrom(withCookie, review, gate))?.id, studio.id);
-  await review.signOutEverywhere(root, studio.id);
-  assert.equal(await actorFrom(withCookie, review, gate), null);
+  assert.equal((await actorFrom(withCookie, review, gate, S))?.id, studio.id);
+  await review.signOutEverywhere(S, root, studio.id);
+  assert.equal(await actorFrom(withCookie, review, gate, S), null);
 
-  const rae = (await review.addPerson(root, { name: 'Rae', team: 'Acme' })).person;
+  const rae = (await review.addPerson(S, root, { name: 'Rae', team: 'Acme' })).person;
   const raeCookie = await cookieFor(rae);
-  assert.equal((await actorFrom(raeCookie, review, gate))?.id, rae.id);
+  assert.equal((await actorFrom(raeCookie, review, gate, S))?.id, rae.id);
   // Her access ends: the token still verifies, but the store no longer names her.
   const ended = { ...rae, accessEndsAt: new Date(Date.now() - 1000).toISOString() };
-  await memory.hset(KEY.people, rae.id, JSON.stringify(ended));
-  assert.equal(await actorFrom(raeCookie, review, gate), null);
-  assert.equal(await actorFrom(new Request(`${origin}/`), review, gate), null);
+  await memory.hset(keyOf(S, 'people'), rae.id, JSON.stringify(ended));
+  assert.equal(await actorFrom(raeCookie, review, gate, S), null);
+  assert.equal(await actorFrom(new Request(`${origin}/`), review, gate, S), null);
+});
+
+test('the API acts in the scope it is given: another client’s person is no one, and a request cannot name a scope', async () => {
+  const B = { client: 'bravo', project: 'launch' };
+  const bee = (await review.addPerson(B, studio, { name: 'Bea', team: 'Bravo' })).person;
+  const rae = (await review.addPerson(S, studio, { name: 'Rae', team: 'Acme' })).person;
+  const cookie = async (p: Person, g = gate) =>
+    new Request(`${origin}/`, {
+      headers: { cookie: `${PERSON_COOKIE}=${await issuePersonToken(g, p, p.accessEndsAt)}` },
+    });
+  // A cookie signed to this site's client, for a person of another client: nobody here.
+  assert.equal(await actorFrom(await cookie(bee), review, gate, S), null);
+  // A cookie signed to another client never verifies on this site's gate, whoever it names.
+  assert.equal(await actorFrom(await cookie(rae, { ...gate, client: 'bravo' }), review, gate, S), null);
+  assert.equal((await actorFrom(await cookie(rae), review, gate, S))?.id, rae.id);
+  // A Client of another client, however they got here, is answered as for an unknown id.
+  const edit = await call(post({ op: 'comment.edit', prototype: 'p', id: 'nope', body: 'x' }), bee);
+  assert.deepEqual([edit.status, edit.body], [404, { error: 'No such comment.', problems: [] }]);
+  assert.equal((await call(get('people'), bee)).status, 404);
+  // Naming a scope in the request changes nothing: the op runs in the one it was given.
+  await review.setAudience(B, studio, 'p', 'client');
+  const asked = await call(get('prototypes', '&client=bravo&project=launch'));
+  assert.deepEqual(asked.body.clientFacing, []);
+  await call(
+    post({ op: 'prototype.audience', prototype: 'q', audience: 'client', client: 'bravo', scope: B }),
+  );
+  assert.deepEqual((await review.visiblePrototypes(B, studio)).clientFacing, ['p']);
+  assert.deepEqual((await review.visiblePrototypes(S, studio)).clientFacing, ['q']);
 });
 
 test('every command runs through the same handler', async () => {
@@ -209,6 +240,7 @@ test('a store that fails during an op is a JSON 503 that says to retry', async (
   const res = await handleReview(get('comments', '&prototype=p'), {
     review: createReview(broken),
     actor: studio,
+    scope: S,
   });
   assert.equal(res.status, 503);
   assert.equal(res.headers.get('retry-after'), '30');
@@ -225,9 +257,9 @@ test('comments: a Client never receives an internal comment, and Studio’s Clie
     offset: null,
     viewport: { width: 1, height: 1 },
   };
-  const client = (await review.addPerson(studio, { name: 'Rae', team: 'Acme' })).person;
+  const client = (await review.addPerson(S, studio, { name: 'Rae', team: 'Acme' })).person;
   // The prototype is client-facing, so a Client reaches its comments.
-  await review.setAudience(studio, 'p', 'client');
+  await review.setAudience(S, studio, 'p', 'client');
   const internal = (await call(post({ op: 'comment.add', body: 'Ours', anchor }))).body.comment;
   assert.equal(internal.audience, 'internal');
   await call(post({ op: 'comment.reply', prototype: 'p', thread: internal.id, body: 'Still ours' }));
@@ -271,7 +303,7 @@ test('comments: a Client never receives an internal comment, and Studio’s Clie
 });
 
 test('prototypes: the index read takes viewAs as comments does, and a Client gets a Client’s view', async () => {
-  const client = (await review.addPerson(studio, { name: 'Rae', team: 'Acme' })).person;
+  const client = (await review.addPerson(S, studio, { name: 'Rae', team: 'Acme' })).person;
   assert.deepEqual((await call(get('prototypes'))).body, { view: 'studio', clientFacing: [] });
   const set = await call(post({ op: 'prototype.audience', prototype: 'sample-list', audience: 'client' }));
   assert.deepEqual(set, { status: 200, body: { prototype: 'sample-list', audience: 'client' } });
@@ -291,7 +323,7 @@ test('prototypes: the index read takes viewAs as comments does, and a Client get
 });
 
 test('prototype.audience: Studio only, the slug and value checked, internal unmarks', async () => {
-  const client = (await review.addPerson(studio, { name: 'Rae', team: 'Acme' })).person;
+  const client = (await review.addPerson(S, studio, { name: 'Rae', team: 'Acme' })).person;
   const op = (body: Record<string, unknown>, actor: Person | null = studio) =>
     call(post({ op: 'prototype.audience', ...body }), actor);
   assert.equal((await op({ prototype: 'sample-list', audience: 'client' }, client)).status, 403);
@@ -303,22 +335,22 @@ test('prototype.audience: Studio only, the slug and value checked, internal unma
     'audience: one of internal, client',
   ]);
   await op({ prototype: 'sample-list', audience: 'client' });
-  assert.equal(await review.audienceOf('sample-list'), 'client');
+  assert.equal(await review.audienceOf(S, 'sample-list'), 'client');
   assert.deepEqual((await op({ prototype: 'sample-list', audience: 'internal' })).body, {
     prototype: 'sample-list',
     audience: 'internal',
   });
-  assert.equal(await memory.hget(KEY.audiences, 'sample-list'), null);
+  assert.equal(await memory.hget(keyOf(S, 'audiences'), 'sample-list'), null);
   // A cross-site POST is refused before the op runs.
   const cross = await handleReview(
     post(
       { op: 'prototype.audience', prototype: 'sample-list', audience: 'client' },
       { 'sec-fetch-site': 'cross-site' },
     ),
-    { review, actor: studio },
+    { review, actor: studio, scope: S },
   );
   assert.equal(cross.status, 403);
-  assert.equal(await review.audienceOf('sample-list'), 'internal');
+  assert.equal(await review.audienceOf(S, 'sample-list'), 'internal');
 });
 
 test('comments on an internal prototype: a Client gets an empty list and not_found, as for one with none', async () => {
@@ -331,7 +363,7 @@ test('comments on an internal prototype: a Client gets an empty list and not_fou
     offset: null,
     viewport: { width: 1, height: 1 },
   };
-  const client = (await review.addPerson(studio, { name: 'Rae', team: 'Acme' })).person;
+  const client = (await review.addPerson(S, studio, { name: 'Rae', team: 'Acme' })).person;
   const shared = (await call(post({ op: 'comment.add', body: 'Theirs', anchor, audience: 'client' }))).body
     .comment;
   assert.deepEqual((await call(get('comments', '&prototype=p'), client)).body, { comments: [] });
@@ -346,8 +378,8 @@ test('comments on an internal prototype: a Client gets an empty list and not_fou
 });
 
 test('controls and control.audience: a prototype page reads the marks, and only Studio sets one', async () => {
-  const client = (await review.addPerson(studio, { name: 'Rae', team: 'Acme' })).person;
-  await review.setAudience(studio, 'sample-list', 'client');
+  const client = (await review.addPerson(S, studio, { name: 'Rae', team: 'Acme' })).person;
+  await review.setAudience(S, studio, 'sample-list', 'client');
   const read = (actor: Person | null = studio, prototype = 'sample-list') =>
     call(get('controls', `&prototype=${prototype}`), actor);
   const set = (body: Record<string, unknown>, actor: Person | null = studio) =>

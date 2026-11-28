@@ -10,6 +10,7 @@ import { readEnv } from '../../server/env.ts';
 import { fileKV } from '../../server/file-kv.ts';
 import { LOCAL_STORE, localStudio } from '../../server/local.ts';
 import { ROOT } from '../../server/paths.ts';
+import { SITE_SCOPE } from '../../server/session.ts';
 import { storeConfig, upstashKV } from '../../server/upstash.ts';
 
 export type CliReview = { review: Review; store: 'deployed' | 'local' };
@@ -24,3 +25,6 @@ export function cliReview(local: boolean): CliReview {
 }
 
 export const cliActor = () => localStudio('cli', 'CLI');
+
+/** The CLI acts in the site's one scope, as the deployed API does, so both read and write the same records. */
+export const cliScope = SITE_SCOPE;

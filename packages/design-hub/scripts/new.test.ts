@@ -34,10 +34,10 @@ test("--app picks the track's shell; a project without tracks keeps the product 
 });
 
 test('refuses a slug the hub owns, before anything is written', () => {
-  for (const slug of ['guide', 'api', 'assets'])
+  for (const slug of ['guide', 'api', 'assets', 'invite'])
     assert.throws(
       () => main({ positionals: [slug], flags: {} } as never),
-      /the hub's own path \(guide, api, assets\)/,
+      /the hub's own path \(invite, api, _gate, _p, assets, guide, index\.html, favicon\.svg\)/,
     );
   assert.throws(() => main({ positionals: ['_p'], flags: {} } as never), /kebab-case/);
 });

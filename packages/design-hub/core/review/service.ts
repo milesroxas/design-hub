@@ -4,6 +4,11 @@
 // policy.ts hold everywhere. Writes are per record (one hash field per
 // person, per comment), so two people commenting at once never collide;
 // two edits of the same comment at once keep the last.
+//
+// Every method takes the Scope it runs in first, and every key it reads or
+// writes is built from that scope (keyOf in store.ts). A person outside the
+// scope gets the answer an unknown id gets, never forbidden, so no answer
+// says what another client holds.
 import { base64url, hex, sha256 } from '../bytes.ts';
 import { type ControlKind, controlField, type Marks, readMarks } from '../controls.ts';
 import { isPrototypeSlug } from '../prototype.ts';
@@ -33,11 +38,13 @@ import {
   type Link,
   type Person,
   type PersonKind,
+  type Profile,
   readComment,
+  type Scope,
   type Triage,
 } from './model.ts';
-import { type Action, audienceFor, can, viewOf, visibleTo } from './policy.ts';
-import { KEY, type KV } from './store.ts';
+import { type Action, audienceFor, can, inScope, viewOf, visibleTo } from './policy.ts';
+import { type KV, keyOf } from './store.ts';
 
 export type ErrorCode = 'unauthorized' | 'forbidden' | 'not_found' | 'invalid';
 
@@ -73,6 +80,21 @@ const defaults: Deps = {
 const LINK_TOKEN = /^[\w-]{20,100}$/;
 const linkKey = async (token: string) => hex(await sha256(token));
 
+/** What an op answers when what it names is not there, or is outside the actor's scope. */
+const NO_COMMENT = 'No such comment.';
+const NO_PERSON = 'No such person.';
+const NO_PROTOTYPE = 'No such prototype.';
+
+/**
+ * Where a person's records live: Studio's with the studio, a Client's with
+ * their client. A scope reaches its own client's people and the studio's.
+ */
+type Home = 'studio' | Scope;
+const homeOf = ({ client }: Pick<Person, 'client'>): Home => (client === null ? 'studio' : { client });
+
+/** A person and a new one-time link's token for them. */
+type Issued = { person: Person; token: string };
+
 export function createReview(kv: KV, overrides: Partial<Deps> = {}) {
   const deps = { ...defaults, ...overrides };
   const now = () => deps.now().toISOString();
@@ -89,14 +111,25 @@ export function createReview(kv: KV, overrides: Partial<Deps> = {}) {
     }
   };
 
+  /**
+   * The first check of every op with an actor: signed in, then in scope, then
+   * allowed. Out of scope answers `missing`, what the op answers an unknown
+   * id, so it never tells a Client whether another client holds anything.
+   */
   function allow(
+    scope: Scope,
     actor: Person | null,
     action: Action,
-    root?: Comment,
-    subject?: Comment,
+    missing: string,
   ): asserts actor is Person {
     if (!actor) throw new ReviewError('unauthorized', 'Sign in with your link to do that.');
-    if (!can(actor, action, root, subject)) throw new ReviewError('forbidden', 'You cannot do that.');
+    if (!inScope(actor, scope)) throw new ReviewError('not_found', missing);
+    permit(scope, actor, action);
+  }
+
+  /** Whether the actor may act on this thread, or on `subject`, a reply in it. */
+  function permit(scope: Scope, actor: Person, action: Action, root?: Comment, subject?: Comment): void {
+    if (!can(actor, scope, action, root, subject)) throw new ReviewError('forbidden', 'You cannot do that.');
   }
 
   function valid<T>(checked: Checked<T>): T {
@@ -111,32 +144,51 @@ export function createReview(kv: KV, overrides: Partial<Deps> = {}) {
     return checks.map((c) => (c as { value: unknown }).value) as T;
   }
 
-  // A person is three records. The profile (KEY.people) is read-modify-write, so
+  // A person is three records. The profile (`people`) is read-modify-write, so
   // a stale write of it can land after anything. Revocation and the epoch live
   // outside it: revocation is written once and never cleared, the epoch only
   // rises (HINCRBY), so no profile write, however stale, can revive a session.
+  // A person's client is where the three live, never a field anyone writes.
   const compose = (
+    home: Home,
     json: string | null,
     revoked: string | null | undefined,
     epoch: string | null | undefined,
-  ) => {
+  ): Person | null => {
     const profile = safeParse(json);
     if (!isProfile(profile)) return null;
+    // Studio lives with the studio and a Client with their client: a profile anywhere else is no person.
+    if ((profile.kind === 'studio') !== (home === 'studio')) return null;
     // Any revocation record means revoked, an empty one included: it reads as the start of time.
     const revokedAt = revoked == null ? null : revoked || new Date(0).toISOString();
-    return { ...profile, revokedAt, epoch: Number(epoch ?? 0) };
+    const client = home === 'studio' ? null : home.client;
+    return { ...profile, client, revokedAt, epoch: Number(epoch ?? 0) };
   };
-  const person = async (id: string): Promise<Person | null> => {
+  const personAt = async (home: Home, id: string): Promise<Person | null> => {
     const [json, revoked, epoch] = await Promise.all([
-      kv.hget(KEY.people, id),
-      kv.hget(KEY.revoked, id),
-      kv.hget(KEY.epochs, id),
+      kv.hget(keyOf(home, 'people'), id),
+      kv.hget(keyOf(home, 'revoked'), id),
+      kv.hget(keyOf(home, 'epochs'), id),
     ]);
-    return compose(json, revoked, epoch);
+    return compose(home, json, revoked, epoch);
   };
-  /** Writes the profile alone: revocation and epoch are never part of what it saves. */
-  const savePerson = ({ revokedAt: _r, epoch: _e, ...profile }: Person) =>
-    kv.hset(KEY.people, profile.id, JSON.stringify(profile));
+  /** Someone the scope reaches: a Client of its client, else a Studio person. */
+  const person = async (scope: Scope, id: string): Promise<Person | null> =>
+    (await personAt(scope, id)) ?? personAt('studio', id);
+  /** Every person at one home, skipping any profile that is not a well-formed person. */
+  const peopleAt = async (home: Home): Promise<Person[]> => {
+    const [profiles, revoked, epochs] = await Promise.all([
+      kv.hgetall(keyOf(home, 'people')),
+      kv.hgetall(keyOf(home, 'revoked')),
+      kv.hgetall(keyOf(home, 'epochs')),
+    ]);
+    return Object.entries(profiles)
+      .map(([id, json]) => compose(home, json, revoked[id], epochs[id]))
+      .filter((p): p is Person => p !== null);
+  };
+  /** Writes the profile alone, at the person's home: revocation, epoch and client are never part of it. */
+  const savePerson = ({ revokedAt: _r, epoch: _e, client, ...profile }: Person) =>
+    kv.hset(keyOf(homeOf({ client }), 'people'), profile.id, JSON.stringify(profile satisfies Profile));
   /** Not revoked, and their access has not ended. */
   const active = (p: Person | null): p is Person => !!p && hasAccess(p, deps.now());
 
@@ -147,47 +199,53 @@ export function createReview(kv: KV, overrides: Partial<Deps> = {}) {
       person: p.id,
       expiresAt: new Date(deps.now().getTime() + LINK_DAYS * DAY_MS).toISOString(),
     };
-    await kv.hset(KEY.links, await linkKey(token), JSON.stringify(link));
+    // A link lives with its person, so it signs in only where that person's scope reaches.
+    await kv.hset(keyOf(homeOf(p), 'links'), await linkKey(token), JSON.stringify(link));
     return token;
   }
 
-  async function dropLinks(personId: string): Promise<void> {
-    const all = await kv.hgetall(KEY.links);
-    for (const [hash, json] of Object.entries(all))
-      if ((JSON.parse(json) as Link).person === personId) await kv.hdel(KEY.links, hash);
+  async function dropLinks(p: Person): Promise<void> {
+    const links = keyOf(homeOf(p), 'links');
+    for (const [hash, json] of Object.entries(await kv.hgetall(links)))
+      if ((JSON.parse(json) as Link).person === p.id) await kv.hdel(links, hash);
   }
 
-  /** The link a token names, or null for a malformed or unknown token. */
-  async function findLink(token: string): Promise<{ key: string; link: Link } | null> {
+  type Found = { home: Home; hash: string; link: Link };
+
+  /** The link a token names in the scope's client or the studio, or null for a malformed or unknown token. */
+  async function findLink(scope: Scope, token: string): Promise<Found | null> {
     if (!LINK_TOKEN.test(token)) return null;
-    const key = await linkKey(token);
-    const link = parse<Link>(await kv.hget(KEY.links, key));
-    return link ? { key, link } : null;
+    const hash = await linkKey(token);
+    for (const home of [scope, 'studio'] as const) {
+      const link = parse<Link>(await kv.hget(keyOf(home, 'links'), hash));
+      if (link) return { home, hash, link };
+    }
+    return null;
   }
 
-  /** The person a current link signs in, while they may sign in. */
-  async function linkPerson(link: Link): Promise<Person | null> {
+  /** The person a current link signs in, while they may sign in here. */
+  async function linkPerson(scope: Scope, { home, link }: Found): Promise<Person | null> {
     if (link.expiresAt <= now()) return null;
-    const p = await person(link.person);
-    return active(p) ? p : null;
+    const p = await personAt(home, link.person);
+    return active(p) && inScope(p, scope) ? p : null;
   }
 
   async function readDefault(): Promise<Access> {
-    const stored = await kv.hget(KEY.settings, 'access');
+    const stored = await kv.hget(keyOf('studio', 'settings'), 'access');
     return checkAccess(stored).ok ? (stored as Access) : DEFAULT_ACCESS;
   }
 
   /** Someone Studio can still give a link to. */
-  async function needActive(id: string): Promise<Person> {
-    const p = await needPerson(id);
+  async function needActive(scope: Scope, id: string): Promise<Person> {
+    const p = await needPerson(scope, id);
     if (p.revokedAt) throw new ReviewError('invalid', 'That person is revoked; add them again.');
     if (!active(p)) throw new ReviewError('invalid', 'Their access has ended; change their access first.');
     return p;
   }
 
-  async function needPerson(id: string): Promise<Person> {
-    const p = await person(id);
-    if (!p) throw new ReviewError('not_found', 'No such person.');
+  async function needPerson(scope: Scope, id: string): Promise<Person> {
+    const p = await person(scope, id);
+    if (!p) throw new ReviewError('not_found', NO_PERSON);
     return p;
   }
 
@@ -199,56 +257,58 @@ export function createReview(kv: KV, overrides: Partial<Deps> = {}) {
    * numbers always had. Internal threads count in their own, which starts past any internal
    * thread numbered before the two counted apart, so no internal number is given twice.
    */
-  const nextNumber = async (prototype: string, audience: Audience): Promise<number> => {
-    if (audience === 'client') return kv.hincrby(KEY.counters, prototype, 1);
+  const nextNumber = async (scope: Scope, prototype: string, audience: Audience): Promise<number> => {
+    const counters = keyOf(scope, 'counters');
+    if (audience === 'client') return kv.hincrby(counters, prototype, 1);
     const field = `${prototype}:internal`;
-    const n = await kv.hincrby(KEY.counters, field, 1);
+    const n = await kv.hincrby(counters, field, 1);
     if (n !== 1) return n;
     const before = Math.max(
       0,
-      ...(await commentsOf(prototype)).filter((c) => c.audience === 'internal').map((c) => c.number),
+      ...(await commentsOf(scope, prototype)).filter((c) => c.audience === 'internal').map((c) => c.number),
     );
-    return before ? kv.hincrby(KEY.counters, field, before) : n;
+    return before ? kv.hincrby(counters, field, before) : n;
   };
 
-  const commentsOf = async (prototype: string) =>
-    Object.values(await kv.hgetall(KEY.comments(prototype)))
+  const commentsOf = async (scope: Scope, prototype: string) =>
+    Object.values(await kv.hgetall(keyOf(scope, 'comments', prototype)))
       .map(readComment)
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
 
-  const commentAt = async (prototype: string, id: string): Promise<Comment | null> => {
-    const json = await kv.hget(KEY.comments(prototype), id);
+  const commentAt = async (scope: Scope, prototype: string, id: string): Promise<Comment | null> => {
+    const json = await kv.hget(keyOf(scope, 'comments', prototype), id);
     return json === null ? null : readComment(json);
   };
 
-  const saveComment = (prototype: string, c: Comment) =>
-    kv.hset(KEY.comments(prototype), c.id, JSON.stringify(c));
+  const saveComment = (scope: Scope, prototype: string, c: Comment) =>
+    kv.hset(keyOf(scope, 'comments', prototype), c.id, JSON.stringify(c));
 
-  const isClientFacing = async (prototype: string) =>
-    isPrototypeSlug(prototype) && (await kv.hget(KEY.audiences, prototype)) === 'client';
+  const isClientFacing = async (scope: Scope, prototype: string) =>
+    isPrototypeSlug(prototype) && (await kv.hget(keyOf(scope, 'audiences'), prototype)) === 'client';
 
   /**
    * Whether a view reaches a prototype's comments at all. A Client's view
    * reaches only a client-facing prototype: on any other, every op answers
    * as if it had no comments, so no answer confirms an internal slug.
    */
-  const reachable = async (view: PersonKind, prototype: string) =>
-    view === 'studio' || (await isClientFacing(prototype));
+  const reachable = async (scope: Scope, view: PersonKind, prototype: string) =>
+    view === 'studio' || (await isClientFacing(scope, prototype));
 
   /**
    * A comment and its thread's root, if `actor` may see both; else null. A
    * reply whose root is gone is not there either.
    */
   async function seen(
+    scope: Scope,
     actor: Person,
     prototype: string,
     id: string,
   ): Promise<{ comment: Comment; root: Comment } | null> {
-    if (!(await reachable(viewOf(actor), prototype))) return null;
-    const comment = await commentAt(prototype, id);
+    if (!(await reachable(scope, viewOf(actor), prototype))) return null;
+    const comment = await commentAt(scope, prototype, id);
     if (!comment) return null;
-    const root = isRoot(comment) ? comment : await commentAt(prototype, comment.thread);
-    return root && can(actor, 'read', root, comment) ? { comment, root } : null;
+    const root = isRoot(comment) ? comment : await commentAt(scope, prototype, comment.thread);
+    return root && can(actor, scope, 'read', root, comment) ? { comment, root } : null;
   }
 
   /**
@@ -257,53 +317,57 @@ export function createReview(kv: KV, overrides: Partial<Deps> = {}) {
    * an internal thread is there.
    */
   async function needThread(
+    scope: Scope,
     actor: Person | null,
     prototype: string,
     id: string,
-  ): Promise<{ comment: Comment; root: Comment }> {
-    allow(actor, 'read');
-    const found = await seen(actor, prototype, id);
-    if (!found) throw new ReviewError('not_found', 'No such comment.');
-    return found;
+  ): Promise<{ actor: Person; comment: Comment; root: Comment }> {
+    allow(scope, actor, 'read', NO_COMMENT);
+    const found = await seen(scope, actor, prototype, id);
+    if (!found) throw new ReviewError('not_found', NO_COMMENT);
+    return { actor, ...found };
   }
 
-  async function needRoot(actor: Person | null, prototype: string, id: string): Promise<Comment> {
-    const { comment } = await needThread(actor, prototype, id);
-    if (!isRoot(comment)) throw new ReviewError('invalid', 'That is a reply; act on its thread.');
-    return comment;
+  async function needRoot(
+    scope: Scope,
+    actor: Person | null,
+    prototype: string,
+    id: string,
+  ): Promise<{ actor: Person; root: Comment }> {
+    const found = await needThread(scope, actor, prototype, id);
+    if (!isRoot(found.comment)) throw new ReviewError('invalid', 'That is a reply; act on its thread.');
+    return { actor: found.actor, root: found.comment };
   }
 
   return {
     person,
 
-    /** The person a signed session names, if they still may sign in with it. */
-    async sessionPerson(id: string, epoch: number): Promise<Person | null> {
-      const p = await person(id);
-      return active(p) && p.epoch === epoch ? p : null;
+    /** The person a signed session names, if they still may sign in with it, here. */
+    async sessionPerson(scope: Scope, id: string, epoch: number): Promise<Person | null> {
+      const p = await person(scope, id);
+      return active(p) && p.epoch === epoch && inScope(p, scope) ? p : null;
     },
 
-    async listPeople(actor: Person | null): Promise<Person[]> {
-      allow(actor, 'people');
-      const [profiles, revoked, epochs] = await Promise.all([
-        kv.hgetall(KEY.people),
-        kv.hgetall(KEY.revoked),
-        kv.hgetall(KEY.epochs),
-      ]);
-      // A profile that is not a well-formed person is skipped, never a throw.
-      const all = Object.entries(profiles)
-        .map(([id, json]) => compose(json, revoked[id], epochs[id]))
-        .filter((p): p is Person => p !== null);
+    /** The scope's Clients and every Studio person. */
+    async listPeople(scope: Scope, actor: Person | null): Promise<Person[]> {
+      allow(scope, actor, 'people', NO_PERSON);
+      const all = [...(await peopleAt('studio')), ...(await peopleAt(scope))];
       return all.sort((a, b) => a.team.localeCompare(b.team) || a.name.localeCompare(b.name));
     },
 
-    /** A new person and their first link. Without an access length, a Client gets the project default and Studio is open-ended. */
-    async addPerson(actor: Person | null, input: unknown): Promise<{ person: Person; token: string }> {
-      allow(actor, 'people');
+    /**
+     * A new person and their first link: a Client of the scope's client, or a
+     * Studio person. Without an access length, a Client gets the default and
+     * Studio is open-ended.
+     */
+    async addPerson(scope: Scope, actor: Person | null, input: unknown): Promise<Issued> {
+      allow(scope, actor, 'people', NO_PERSON);
       const { access, ...fields } = valid(checkPersonInput(input));
       const length = access ?? (fields.kind === 'studio' ? 'open' : await readDefault());
       const p: Person = {
         id: newId(),
         ...fields,
+        client: fields.kind === 'studio' ? null : scope.client,
         email: null,
         accessEndsAt: accessEnd(length, deps.now()),
         createdAt: now(),
@@ -315,80 +379,81 @@ export function createReview(kv: KV, overrides: Partial<Deps> = {}) {
     },
 
     /** Another one-time link, for another device. Their sessions and other unused links stay. */
-    async newLink(actor: Person | null, id: string): Promise<{ person: Person; token: string }> {
-      allow(actor, 'people');
-      const p = await needActive(id);
+    async newLink(scope: Scope, actor: Person | null, id: string): Promise<Issued> {
+      allow(scope, actor, 'people', NO_PERSON);
+      const p = await needActive(scope, id);
       return { person: p, token: await issueLink(p) };
     },
 
     /** Ends every session they hold and every unused link, and gives one new link. */
-    async signOutEverywhere(actor: Person | null, id: string): Promise<{ person: Person; token: string }> {
-      allow(actor, 'people');
-      const p = await needActive(id);
+    async signOutEverywhere(scope: Scope, actor: Person | null, id: string): Promise<Issued> {
+      allow(scope, actor, 'people', NO_PERSON);
+      const p = await needActive(scope, id);
       // The epoch first: a failure after it has still ended every session. Atomic, so two at once raise it twice.
-      const next = { ...p, epoch: await kv.hincrby(KEY.epochs, id, 1) };
-      await dropLinks(id);
+      const next = { ...p, epoch: await kv.hincrby(keyOf(homeOf(p), 'epochs'), id, 1) };
+      await dropLinks(p);
       return { person: next, token: await issueLink(next) };
     },
 
-    async revoke(actor: Person | null, id: string): Promise<Person> {
-      allow(actor, 'people');
+    async revoke(scope: Scope, actor: Person | null, id: string): Promise<Person> {
+      allow(scope, actor, 'people', NO_PERSON);
       if (actor.id === id) throw new ReviewError('invalid', 'You cannot revoke yourself.');
-      const p = await needPerson(id);
+      const p = await needPerson(scope, id);
       const revokedAt = p.revokedAt ?? now();
       // Revocation and the epoch before the links go, so a failure part-way never leaves an active
       // person; a leftover link opens nothing for someone revoked.
-      if (!p.revokedAt) await kv.hset(KEY.revoked, id, revokedAt);
-      const epoch = await kv.hincrby(KEY.epochs, id, 1);
-      await dropLinks(id);
+      if (!p.revokedAt) await kv.hset(keyOf(homeOf(p), 'revoked'), id, revokedAt);
+      const epoch = await kv.hincrby(keyOf(homeOf(p), 'epochs'), id, 1);
+      await dropLinks(p);
       return { ...p, revokedAt, epoch };
     },
 
     /** Sets one person's access length, counted from now. Their sessions follow at the gate's next check, within five minutes. */
-    async setAccess(actor: Person | null, id: string, access: unknown): Promise<Person> {
-      allow(actor, 'people');
+    async setAccess(scope: Scope, actor: Person | null, id: string, access: unknown): Promise<Person> {
+      allow(scope, actor, 'people', NO_PERSON);
       const length = valid(checkAccess(access));
-      const p = await needPerson(id);
+      const p = await needPerson(scope, id);
       if (p.revokedAt) throw new ReviewError('invalid', 'That person is revoked; add them again.');
       await savePerson({ ...p, accessEndsAt: accessEnd(length, deps.now()) });
       // Read back, so the answer carries a revocation or epoch that landed meanwhile.
-      return (await person(id)) as Person;
+      return (await personAt(homeOf(p), id)) as Person;
     },
 
-    /** How long a new Client keeps access unless Studio says otherwise. */
-    async defaultAccess(actor: Person | null): Promise<Access> {
-      allow(actor, 'people');
+    /** How long a new Client keeps access unless Studio says otherwise: the studio's default. */
+    async defaultAccess(scope: Scope, actor: Person | null): Promise<Access> {
+      allow(scope, actor, 'people', NO_PERSON);
       return readDefault();
     },
 
-    async setDefaultAccess(actor: Person | null, access: unknown): Promise<Access> {
-      allow(actor, 'people');
+    async setDefaultAccess(scope: Scope, actor: Person | null, access: unknown): Promise<Access> {
+      allow(scope, actor, 'people', NO_PERSON);
       const length = valid(checkAccess(access));
-      await kv.hset(KEY.settings, 'access', length);
+      await kv.hset(keyOf('studio', 'settings'), 'access', length);
       return length;
     },
 
-    /** Who a link signs in, without using it: mail and chat previews open links too. */
-    async peekLink(token: string): Promise<Person | null> {
-      const found = await findLink(token);
-      return found ? linkPerson(found.link) : null;
+    /** Who a link signs in here, without using it: mail and chat previews open links too. */
+    async peekLink(scope: Scope, token: string): Promise<Person | null> {
+      const found = await findLink(scope, token);
+      return found ? linkPerson(scope, found) : null;
     },
 
     /**
      * Uses a link up and returns who it signs in. The delete is the claim: of
      * two requests with one token, only the one whose delete removed the link
      * gets a person, so a link signs in one device at most. Who it signs in is
-     * read and checked first, so the delete is the last store call.
+     * read and checked first, so the delete is the last store call. Only a
+     * link of the scope's client, or a Studio person's, is found at all.
      */
-    async useLink(token: string): Promise<Person | null> {
-      const found = await findLink(token);
+    async useLink(scope: Scope, token: string): Promise<Person | null> {
+      const found = await findLink(scope, token);
       // Every read and check comes before the delete, so a store failure before it leaves the link usable.
-      const p = found && (await linkPerson(found.link));
+      const p = found && (await linkPerson(scope, found));
       if (!found || !p) return null;
-      if ((await kv.hdel(KEY.links, found.key)) !== 1) return null;
+      if ((await kv.hdel(keyOf(found.home, 'links'), found.hash)) !== 1) return null;
       // A revoke or sign out everywhere can land between the check and the claim, before its
       // dropLinks reaches this link: read again, and sign in only someone still active on the same epoch.
-      const after = await person(p.id);
+      const after = await personAt(found.home, p.id);
       return active(after) && after.epoch === p.epoch ? after : null;
     },
 
@@ -396,20 +461,26 @@ export function createReview(kv: KV, overrides: Partial<Deps> = {}) {
      * A prototype's comments as the actor's view sees them. `viewAs: 'client'`
      * is Studio's Client view; it never widens a Client's.
      */
-    async listComments(actor: Person | null, prototype: string, viewAs?: unknown): Promise<Comment[]> {
-      allow(actor, 'read');
+    async listComments(
+      scope: Scope,
+      actor: Person | null,
+      prototype: string,
+      viewAs?: unknown,
+    ): Promise<Comment[]> {
+      allow(scope, actor, 'read', NO_COMMENT);
       const view = viewOf(actor, valid(checkViewAs(viewAs)));
-      if (!(await reachable(view, prototype))) return [];
-      return visibleTo(view, await commentsOf(prototype));
+      if (!(await reachable(scope, view, prototype))) return [];
+      return visibleTo(view, await commentsOf(scope, prototype));
     },
 
-    /** Every comment on every prototype the actor may see, for the CLI (which acts as Studio). */
-    async allComments(actor: Person | null): Promise<Comment[]> {
-      allow(actor, 'read');
+    /** Every comment on every prototype of the scope's project the actor may see, for the CLI (which acts as Studio). */
+    async allComments(scope: Scope, actor: Person | null): Promise<Comment[]> {
+      allow(scope, actor, 'read', NO_COMMENT);
       const view = viewOf(actor);
       const prototypes = [];
-      for (const p of await kv.smembers(KEY.prototypes)) if (await reachable(view, p)) prototypes.push(p);
-      return visibleTo(view, (await Promise.all(prototypes.map(commentsOf))).flat());
+      for (const p of await kv.smembers(keyOf(scope, 'prototypes')))
+        if (await reachable(scope, view, p)) prototypes.push(p);
+      return visibleTo(view, (await Promise.all(prototypes.map((p) => commentsOf(scope, p)))).flat());
     },
 
     /**
@@ -418,18 +489,19 @@ export function createReview(kv: KV, overrides: Partial<Deps> = {}) {
      * next of its audience on the prototype, never one used before.
      */
     async add(
+      scope: Scope,
       actor: Person | null,
       input: { body?: unknown; anchor?: unknown; states?: unknown; audience?: unknown },
     ): Promise<Comment> {
-      allow(actor, 'comment');
+      allow(scope, actor, 'comment', NO_COMMENT);
       const [body, anchor, asked] = validAll<[string, Anchor, Audience | null]>(
         checkBody(input.body),
         checkAnchor(input.anchor),
         checkAudience(input.audience),
       );
       // A Client's thread on a prototype that is not client-facing: the answer an unknown id gets.
-      if (!(await reachable(viewOf(actor), anchor.prototype)))
-        throw new ReviewError('not_found', 'No such comment.');
+      if (!(await reachable(scope, viewOf(actor), anchor.prototype)))
+        throw new ReviewError('not_found', NO_COMMENT);
       const id = newId();
       const triage = deps.triage
         ? await deps
@@ -451,23 +523,24 @@ export function createReview(kv: KV, overrides: Partial<Deps> = {}) {
         audience: audienceFor(actor, asked),
         number: 0,
       };
-      c.number = await nextNumber(anchor.prototype, c.audience);
-      await kv.sadd(KEY.prototypes, anchor.prototype);
-      await saveComment(anchor.prototype, c);
+      c.number = await nextNumber(scope, anchor.prototype, c.audience);
+      await kv.sadd(keyOf(scope, 'prototypes'), anchor.prototype);
+      await saveComment(scope, anchor.prototype, c);
       return c;
     },
 
     async reply(
+      scope: Scope,
       actor: Person | null,
       input: { prototype: string; thread: string; body?: unknown },
     ): Promise<Comment> {
-      const root = await needRoot(actor, input.prototype, input.thread);
-      allow(actor, 'comment', root);
+      const { actor: by, root } = await needRoot(scope, actor, input.prototype, input.thread);
+      permit(scope, by, 'comment', root);
       const id = newId();
       const c: Comment = {
         id,
         thread: root.id,
-        author: authorOf(actor),
+        author: authorOf(by),
         body: valid(checkBody(input.body)),
         createdAt: now(),
         editedAt: null,
@@ -479,55 +552,64 @@ export function createReview(kv: KV, overrides: Partial<Deps> = {}) {
         audience: root.audience,
         number: root.number,
       };
-      await saveComment(input.prototype, c);
+      await saveComment(scope, input.prototype, c);
       return c;
     },
 
     async edit(
+      scope: Scope,
       actor: Person | null,
       input: { prototype: string; id: string; body?: unknown },
     ): Promise<Comment> {
-      const { comment: c, root } = await needThread(actor, input.prototype, input.id);
-      allow(actor, 'edit', root, c);
+      const { actor: by, comment: c, root } = await needThread(scope, actor, input.prototype, input.id);
+      permit(scope, by, 'edit', root, c);
       const next = { ...c, body: valid(checkBody(input.body)), editedAt: now() };
-      await saveComment(input.prototype, next);
+      await saveComment(scope, input.prototype, next);
       return next;
     },
 
     /** Deletes a comment; deleting a thread's root deletes its replies with it. */
-    async remove(actor: Person | null, input: { prototype: string; id: string }): Promise<string[]> {
-      const { comment: c, root } = await needThread(actor, input.prototype, input.id);
-      allow(actor, 'delete', root, c);
-      const gone = isRoot(c) ? (await commentsOf(input.prototype)).filter((x) => x.thread === c.id) : [c];
-      for (const x of gone) await kv.hdel(KEY.comments(input.prototype), x.id);
+    async remove(
+      scope: Scope,
+      actor: Person | null,
+      input: { prototype: string; id: string },
+    ): Promise<string[]> {
+      const { actor: by, comment: c, root } = await needThread(scope, actor, input.prototype, input.id);
+      permit(scope, by, 'delete', root, c);
+      const gone = isRoot(c)
+        ? (await commentsOf(scope, input.prototype)).filter((x) => x.thread === c.id)
+        : [c];
+      for (const x of gone) await kv.hdel(keyOf(scope, 'comments', input.prototype), x.id);
       // The answer names only what the actor may see, judged with the thread's root beside it.
-      const shown = new Set(visibleTo(viewOf(actor), [root, ...gone]).map((x) => x.id));
+      const shown = new Set(visibleTo(viewOf(by), [root, ...gone]).map((x) => x.id));
       return gone.filter((x) => shown.has(x.id)).map((x) => x.id);
     },
 
     async resolve(
+      scope: Scope,
       actor: Person | null,
       input: { prototype: string; id: string; resolved: boolean },
     ): Promise<Comment> {
-      const c = await needRoot(actor, input.prototype, input.id);
-      allow(actor, 'resolve', c);
+      const { actor: by, root: c } = await needRoot(scope, actor, input.prototype, input.id);
+      permit(scope, by, 'resolve', c);
       const next: Comment = input.resolved
-        ? { ...c, status: 'resolved', resolvedBy: authorOf(actor) }
+        ? { ...c, status: 'resolved', resolvedBy: authorOf(by) }
         : { ...c, status: 'open', resolvedBy: null };
-      await saveComment(input.prototype, next);
+      await saveComment(scope, input.prototype, next);
       return next;
     },
 
     async retriage(
+      scope: Scope,
       actor: Person | null,
       input: { prototype: string; id: string; triage?: unknown; states?: unknown },
     ): Promise<Comment> {
-      allow(actor, 'triage');
-      const c = await needRoot(actor, input.prototype, input.id);
+      allow(scope, actor, 'triage', NO_COMMENT);
+      const { root: c } = await needRoot(scope, actor, input.prototype, input.id);
       const states = checkStates(input.states);
       const { kind, state } = valid(checkTriage(input.triage, states.length ? states : null));
       const next: Comment = { ...c, triage: { kind, state, by: 'person', confidence: null } };
-      await saveComment(input.prototype, next);
+      await saveComment(scope, input.prototype, next);
       return next;
     },
 
@@ -536,16 +618,21 @@ export function createReview(kv: KV, overrides: Partial<Deps> = {}) {
      * stored, so internal deletes the field and a prototype nobody marked is
      * internal. Studio only.
      */
-    async setAudience(actor: Person | null, prototype: unknown, audience: unknown): Promise<Audience> {
-      allow(actor, 'audience');
+    async setAudience(
+      scope: Scope,
+      actor: Person | null,
+      prototype: unknown,
+      audience: unknown,
+    ): Promise<Audience> {
+      allow(scope, actor, 'audience', NO_PROTOTYPE);
       const [slug, value] = validAll<[string, Audience]>(
         isPrototypeSlug(prototype)
           ? { ok: true, value: prototype }
           : { ok: false, problems: ['prototype: a prototype slug'] },
         checkPrototypeAudience(audience),
       );
-      if (value === 'client') await kv.hset(KEY.audiences, slug, 'client');
-      else await kv.hdel(KEY.audiences, slug);
+      if (value === 'client') await kv.hset(keyOf(scope, 'audiences'), slug, 'client');
+      else await kv.hdel(keyOf(scope, 'audiences'), slug);
       return value;
     },
 
@@ -556,13 +643,17 @@ export function createReview(kv: KV, overrides: Partial<Deps> = {}) {
      * names are in the prototype's own code already. An internal prototype
      * has none for a Client, as it has no comments.
      */
-    async controlsOf(actor: Person | null, prototype: unknown): Promise<{ view: PersonKind } & Marks> {
-      allow(actor, 'read');
+    async controlsOf(
+      scope: Scope,
+      actor: Person | null,
+      prototype: unknown,
+    ): Promise<{ view: PersonKind } & Marks> {
+      allow(scope, actor, 'read', NO_PROTOTYPE);
       if (!isPrototypeSlug(prototype))
         throw new ReviewError('invalid', 'Some fields are not valid.', ['prototype: a prototype slug']);
       const view = viewOf(actor);
-      if (!(await reachable(view, prototype))) throw new ReviewError('not_found', 'No such prototype.');
-      return { view, ...readMarks(await kv.hgetall(KEY.controls(prototype))) };
+      if (!(await reachable(scope, view, prototype))) throw new ReviewError('not_found', NO_PROTOTYPE);
+      return { view, ...readMarks(await kv.hgetall(keyOf(scope, 'controls', prototype))) };
     },
 
     /**
@@ -572,29 +663,31 @@ export function createReview(kv: KV, overrides: Partial<Deps> = {}) {
      * keeps no list of a prototype's controls, so any well-formed id is taken.
      */
     async setControl(
+      scope: Scope,
       actor: Person | null,
       input: { prototype: unknown; kind: unknown; id: unknown; audience: unknown },
     ): Promise<{ kind: ControlKind; id: string; audience: Audience }> {
-      allow(actor, 'audience');
+      allow(scope, actor, 'audience', NO_PROTOTYPE);
       const [slug, mark] = validAll<[string, { kind: ControlKind; id: string; audience: Audience }]>(
         isPrototypeSlug(input.prototype)
           ? { ok: true, value: input.prototype }
           : { ok: false, problems: ['prototype: a prototype slug'] },
         checkControl(input),
       );
+      const controls = keyOf(scope, 'controls', slug);
       const field = controlField(mark.kind, mark.id);
-      if (mark.kind === 'variant' && mark.audience === 'internal') await kv.hdel(KEY.controls(slug), field);
-      else await kv.hset(KEY.controls(slug), field, mark.audience);
+      if (mark.kind === 'variant' && mark.audience === 'internal') await kv.hdel(controls, field);
+      else await kv.hset(controls, field, mark.audience);
       return mark;
     },
 
     /**
-     * Who a prototype is for, asked by the gate with no actor. Absent, or any
-     * value but `client`, is internal; a name that cannot be a prototype is
-     * internal without asking the store.
+     * Who a prototype of the scope's project is for, asked by the gate with no
+     * actor. Absent, or any value but `client`, is internal; a name that
+     * cannot be a prototype is internal without asking the store.
      */
-    async audienceOf(prototype: string): Promise<Audience> {
-      return (await isClientFacing(prototype)) ? 'client' : 'internal';
+    async audienceOf(scope: Scope, prototype: string): Promise<Audience> {
+      return (await isClientFacing(scope, prototype)) ? 'client' : 'internal';
     },
 
     /**
@@ -604,12 +697,13 @@ export function createReview(kv: KV, overrides: Partial<Deps> = {}) {
      * own list, which the gate refuses to a Client.
      */
     async visiblePrototypes(
+      scope: Scope,
       actor: Person | null,
       viewAs?: unknown,
     ): Promise<{ view: PersonKind; clientFacing: string[] }> {
-      allow(actor, 'read');
+      allow(scope, actor, 'read', NO_PROTOTYPE);
       const view = viewOf(actor, valid(checkViewAs(viewAs)));
-      const all = await kv.hgetall(KEY.audiences);
+      const all = await kv.hgetall(keyOf(scope, 'audiences'));
       const clientFacing = Object.entries(all)
         .filter(([slug, value]) => value === 'client' && isPrototypeSlug(slug))
         .map(([slug]) => slug)
@@ -617,11 +711,20 @@ export function createReview(kv: KV, overrides: Partial<Deps> = {}) {
       return { view, clientFacing };
     },
 
-    /** Where a comment lives, for the CLI, which has an id and no prototype; null when the actor may not see it. */
-    async locate(actor: Person | null, id: string): Promise<{ prototype: string; comment: Comment } | null> {
-      allow(actor, 'read');
-      for (const prototype of await kv.smembers(KEY.prototypes)) {
-        const found = await seen(actor, prototype, id);
+    /**
+     * Where a comment lives, for the CLI, which has an id and no prototype;
+     * null when the actor may not see it, and outside the actor's scope, as
+     * for an id that is not there.
+     */
+    async locate(
+      scope: Scope,
+      actor: Person | null,
+      id: string,
+    ): Promise<{ prototype: string; comment: Comment } | null> {
+      if (actor && !inScope(actor, scope)) return null;
+      allow(scope, actor, 'read', NO_COMMENT);
+      for (const prototype of await kv.smembers(keyOf(scope, 'prototypes'))) {
+        const found = await seen(scope, actor, prototype, id);
         if (found) return { prototype, comment: found.comment };
       }
       return null;

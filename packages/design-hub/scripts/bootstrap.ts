@@ -14,7 +14,7 @@ import { ROOT, TEMPLATES } from '../server/paths.ts';
 import { type Args, CliError, type CommandSpec } from './lib/cli.ts';
 import { gitConnected, restoreGitignore, upstashTerms } from './lib/deploy.ts';
 import { holderOf, pickPort, readClaims, writeClaim } from './lib/ports.ts';
-import { cliActor, cliReview } from './lib/review.ts';
+import { cliActor, cliReview, cliScope } from './lib/review.ts';
 import {
   ENVIRONMENTS,
   envNames,
@@ -398,7 +398,7 @@ async function setDefaultAccess(access: string, warnings: string[]): Promise<str
     );
     return undefined;
   }
-  return review.setDefaultAccess(cliActor(), access);
+  return review.setDefaultAccess(cliScope, cliActor(), access);
 }
 
 async function setUpVercel(

@@ -7,7 +7,7 @@
 import { ACCESS, PERSON_KINDS, type Person } from '../core/review/model.ts';
 import type { Review } from '../core/review/service.ts';
 import { type Args, CliError, type CommandSpec } from './lib/cli.ts';
-import { cliActor, cliReview } from './lib/review.ts';
+import { cliActor, cliReview, cliScope } from './lib/review.ts';
 
 export const spec = {
   name: 'people',
@@ -77,20 +77,20 @@ const withLink = (r: { person: Person; token: string }, site?: string) => ({
 async function access({ review, actor, flags, id }: Context) {
   if (id) {
     if (!flags.access) throw new CliError('Say how long: pnpm people access <id> --access 3m|6m|open.');
-    return { person: strip(await review.setAccess(actor, id, flags.access)) };
+    return { person: strip(await review.setAccess(cliScope, actor, id, flags.access)) };
   }
   return {
     access: flags.access
-      ? await review.setDefaultAccess(actor, flags.access)
-      : await review.defaultAccess(actor),
+      ? await review.setDefaultAccess(cliScope, actor, flags.access)
+      : await review.defaultAccess(cliScope, actor),
   };
 }
 
 const ACTIONS: Record<string, (c: Context) => Promise<Record<string, unknown>>> = {
-  list: async ({ review, actor }) => ({ people: (await review.listPeople(actor)).map(strip) }),
+  list: async ({ review, actor }) => ({ people: (await review.listPeople(cliScope, actor)).map(strip) }),
   add: async ({ review, actor, flags }) =>
     withLink(
-      await review.addPerson(actor, {
+      await review.addPerson(cliScope, actor, {
         name: flags.name,
         team: flags.team,
         kind: flags.kind,
@@ -99,11 +99,11 @@ const ACTIONS: Record<string, (c: Context) => Promise<Record<string, unknown>>> 
       flags.site,
     ),
   link: async ({ review, actor, flags, id }) =>
-    withLink(await review.newLink(actor, needId('link', id)), flags.site),
+    withLink(await review.newLink(cliScope, actor, needId('link', id)), flags.site),
   'sign-out': async ({ review, actor, flags, id }) =>
-    withLink(await review.signOutEverywhere(actor, needId('sign-out', id)), flags.site),
+    withLink(await review.signOutEverywhere(cliScope, actor, needId('sign-out', id)), flags.site),
   revoke: async ({ review, actor, id }) => ({
-    person: strip(await review.revoke(actor, needId('revoke', id))),
+    person: strip(await review.revoke(cliScope, actor, needId('revoke', id))),
   }),
   access,
 };

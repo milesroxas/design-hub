@@ -1,15 +1,41 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { ALL_FILE, entryFile, isPrototypeSlug, probeEntry, prototypeOfPath, RESERVED } from './prototype.ts';
+import {
+  ALL_FILE,
+  entryFile,
+  isClientSlug,
+  isProjectSlug,
+  isPrototypeSlug,
+  probeEntry,
+  prototypeOfPath,
+  RESERVED,
+  RESERVED_CLIENTS,
+} from './prototype.ts';
 
-test('a prototype slug is kebab-case and never one of the hub’s own paths', () => {
-  assert.deepEqual([...RESERVED], ['guide', 'api', 'assets']);
-  for (const reserved of RESERVED) assert.equal(isPrototypeSlug(reserved), false);
+test('a prototype or project slug is kebab-case and never a first segment the gate answers', () => {
+  assert.deepEqual(
+    [...RESERVED],
+    ['invite', 'api', '_gate', '_p', 'assets', 'guide', 'index.html', 'favicon.svg'],
+  );
+  for (const reserved of RESERVED) {
+    assert.equal(isPrototypeSlug(reserved), false, reserved);
+    assert.equal(isProjectSlug(reserved), false, reserved);
+  }
   assert.equal(isPrototypeSlug('sample-list'), true);
+  assert.equal(isProjectSlug('rebrand'), true);
   for (const bad of ['_p', 'Sample', 'a_b', '', 'a.js', 'a/b', null, 3])
     assert.equal(isPrototypeSlug(bad), false);
   assert.equal(entryFile('sample-list'), '_p/sample-list/entry.js');
   assert.equal(ALL_FILE, '_p/all.js');
+});
+
+test('a client slug is kebab-case and never the studio’s own host names', () => {
+  assert.deepEqual([...RESERVED_CLIENTS], ['studio', 'www', 'api']);
+  for (const reserved of RESERVED_CLIENTS) assert.equal(isClientSlug(reserved), false, reserved);
+  assert.equal(isClientSlug('acme'), true);
+  // A prototype's reserved names are no concern of a host's.
+  assert.equal(isClientSlug('guide'), true);
+  for (const bad of ['Acme', 'a_b', 'a:b', '', 'a.b', null, 3]) assert.equal(isClientSlug(bad), false);
 });
 
 test('a path names its prototype, or none for the hub’s own', () => {
@@ -22,7 +48,8 @@ test('a path names its prototype, or none for the hub’s own', () => {
     ['/_gate/geist.woff2', null],
     ['/index.html', null],
     ['/robots.txt', ''],
-    ['/invite/short', 'invite'],
+    // A link path the gate does not answer is no prototype's and no hub path: refused to a Client.
+    ['/invite/short', ''],
     ['/Sample-List/', ''],
     ['/_p;x/secret/entry.js', ''],
     ['/_p./secret/entry.js', ''],

@@ -2,6 +2,12 @@
 // and set operations. Production is Upstash Redis over REST
 // (server/upstash.ts); dev and tests use the in-memory store below, which
 // the dev server persists to a file (server/file-kv.ts).
+import { SLUG } from '../feature.ts';
+import { isClientSlug, isProjectSlug } from '../prototype.ts';
+import type { Scope } from './model.ts';
+
+/** A comment's or a control's prototype: any kebab-case name, so reading one that is reserved finds nothing, as before. */
+const isKebab = (v: unknown): v is string => typeof v === 'string' && SLUG.test(v);
 
 export interface KV {
   hget(key: string, field: string): Promise<string | null>;
@@ -20,40 +26,68 @@ export interface KV {
  * another app's data. Bumped when the stored shapes change without a
  * migration: records under an older prefix are simply never read.
  */
-const PREFIX = 'hub3:';
+const PREFIX = 'hub4:';
 
-export const KEY = {
-  /** A person's profile: everything but revocation and epoch, which nothing here can overwrite. */
-  people: `${PREFIX}people`,
-  /** When a person was revoked. Written once by revoke, never cleared. */
-  revoked: `${PREFIX}revoked`,
-  /** A person's session epoch, only ever raised, by HINCRBY. Absent is 0. */
-  epochs: `${PREFIX}epochs`,
-  /** One-time sign-in links: hex(sha256(token)) to a Link. */
-  links: `${PREFIX}links`,
-  /** Project settings, one field each: `access` is the default access length. */
-  settings: `${PREFIX}settings`,
-  prototypes: `${PREFIX}prototypes`,
-  /**
-   * Which prototypes are client-facing: field `<slug>`, value `client`. Only
-   * client-facing is stored; internal is the field's absence, and any other
-   * value reads as internal too.
-   */
-  audiences: `${PREFIX}audiences`,
-  /**
-   * The last thread number given on each prototype, only ever raised by HINCRBY: field
-   * `<prototype>` counts client-facing threads, `<prototype>:internal` internal ones.
-   */
-  counters: `${PREFIX}counters`,
-  comments: (prototype: string) => `${PREFIX}comments:${prototype}`,
-  /**
-   * What Studio marked on one prototype's controls (core/controls.ts): field
-   * `dial:<id>` is `client` or `internal`, overruling the code either way;
-   * field `variant:<name>` is `client`, and internal is its absence. One
-   * field per control, so two people marking at once never undo each other.
-   */
-  controls: (prototype: string) => `${PREFIX}controls:${prototype}`,
-} as const;
+/**
+ * The studio's own records: Studio people (profile, revocation, epoch and
+ * links, as a client's below) and `settings`, one field each: `access` is the
+ * default access length.
+ */
+type StudioName = 'people' | 'revoked' | 'epochs' | 'links' | 'settings';
+
+/**
+ * A client's people, in four records. `people`: a profile, everything but
+ * revocation and epoch, which nothing here can overwrite. `revoked`: when a
+ * person was revoked, written once by revoke, never cleared. `epochs`: a
+ * person's session epoch, only ever raised, by HINCRBY; absent is 0.
+ * `links`: one-time sign-in links, hex(sha256(token)) to a Link.
+ */
+type ClientName = 'people' | 'revoked' | 'epochs' | 'links';
+
+/**
+ * A project's records. `audiences`: which prototypes are client-facing,
+ * field `<slug>`, value `client`; only client-facing is stored, internal is
+ * the field's absence, and any other value reads as internal too.
+ * `counters`: the last thread number given on each prototype, only ever
+ * raised by HINCRBY: field `<prototype>` counts client-facing threads,
+ * `<prototype>:internal` internal ones. `prototypes`: the set of prototypes
+ * with comments. `comments`, per prototype: one field per comment.
+ * `controls`, per prototype: what Studio marked on its controls
+ * (core/controls.ts): field `dial:<id>` is `client` or `internal`, overruling
+ * the code either way; field `variant:<name>` is `client`, and internal is
+ * its absence. One field per control, so two people marking at once never
+ * undo each other.
+ */
+type ProjectName = 'audiences' | 'counters' | 'prototypes';
+type PrototypeName = 'comments' | 'controls';
+
+const PROJECT_NAMES: readonly string[] = ['audiences', 'counters', 'prototypes', 'comments', 'controls'];
+const PER_PROTOTYPE: readonly string[] = ['comments', 'controls'];
+
+function part(ok: (v: unknown) => v is string, v: unknown, what: string): string {
+  // A bad part is a bug in the caller, never input to answer: fail closed before any store call.
+  if (!ok(v)) throw new Error(`Not a store key: ${what} is ${JSON.stringify(v)}.`);
+  return v;
+}
+
+/**
+ * Every store key, and the only place one is built. `'studio'` names the
+ * studio's own records; a Scope names its client's, and its project's for a
+ * project name. Every part is checked (a client slug, a project slug, a
+ * kebab-case prototype), so no value can reach into another client's keys:
+ * no part can hold the `:` that joins them.
+ */
+export function keyOf(scope: 'studio', name: StudioName): string;
+export function keyOf(scope: 'studio' | Scope, name: ClientName): string;
+export function keyOf(scope: Scope, name: ProjectName): string;
+export function keyOf(scope: Scope, name: PrototypeName, prototype: string): string;
+export function keyOf(scope: 'studio' | Scope, name: string, prototype?: string): string {
+  if (scope === 'studio') return `${PREFIX}studio:${name}`;
+  const client = `${PREFIX}c:${part(isClientSlug, scope.client, 'client')}:`;
+  if (!PROJECT_NAMES.includes(name)) return `${client}${name}`;
+  const project = `${client}p:${part(isProjectSlug, scope.project, 'project')}:${name}`;
+  return PER_PROTOTYPE.includes(name) ? `${project}:${part(isKebab, prototype, 'prototype')}` : project;
+}
 
 export type Snapshot = { hashes: Record<string, Record<string, string>>; sets: Record<string, string[]> };
 

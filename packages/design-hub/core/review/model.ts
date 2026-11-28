@@ -66,6 +66,11 @@ export type Person = {
   /** The group a person belongs to, shown beside their name: the studio, or the client's company. */
   team: string;
   kind: PersonKind;
+  /**
+   * The client a Client belongs to, or null for Studio, who works in every
+   * client. Never stored in the profile: it is where the person's records live.
+   */
+  client: string | null;
   /** Always null until email sign-in exists. */
   email: string | null;
   /** When their access ends (ISO time), or null for open-ended. Their sessions end with it. */
@@ -75,6 +80,13 @@ export type Person = {
   /** Bumped on revoke and on sign out everywhere, which ends every session signed with the old one. */
   epoch: number;
 };
+
+/**
+ * Where an op runs: one client, and one of its projects for anything about
+ * prototypes and comments. Every service method takes one, every store key is
+ * built from one (store.ts), and a Client acts only inside their own client.
+ */
+export type Scope = { client: string; project?: string };
 
 /** A one-time sign-in link, stored under the hash of its token and deleted when used. */
 export type Link = { person: string; expiresAt: string };
@@ -163,8 +175,11 @@ const PROFILE_RULES: [string, (v: unknown) => boolean][] = [
   ['createdAt', isText],
 ];
 
-/** Whether a stored profile (a person without revocation and epoch) is well formed. */
-export function isProfile(v: unknown): v is Omit<Person, 'revokedAt' | 'epoch'> {
+/** What a person's profile record holds: everything but revocation, epoch and client, which live elsewhere. */
+export type Profile = Omit<Person, 'revokedAt' | 'epoch' | 'client'>;
+
+/** Whether a stored profile is well formed. */
+export function isProfile(v: unknown): v is Profile {
   if (!v || typeof v !== 'object' || Array.isArray(v)) return false;
   const o = v as Record<string, unknown>;
   return PROFILE_RULES.every(([key, ok]) => ok(o[key]));

@@ -5,9 +5,16 @@
 // answer is merged in place, so a write never refetches the list. The list is
 // what the server sent for this person: nothing here filters it.
 import { useSyncExternalStore } from 'react';
-import type { Access, Anchor, Audience, Comment, Person, PersonKind } from '../../core/review/model';
+import type { Access, Anchor, Audience, Comment, Person, PersonKind, Scope } from '../../core/review/model';
 
 export type Me = Omit<Person, 'epoch'>;
+
+/**
+ * The scope the page judges its own controls in: the person's own. The
+ * server answers nothing outside the real one, so this only decides which
+ * buttons show.
+ */
+export const ownScope = (me: Me | null): Scope => ({ client: me?.client ?? '' });
 /** off: this site has no review store, so the UI stays out of the way. guest: the session ended since the page loaded. */
 type Status = 'loading' | 'ready' | 'guest' | 'off';
 

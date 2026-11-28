@@ -4,10 +4,23 @@
 import { SLUG } from './feature.ts';
 
 /**
- * First path segments the hub owns, never a prototype: the walkthroughs,
- * the review API, and the shared bundle.
+ * Never a project's or a prototype's slug: every first path segment the gate
+ * answers itself (the link path, the review API, the gate's font, the built
+ * prototypes, the shared bundle, the walkthroughs, the hub's own top files).
  */
-export const RESERVED = ['guide', 'api', 'assets'] as const;
+export const RESERVED = [
+  'invite',
+  'api',
+  '_gate',
+  '_p',
+  'assets',
+  'guide',
+  'index.html',
+  'favicon.svg',
+] as const;
+
+/** Never a client's slug: the studio's own host, and the names a host is often given. */
+export const RESERVED_CLIENTS = ['studio', 'www', 'api'] as const;
 
 /**
  * Everything built from `prototypes/<slug>/` lands under `/_p/<slug>/`, and
@@ -21,6 +34,13 @@ export const entryFile = (slug: string) => `${PROTOTYPE_DIR}/${slug}/entry.js`;
 /** Whether `name` can be a prototype's folder: kebab-case and not one of the hub's own paths. */
 export const isPrototypeSlug = (name: unknown): name is string =>
   typeof name === 'string' && SLUG.test(name) && !(RESERVED as readonly string[]).includes(name);
+
+/** A project is a first path segment too, below its client's host, so it follows the prototype's rule. */
+export const isProjectSlug = isPrototypeSlug;
+
+/** Whether `name` can be a client: kebab-case and not one of the studio's own host names. */
+export const isClientSlug = (name: unknown): name is string =>
+  typeof name === 'string' && SLUG.test(name) && !(RESERVED_CLIENTS as readonly string[]).includes(name);
 
 /**
  * A path's segments as a file server might read them, or null when the path
@@ -44,10 +64,12 @@ function segments(pathname: string): string[] | null {
 
 /**
  * The first path segments that are the hub's own, for anyone signed in: the
- * reserved routes, the gate's font folder, and the files the hub serves at
- * the top (shell/index.html, shell/public/favicon.svg).
+ * walkthroughs, the review API, the shared bundle, the gate's font folder,
+ * and the files the hub serves at the top (shell/index.html,
+ * shell/public/favicon.svg). `invite` and `_p` are reserved too but are not
+ * the hub's: the gate answers a link itself, and `_p` is a prototype's.
  */
-const HUB_ROOT: readonly string[] = [...RESERVED, '_gate', 'index.html', 'favicon.svg'];
+const HUB_ROOT: readonly string[] = ['guide', 'api', 'assets', '_gate', 'index.html', 'favicon.svg'];
 
 /**
  * Which prototype a request path belongs to, for the gate: the name a
